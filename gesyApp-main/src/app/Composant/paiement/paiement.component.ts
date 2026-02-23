@@ -6,8 +6,8 @@ import { ComptesBancairesService, CompteBancaire } from '../../services/comptes-
 import { CaissesService, Caisse } from '../../services/caisses.service';
 import { TransactionsService, Transaction, TransactionPage, TransactionStats, TransactionFilterResult } from '../../services/transactions.service';
 import { PaiementService, Paiement as PaiementBackend } from '../../services/paiement.service';
+import { FacturesService } from '../../services/factures.service';
 import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
 import { AlertService } from '../../nativeComp/alert/alert.service';
 import { ToastService } from '../../nativeComp/toast/toast.service';
 import { PdfService } from '../../services/pdf.service';
@@ -60,8 +60,11 @@ export class PaiementComponent implements OnInit {
   selectedCaisseId?: number;
   compteTypePaiement: 'banque' | 'caisse' = 'banque';
 
+  private readonly PAIEMENT_TRANSACTION_TYPE: string = 'VIREMENT_ENTRANT';
+
+  /** Type fixé à Virement entrant pour le paiement de facture (pas de sélection). */
   newPaiement: Partial<Transaction> = {
-    type: 'VIREMENT_SORTANT',
+    type: this.PAIEMENT_TRANSACTION_TYPE,
     montant: 0,
     date: new Date().toISOString().split('T')[0],
     statut: 'VALIDE',
@@ -230,6 +233,7 @@ export class PaiementComponent implements OnInit {
     private caissesService: CaissesService,
     private transactionsService: TransactionsService,
     private paiementService: PaiementService,
+    private facturesService: FacturesService,
     private alertService: AlertService,
     private toastService: ToastService,
     private pdfService: PdfService
@@ -345,6 +349,14 @@ export class PaiementComponent implements OnInit {
         ).subscribe({
           next: () => {
             this.toastService.success('Paiement validé avec succès');
+            // Mettre le statut de la facture à Validé (PAYEE) automatiquement quand le paiement est OK
+            const factureId = this.selectedPaiementToPay?.factureId;
+            if (factureId) {
+              this.facturesService.updateStatut(factureId, 'PAYEE').subscribe({
+                next: () => { /* facture mise à jour */ },
+                error: (err) => console.warn('Mise à jour statut facture:', err)
+              });
+            }
             this.closePaiementModal();
             this.loadPaiementsNonEffectues();
             this.loadStats();
@@ -824,7 +836,7 @@ export class PaiementComponent implements OnInit {
 
   nouveauPaiement() {
     this.newPaiement = {
-      type: 'VIREMENT_SORTANT',
+      type: this.PAIEMENT_TRANSACTION_TYPE,
       montant: 0,
       date: new Date().toISOString().split('T')[0],
       statut: 'VALIDE',
@@ -837,20 +849,19 @@ export class PaiementComponent implements OnInit {
   }
 
   onCompteTypeChange() {
-    // Réinitialiser les sélections quand on change de type
+    // Réinitialiser les sélections quand on change de type de compte (type de transaction reste VIREMENT_ENTRANT)
     if (this.compteType === 'banque') {
       this.newPaiement.caisseId = undefined;
-      this.newPaiement.type = 'VIREMENT_SORTANT';
     } else {
       this.newPaiement.compteId = undefined;
-      this.newPaiement.type = 'RETRAIT';
     }
+    this.newPaiement.type = this.PAIEMENT_TRANSACTION_TYPE;
   }
 
   closeAddModal() {
     this.showAddModal = false;
     this.newPaiement = {
-      type: 'VIREMENT_SORTANT',
+      type: this.PAIEMENT_TRANSACTION_TYPE,
       montant: 0,
       date: new Date().toISOString().split('T')[0],
       statut: 'VALIDE',
@@ -868,14 +879,9 @@ export class PaiementComponent implements OnInit {
 
     this.isLoading = true;
 
-    // Déterminer le type de transaction selon le compte sélectionné
-    let typeTransaction = 'VIREMENT_SORTANT';
-    if (this.compteType === 'caisse') {
-      typeTransaction = 'RETRAIT';
-    }
-
+    // Type fixé à Virement entrant pour le paiement de facture (pas de sélection)
     const transaction: Transaction = {
-      type: typeTransaction,
+      type: this.PAIEMENT_TRANSACTION_TYPE,
       montant: this.newPaiement.montant || 0,
       date: new Date(this.newPaiement.date!).toISOString(),
       statut: 'VALIDE',

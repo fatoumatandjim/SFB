@@ -401,6 +401,11 @@
 
     <div class="modal-body">
       <form (ngSubmit)="savePaiement()">
+        <div class="form-group form-group-readonly">
+          <label>Type de transaction</label>
+          <div class="readonly-value">Virement entrant</div>
+        </div>
+
         <div class="form-row">
           <div class="form-group">
             <label for="montant-paiement">Montant (FCFA) *</label>

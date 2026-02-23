@@ -512,6 +512,28 @@
   .type-select { background: var(--bg-tertiary); font-weight: 500; }
 }
 
+.form-group-readonly {
+  margin-bottom: 16px;
+
+  label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+  }
+
+  .readonly-value {
+    padding: 10px 12px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+}
+
 .modal-actions {
   display: flex;
   justify-content: flex-end;
