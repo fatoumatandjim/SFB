@@ -1,0 +1,115 @@
+<div class="header">
+  <div class="header-top">
+    <div class="header-left">
+      <button class="menu-toggle" (click)="toggleMenu()">
+        <span>☰</span>
+      </button>
+      <div class="search-container">
+        <input
+          type="text"
+          class="search-input"
+          placeholder="Rechercher camions, factures, clients..."
+        />
+        <span class="search-shortcut">Ctrl+K</span>
+      </div>
+    </div>
+
+    <!-- <div class="header-center">
+      <div class="date-info">
+        <span class="date-label">Aujourd'hui:</span>
+        <span class="date-value">{{ currentDate }}</span>
+      </div>
+      <select class="period-select" aria-label="Période">
+        <option>Cette semaine</option>
+        <option>Ce mois</option>
+        <option>Cette année</option>
+      </select>
+      <select class="filter-select" aria-label="Filtrer par station">
+        <option>Filtrer par station</option>
+        <option>Station 1</option>
+        <option>Station 2</option>
+      </select>
+    </div> -->
+
+    <div class="header-right">
+      <button class="icon-btn notification-btn" (click)="toggleAlertesPanel()" type="button">
+        <span>🔔</span>
+        @if (notificationsCount > 0) {
+          <span class="notification-badge">{{ notificationsCount }}</span>
+        }
+      </button>
+      <!-- <button class="icon-btn">
+        <span>✉️</span>
+      </button>
+      <button class="icon-btn">
+        <span>⚙️</span>
+      </button> -->
+      <div class="user-profile">
+        <div class="user-avatar-small">{{ getUserInitiales() }}</div>
+        <div class="user-info-small">
+          <div class="user-name-small">{{ getUserName() }}</div>
+          <div class="user-role-small">{{ getUserRole() }}</div>
+        </div>
+        <button class="btn-deconnexion-header" (click)="deconnecter()" title="Déconnexion">
+          <ion-icon name="log-out-outline"></ion-icon>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- <div class="header-actions">
+    <button class="action-btn export-btn">
+      <span>📥</span>
+      Exporter
+    </button>
+    <button class="action-btn primary-btn">
+      <span>+</span>
+      Nouvelle Opération
+    </button>
+  </div> -->
+</div>
+
+<!-- Overlay -->
+@if (alertesPanelOpen) {
+  <div class="alertes-overlay" (click)="closeAlertesPanel()" role="button" tabindex="0" (keydown.escape)="closeAlertesPanel()"></div>
+}
+
+<!-- Panneau alertes (sort de la droite) -->
+<div class="alertes-panel" [class.alertes-panel-open]="alertesPanelOpen">
+  <div class="alertes-panel-header">
+    <h3 class="alertes-panel-title">Alertes</h3>
+    <button class="alertes-panel-close" (click)="closeAlertesPanel()" type="button" aria-label="Fermer">×</button>
+  </div>
+  <div class="alertes-panel-body">
+    @if (alertesLoading) {
+      <div class="alertes-loading">Chargement...</div>
+    } @else if (alertes.length === 0) {
+      <div class="alertes-empty">Aucune alerte</div>
+    } @else {
+      <ul class="alertes-list">
+        @for (alerte of alertes; track alerte.id) {
+          <li class="alerte-item" [class.alerte-item-unread]="!alerte.lu" (click)="goToLien(alerte)">
+            <div class="alerte-item-content">
+              <span class="alerte-message">{{ alerte.message }}</span>
+              <span class="alerte-date">{{ formatAlerteDate(alerte.date) }}</span>
+            </div>
+            @if (!alerte.lu) {
+              <span class="alerte-dot" title="Non lue"></span>
+            }
+          </li>
+        }
+      </ul>
+      @if (hasMoreAlertes) {
+        <div class="alertes-load-more">
+          <button type="button" class="btn-load-more" (click)="loadMoreAlertes()" [disabled]="alertesLoadingMore">
+            @if (alertesLoadingMore) {
+              Chargement...
+            } @else {
+              Afficher plus
+            }
+          </button>
+        </div>
+      }
+    }
+  </div>
+</div>

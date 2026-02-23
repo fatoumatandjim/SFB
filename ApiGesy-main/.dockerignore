@@ -1,0 +1,18 @@
+# Build output
+target
+uploads
+
+# IDE & OS
+.idea
+.vscode
+*.iml
+*.swp
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Tests (optionnel - déjà exclus via -DskipTests)
+# src/test

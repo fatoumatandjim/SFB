@@ -1,0 +1,245 @@
+<div class="analyse-container">
+  <div class="analyse-header">
+    <div>
+      <h1>Analyse & Statistiques</h1>
+      <p>Analyse approfondie des performances et tendances</p>
+    </div>
+    <div class="header-actions">
+      <div class="filter-group">
+        <label for="period-select-analyse" class="sr-only">Sélectionner une période</label>
+        <select id="period-select-analyse" class="filter-select" [(ngModel)]="selectedPeriod" (change)="onPeriodChange()" aria-label="Sélectionner une période">
+          <option value="mois">Ce mois</option>
+          <option value="trimestre">Ce trimestre</option>
+          <option value="annee">Cette année</option>
+        </select>
+      </div>
+      <!-- <button class="btn-export" (click)="exporterAnalyse()">
+        <span>📥</span>
+        Exporter
+      </button> -->
+    </div>
+  </div>
+
+  <div class="tabs-container">
+    <div class="tabs">
+      <button
+        class="tab-btn"
+        [class.active]="selectedView === 'overview'"
+        (click)="setView('overview')">
+        Vue d'ensemble
+      </button>
+      <button
+        class="tab-btn"
+        [class.active]="selectedView === 'ventes'"
+        (click)="setView('ventes')">
+        Ventes
+      </button>
+      <button
+        class="tab-btn"
+        [class.active]="selectedView === 'operations'"
+        (click)="setView('operations')">
+        Opérations
+      </button>
+      <button
+        class="tab-btn"
+        [class.active]="selectedView === 'performance'"
+        (click)="setView('performance')">
+        Performance
+      </button>
+    </div>
+  </div>
+
+  @if (isLoading) {
+  <div class="loading-state">
+    <p>Chargement de l'analyse...</p>
+  </div>
+  } @else {
+  @if (selectedView === 'overview') {
+  <div class="overview-content">
+    <div class="kpi-cards">
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <div class="kpi-icon green">
+            <span>📈</span>
+          </div>
+          <span class="kpi-badge green positive">{{ stats.croissance.evolution }}</span>
+        </div>
+        <div class="kpi-value">{{ stats.croissance.valeur }}%</div>
+        <div class="kpi-label">Croissance</div>
+        <div class="kpi-description">Taux de croissance mensuel</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <div class="kpi-icon blue">
+            <span>⚡</span>
+          </div>
+          <span class="kpi-badge blue positive">{{ stats.efficacite.evolution }}</span>
+        </div>
+        <div class="kpi-value">{{ stats.efficacite.valeur }}%</div>
+        <div class="kpi-label">Efficacité</div>
+        <div class="kpi-description">Taux d'efficacité opérationnelle</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <div class="kpi-icon purple">
+            <span>⭐</span>
+          </div>
+          <span class="kpi-badge purple positive">{{ stats.satisfaction.evolution }}</span>
+        </div>
+        <div class="kpi-value">{{ stats.satisfaction.valeur }}%</div>
+        <div class="kpi-label">Satisfaction</div>
+        <div class="kpi-description">Satisfaction client moyenne</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-header">
+          <div class="kpi-icon orange">
+            <span>💰</span>
+          </div>
+          <span class="kpi-badge orange positive">{{ stats.rentabilite.evolution }}</span>
+        </div>
+        <div class="kpi-value">{{ stats.rentabilite.valeur }}%</div>
+        <div class="kpi-label">Rentabilité</div>
+        <div class="kpi-description">Marge bénéficiaire nette</div>
+      </div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-header">
+          <h2>Performance Hebdomadaire</h2>
+          <p>Évolution sur 4 semaines</p>
+        </div>
+        <div class="chart-container">
+          <div class="chart-bars">
+            @for (donnee of donneesHebdomadaires; track donnee.semaine) {
+            <div class="bar-group">
+              <div class="bar-label">{{ donnee.semaine }}</div>
+              <div class="bars-container">
+                <div class="bar sales-bar" [style.height.%]="getBarHeight(donnee.ventes, maxVentes)">
+                  <span class="bar-value">{{ (donnee.ventes / 1000) | number:'1.0-0' }}k</span>
+                </div>
+              </div>
+            </div>
+            }
+          </div>
+          <div class="chart-legend">
+            <div class="legend-item">
+              <span class="legend-color sales"></span>
+              <span>Ventes (F)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-header">
+          <h2>Indicateurs Clés</h2>
+          <p>Clients et camions actifs</p>
+        </div>
+        <div class="chart-container">
+          <div class="chart-bars">
+            @for (donnee of donneesHebdomadaires; track donnee.semaine) {
+            <div class="bar-group">
+              <div class="bar-label">{{ donnee.semaine }}</div>
+              <div class="bars-container">
+                <div class="bar clients-bar" [style.height.%]="getBarHeight(donnee.clients, maxClients)">
+                  <span class="bar-value">{{ donnee.clients }}</span>
+                </div>
+                <div class="bar trucks-bar" [style.height.%]="getBarHeight(donnee.camions, maxCamions)">
+                  <span class="bar-value">{{ donnee.camions }}</span>
+                </div>
+              </div>
+            </div>
+            }
+          </div>
+          <div class="chart-legend">
+            <div class="legend-item">
+              <span class="legend-color clients"></span>
+              <span>Clients</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-color trucks"></span>
+              <span>Camions</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tendances-section">
+      <h2>Tendances</h2>
+      <div class="tendances-grid">
+        @for (tendance of tendances; track tendance.categorie) {
+        <div class="tendance-card">
+          <div class="tendance-header">
+            <span class="tendance-categorie">{{ tendance.categorie }}</span>
+            <span class="tendance-icon" [class]="'icon-' + tendance.tendance">
+              @if (tendance.tendance === 'hausse') {
+              ↑
+              }
+              @if (tendance.tendance === 'baisse') {
+              ↓
+              }
+              @if (tendance.tendance === 'stable') {
+              →
+              }
+            </span>
+          </div>
+          <div class="tendance-value" [class]="'value-' + tendance.tendance">
+            @if (tendance.evolution > 0) {
+            +{{ tendance.evolution | number:'1.1-1' }}%
+            } @else if (tendance.evolution < 0) {
+            {{ tendance.evolution | number:'1.1-1' }}%
+            } @else {
+            {{ tendance.evolution | number:'1.1-1' }}%
+            }
+          </div>
+        </div>
+        }
+      </div>
+    </div>
+  </div>
+  }
+
+  @if (selectedView === 'performance') {
+  <div class="performance-content">
+    <div class="performance-grid">
+      @for (perf of performances; track perf.indicateur) {
+      <div class="performance-card">
+        <div class="performance-header">
+          <h3>{{ perf.indicateur }}</h3>
+          <span class="performance-badge" [class]="'badge-' + getPerformanceColor(perf)">
+            {{ perf.pourcentage }}%
+          </span>
+        </div>
+        <div class="performance-bar-container">
+          <div
+            class="performance-bar"
+            [class]="'bar-' + getPerformanceColor(perf)"
+            [style.width.%]="perf.pourcentage">
+          </div>
+        </div>
+        <div class="performance-details">
+          <div class="performance-value">
+            <span>Actuel: {{ perf.valeur }}%</span>
+            <span>Cible: {{ perf.cible }}%</span>
+          </div>
+        </div>
+      </div>
+      }
+    </div>
+  </div>
+  }
+
+  @if (selectedView === 'ventes' || selectedView === 'operations') {
+  <div class="detailed-content">
+    <div class="info-message">
+      <p>Analyse détaillée des {{ selectedView === 'ventes' ? 'ventes' : 'opérations' }} en cours de développement</p>
+    </div>
+  </div>
+  }
+  }
+</div>

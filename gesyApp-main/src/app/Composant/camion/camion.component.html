@@ -1,0 +1,1224 @@
+<div class="camion-container">
+  <div class="camion-header">
+    <div>
+      <h1>Gestion Camions</h1>
+      <p>Gestion de votre flotte de camions</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn-new-voyage" (click)="nouveauVoyage()">
+        <span>🚛</span>
+        Nouveau Voyage
+      </button>
+      <button class="btn-new-camion" (click)="openAddModal()">
+        <span>+</span>
+        Nouveau Camion
+      </button>
+    </div>
+  </div>
+
+  <div class="stats-cards">
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon blue">
+          <span>🚛</span>
+        </div>
+      </div>
+      <div class="stat-value">{{ stats.enCours }}</div>
+      <div class="stat-label">En cours de voyage</div>
+    </div>
+
+    <!-- <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon green">
+          <span>📍</span>
+        </div>
+      </div>
+      <div class="stat-value">{{ stats.arrive }}</div>
+      <div class="stat-label">Arrivé</div>
+    </div> -->
+
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon orange">
+          <span>🛂</span>
+        </div>
+      </div>
+      <div class="stat-value">{{ stats.douane }}</div>
+      <div class="stat-label">À la douane</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon purple">
+          <span>✅</span>
+        </div>
+      </div>
+      <div class="stat-value">{{ stats.receptionne }}</div>
+      <div class="stat-label">Réceptionné</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon teal">
+          <span>📦</span>
+        </div>
+      </div>
+      <div class="stat-value">{{ stats.livre }}</div>
+      <div class="stat-label">Livré</div>
+    </div>
+  </div>
+
+  <div class="actions-bar">
+    <!-- <div class="filters">
+      <button
+        class="filter-btn"
+        [class.active]="activeFilter === 'tous'"
+        (click)="setFilter('tous')">
+        Tous
+      </button>
+      <button
+        class="filter-btn"
+        [class.active]="activeFilter === 'disponibles'"
+        (click)="setFilter('disponibles')">
+        Disponibles
+      </button>
+      <button
+        class="filter-btn"
+        [class.active]="activeFilter === 'en-route'"
+        (click)="setFilter('en-route')">
+        En Route
+      </button>
+      <button
+        class="filter-btn"
+        [class.active]="activeFilter === 'en-maintenance'"
+        (click)="setFilter('en-maintenance')">
+        Maintenance
+      </button>
+      <button
+        class="filter-btn"
+        [class.active]="activeFilter === 'loues'"
+        (click)="setFilter('loues')">
+        Loués
+      </button>
+    </div> -->
+
+    <div class="search-container">
+      <label for="search-camions" class="sr-only">Rechercher des camions</label>
+      <input
+        type="text"
+        id="search-camions"
+        class="search-input"
+        placeholder="Rechercher..."
+        [(ngModel)]="searchTerm"
+        aria-label="Rechercher des camions"
+      />
+      <span class="search-icon">🔍</span>
+    </div>
+  </div>
+
+  <div class="camions-grid">
+    @if (filteredCamions.length === 0) {
+    <div class="empty-state">
+      <div class="empty-icon">🚛</div>
+      <h3>Aucun camion trouvé</h3>
+      <p>
+        @if (isLoading) {
+          Chargement des camions...
+        } @else if (searchTerm || activeFilter !== 'tous') {
+          Aucun camion ne correspond à vos critères de recherche.
+        } @else {
+          Aucun camion n'a été enregistré. Cliquez sur "Nouveau Camion" pour en ajouter un.
+        }
+      </p>
+      @if (!isLoading && !searchTerm && activeFilter === 'tous') {
+        <button class="btn-add-first" (click)="openAddModal()">
+          <span>+</span>
+          Ajouter le premier camion
+        </button>
+      }
+    </div>
+    } @else {
+    <div class="camions-list">
+      <table class="camions-table">
+        <thead>
+          <tr>
+            <th>Statut</th>
+            <th>Camion</th>
+            <th>Type</th>
+            <th>Capacité</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (camion of filteredCamions; track camion.id) {
+          <tr>
+            <td>
+              <div class="camion-status-cell">
+                <span class="truck-icon-small" [class]="'truck-' + camion.couleur">🚛</span>
+                <span class="camion-status-badge" [class]="'status-' + camion.statut.toLowerCase()">
+                  @if (camion.statut === 'DISPONIBLE') {
+                    Disponible
+                  } @else if (camion.statut === 'EN_ROUTE') {
+                    En Route
+                  } @else if (camion.statut === 'EN_MAINTENANCE') {
+                    Maintenance
+                  } @else if (camion.statut === 'HORS_SERVICE') {
+                    Hors Service
+                  } @else {
+                    {{ camion.statut }}
+                  }
+                </span>
+                @if (camion.loue) {
+                  <span class="loue-badge-small">Loué</span>
+                }
+              </div>
+            </td>
+            <td>
+              <div class="camion-main-info">
+                <div class="camion-id">{{ camion.immatriculation }}</div>
+              </div>
+            </td>
+            <td>{{ camion.type }}</td>
+            <td>{{ camion.capacite | number }} L</td>
+            <td>
+              <div class="camion-row-actions">
+                <button class="action-btn" (click)="viewCamion(camion)" title="Voir">
+                  <span>👁️</span>
+                </button>
+                @if (canEditCamion(camion)) {
+                  <button class="action-btn" (click)="editCamion(camion)" title="Éditer">
+                    <span>✏️</span>
+                  </button>
+                  <button class="action-btn" (click)="deleteCamion(camion)" title="Supprimer">
+                    <span>🗑️</span>
+                  </button>
+                }
+              </div>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    }
+  </div>
+
+  @if (showAddModal) {
+  <div class="modal-overlay" (click)="closeAddModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Ajouter un nouveau camion</h2>
+        <button class="modal-close" (click)="closeAddModal()" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="modal-body">
+        <form (ngSubmit)="addCamion()">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="immatriculation">Immatriculation *</label>
+              <input
+                type="text"
+                id="immatriculation"
+                [(ngModel)]="newCamion.immatriculation"
+                name="immatriculation"
+                required
+                placeholder="Ex: TRK-2401"
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="capacite">Capacité (litres) *</label>
+              <input
+                type="number"
+                id="capacite"
+                [(ngModel)]="newCamion.capacite"
+                name="capacite"
+                required
+                min="0"
+                step="100"
+                placeholder="Ex: 32000"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="fournisseur-camion">Fournisseur Transport</label>
+              <select
+                id="fournisseur-camion"
+                [(ngModel)]="newCamion.fournisseurId"
+                name="fournisseurId"
+              >
+                <option [value]="undefined">Sélectionner un fournisseur (optionnel)</option>
+                @for (fournisseur of fournisseursTransport; track fournisseur.id) {
+                <option [value]="fournisseur.id">
+                  {{ fournisseur.nom }} - {{ fournisseur.email }}
+                </option>
+                }
+              </select>
+              <p class="form-hint">Seuls les fournisseurs de type Transport sont affichés</p>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="responsable-camion">Responsable *</label>
+              <select
+                id="responsable-camion"
+                [(ngModel)]="newCamion.responsableId"
+                name="responsableId"
+                required
+              >
+                <option [value]="undefined">Sélectionner un responsable</option>
+                @for (u of utilisateurs; track u.id) {
+                <option [value]="u.id">
+                  {{ u.nom }} ({{ u.identifiant }})
+                </option>
+                }
+              </select>
+              <p class="form-hint">Utilisateur responsable de ce camion</p>
+            </div>
+          </div>
+
+          <!-- <div class="form-group">
+            <label for="dernierControle">Dernier contrôle</label>
+            <input
+              type="date"
+              id="dernierControle"
+              [(ngModel)]="newCamion.dernierControle"
+              name="dernierControle"
+            />
+          </div> -->
+
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" (click)="closeAddModal()">
+              Annuler
+            </button>
+            <button type="submit" class="btn-submit" [disabled]="isLoading">
+              @if (isLoading) {
+                Enregistrement...
+              } @else {
+                Ajouter
+              }
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  }
+
+  @if (showEditModal) {
+  <div class="modal-overlay" (click)="closeEditModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Modifier le camion</h2>
+        <button class="modal-close" (click)="closeEditModal()" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="modal-body">
+        <form (ngSubmit)="updateCamion()">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="edit-immatriculation">Immatriculation *</label>
+              <input
+                type="text"
+                id="edit-immatriculation"
+                [(ngModel)]="editCamionData.immatriculation"
+                name="edit-immatriculation"
+                required
+                placeholder="Ex: TRK-2401"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="edit-marque">Marque *</label>
+              <input
+                type="text"
+                id="edit-marque"
+                [(ngModel)]="editCamionData.marque"
+                name="edit-marque"
+                required
+                placeholder="Ex: Volvo"
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="edit-modele">Modèle *</label>
+              <input
+                type="text"
+                id="edit-modele"
+                [(ngModel)]="editCamionData.modele"
+                name="edit-modele"
+                required
+                placeholder="Ex: FH16"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="edit-annee">Année *</label>
+              <input
+                type="number"
+                id="edit-annee"
+                [(ngModel)]="editCamionData.annee"
+                name="edit-annee"
+                required
+                [min]="2000"
+                [max]="maxYear"
+              />
+            </div>
+          </div>
+
+          <!-- <div class="form-row">
+            <div class="form-group">
+              <label for="edit-type">Type *</label>
+              <select
+                id="edit-type"
+                [(ngModel)]="editCamionData.type"
+                name="edit-type"
+                required
+              >
+                <option value="">Sélectionner un type</option>
+                <option value="Citerne">Citerne</option>
+                <option value="Porteur">Porteur</option>
+                <option value="Semi-remorque">Semi-remorque</option>
+                <option value="Autre">Autre</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="edit-statut">Statut *</label>
+              <select
+                id="edit-statut"
+                [(ngModel)]="editCamionData.statut"
+                name="edit-statut"
+                required
+              >
+                <option value="DISPONIBLE">Disponible</option>
+                <option value="EN_ROUTE">En Route</option>
+                <option value="EN_MAINTENANCE">En Maintenance</option>
+                <option value="HORS_SERVICE">Hors Service</option>
+              </select>
+            </div>
+          </div> -->
+
+          <!-- <div class="form-row">
+            <div class="form-group">
+              <label for="edit-loue">Camion loué</label>
+              <label class="switch">
+                <input
+                  type="checkbox"
+                  id="edit-loue"
+                  [(ngModel)]="editCamionData.loue"
+                  name="edit-loue"
+                  (change)="onEditLoueChange()"
+                />
+                <span class="slider"></span>
+              </label>
+              <p class="form-hint">Cochez si ce camion est loué (des frais de location devront être payés)</p>
+            </div>
+          </div> -->
+
+          <!-- @if (editCamionData.loue) {
+          <div class="form-row">
+            <div class="form-group">
+              <label for="edit-montantLocation">Montant de location (FCFA) *</label>
+              <input
+                type="number"
+                id="edit-montantLocation"
+                [(ngModel)]="editCamionData.montantLocation"
+                name="edit-montantLocation"
+                required
+                min="0"
+                step="1000"
+                placeholder="Ex: 500000"
+              />
+              <p class="form-hint">Montant à payer pour la location</p>
+            </div>
+
+            <div class="form-group">
+              <label for="edit-montantLocationInitial">Montant initial total (FCFA) *</label>
+              <input
+                type="number"
+                id="edit-montantLocationInitial"
+                [(ngModel)]="editCamionData.montantLocationInitial"
+                name="edit-montantLocationInitial"
+                required
+                min="0"
+                step="1000"
+                placeholder="Ex: 5000000"
+              />
+              <p class="form-hint">Montant total de la location à payer</p>
+            </div>
+          </div>
+          } -->
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="edit-capacite">Capacité (litres) *</label>
+              <input
+                type="number"
+                id="edit-capacite"
+                [(ngModel)]="editCamionData.capacite"
+                name="edit-capacite"
+                required
+                min="0"
+                step="100"
+                placeholder="Ex: 32000"
+              />
+            </div>
+
+            <!-- <div class="form-group">
+              <label for="edit-kilometrage">Kilométrage *</label>
+              <input
+                type="number"
+                id="edit-kilometrage"
+                [(ngModel)]="editCamionData.kilometrage"
+                name="edit-kilometrage"
+                required
+                min="0"
+                step="1"
+                placeholder="Ex: 125000"
+              />
+            </div> -->
+          </div>
+
+          <!-- <div class="form-group">
+            <label for="edit-dernierControle">Dernier contrôle</label>
+            <input
+              type="date"
+              id="edit-dernierControle"
+              [(ngModel)]="editCamionData.dernierControle"
+              name="edit-dernierControle"
+            />
+          </div> -->
+
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" (click)="closeEditModal()">
+              Annuler
+            </button>
+            <button type="submit" class="btn-submit" [disabled]="isLoading">
+              @if (isLoading) {
+                Enregistrement...
+              } @else {
+                Modifier
+              }
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  }
+
+  @if (showDetailModal && selectedCamion) {
+  <div class="modal-overlay" (click)="closeDetailModal()">
+    <div class="modal-content detail-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Détails du camion</h2>
+        <button class="modal-close" (click)="closeDetailModal()" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="modal-body detail-body">
+        <div class="camion-detail-header">
+          <div class="detail-truck-icon" [class]="'truck-' + selectedCamion.couleur">
+            🚛
+          </div>
+          <div class="detail-header-info">
+            <h3>{{ selectedCamion.immatriculation }}</h3>
+            <p class="camion-full-name">{{ selectedCamion.marque }} {{ selectedCamion.modele }} - {{ selectedCamion.annee }}</p>
+            <div class="camion-status-badge" [class]="'status-' + selectedCamion.statut.toLowerCase()">
+              @if (selectedCamion.statut === 'DISPONIBLE') {
+                Disponible
+              }
+              @if (selectedCamion.statut === 'EN_ROUTE') {
+                En Route
+              }
+              @if (selectedCamion.statut === 'EN_MAINTENANCE') {
+                En Maintenance
+              }
+              @if (selectedCamion.statut === 'HORS_SERVICE') {
+                Hors Service
+              }
+            </div>
+            @if (selectedCamion.loue) {
+            <div class="loue-badge">
+              <span>🏢 Camion loué</span>
+            </div>
+            }
+          </div>
+        </div>
+
+        <div class="detail-sections">
+          <div class="detail-section">
+            <h4 class="section-title">Informations générales</h4>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <span class="detail-label">Immatriculation</span>
+                <span class="detail-value">{{ selectedCamion.immatriculation }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Marque</span>
+                <span class="detail-value">{{ selectedCamion.marque }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Modèle</span>
+                <span class="detail-value">{{ selectedCamion.modele }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Année</span>
+                <span class="detail-value">{{ selectedCamion.annee }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Type</span>
+                <span class="detail-value">{{ selectedCamion.type }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Capacité</span>
+                <span class="detail-value">{{ selectedCamion.capacite | number }} L</span>
+              </div>
+              @if (selectedCamion.fournisseurId && selectedCamion.fournisseurNom) {
+              <div class="detail-item">
+                <span class="detail-label">Fournisseur</span>
+                <span class="detail-value">
+                  {{ selectedCamion.fournisseurNom }}
+                  @if (selectedCamion.fournisseurEmail) {
+                    <span class="detail-email">({{ selectedCamion.fournisseurEmail }})</span>
+                  }
+                </span>
+              </div>
+              }
+              @if (selectedCamion.responsableId && selectedCamion.responsableIdentifiant) {
+              <div class="detail-item">
+                <span class="detail-label">Responsable</span>
+                <span class="detail-value">{{ selectedCamion.responsableIdentifiant }}</span>
+              </div>
+              }
+              <!-- <div class="detail-item">
+                <span class="detail-label">Kilométrage</span>
+                <span class="detail-value">{{ selectedCamion.kilometrage | number }} km</span>
+              </div> -->
+              <!-- <div class="detail-item">
+                <span class="detail-label">Dernier contrôle</span>
+                <span class="detail-value">{{ selectedCamion.dernierControle || 'Non renseigné' }}</span>
+              </div> -->
+              <!-- <div class="detail-item">
+                <span class="detail-label">Statut location</span>
+                <span class="detail-value">
+                  @if (selectedCamion.loue) {
+                    <span class="badge-loue">Loué</span>
+                  } @else {
+                    <span class="badge-non-loue">Non loué</span>
+                  }
+                </span>
+              </div> -->
+            </div>
+          </div>
+
+          <div class="detail-section">
+            <div class="tabs-container">
+              <div class="tabs-header">
+                <button
+                  type="button"
+                  class="tab-btn"
+                  [class.active]="activeTab === 'voyages'"
+                  (click)="setActiveTab('voyages')">
+                  Voyages
+                </button>
+                @if (selectedCamion.loue) {
+                <button
+                  type="button"
+                  class="tab-btn"
+                  [class.active]="activeTab === 'frais'"
+                  (click)="setActiveTab('frais')">
+                  Frais
+                </button>
+                }
+              </div>
+
+              <div class="tabs-content">
+                @if (activeTab === 'voyages') {
+                <div class="tab-panel">
+                  <div class="section-header">
+                    <h4 class="section-title">Voyages effectués</h4>
+                  </div>
+                  <div class="voyages-list">
+                    @if (voyages.length > 0) {
+                      @for (voyage of voyages; track voyage.id) {
+                      <div class="voyage-item">
+                        <div class="voyage-header">
+                          <div class="voyage-number">{{ voyage.numeroVoyage || 'N/A' }}</div>
+                          <div class="voyage-status" [class]="getStatutClass(voyage.statut || '')">
+                            {{ getStatutLabel(voyage.statut || '') }}
+                          </div>
+                        </div>
+                        <div class="voyage-details">
+                          <div class="voyage-route">
+                            <span class="route-from">{{ voyage.lieuDepart }}</span>
+                            <span class="route-arrow">→</span>
+                            <span class="route-to">{{ voyage.destination }}</span>
+                          </div>
+                          <div class="voyage-info">
+                            <span class="voyage-date">{{ formatDateTime(voyage.dateDepart) }}</span>
+                            @if (voyage.dateArrivee) {
+                              <span class="voyage-separator">•</span>
+                              <span class="voyage-date">Arrivée: {{ formatDateTime(voyage.dateArrivee) }}</span>
+                            }
+                            <span class="voyage-separator">•</span>
+                            <span class="voyage-quantite">{{ voyage.quantite | number }} L</span>
+                          </div>
+                          @if (voyage.notes) {
+                          <div class="voyage-notes">
+                            <span class="notes-label">Notes:</span>
+                            <span class="notes-text">{{ voyage.notes }}</span>
+                          </div>
+                          }
+                        </div>
+                        @if (voyage.id) {
+                          <div class="voyage-marge">
+                            @if (isLoadingMarge(voyage.id)) {
+                              <div class="marge-loading">Chargement de la marge...</div>
+                            } @else {
+                              @if (getVoyageMarge(voyage.id)) {
+                                @let marge = getVoyageMarge(voyage.id)!;
+                                <div class="marge-section">
+                                  <h5 class="marge-title">Marge</h5>
+                                  <div class="marge-grid">
+                                    <div class="marge-item">
+                                      <span class="marge-label">Coût d'achat:</span>
+                                      <span class="marge-value">{{ marge.coutVoyage | number }} F</span>
+                                    </div>
+                                    <div class="marge-item">
+                                      <span class="marge-label">Frais totaux:</span>
+                                      <span class="marge-value">{{ marge.fraisTotaux | number }} F</span>
+                                    </div>
+                                    <div class="marge-item">
+                                      <span class="marge-label">Coût réel:</span>
+                                      <span class="marge-value">{{ marge.coutReelTotal | number }} F</span>
+                                    </div>
+                                    @if (marge.hasFacture) {
+                                      <div class="marge-item">
+                                        <span class="marge-label">Montant vente:</span>
+                                        <span class="marge-value">{{ marge.montantVenteTotal | number }} F</span>
+                                      </div>
+                                      <div class="marge-item">
+                                        <span class="marge-label">Marge brute:</span>
+                                        <span class="marge-value" [class.positive]="(marge.margeBrute || 0) > 0" [class.negative]="(marge.margeBrute || 0) < 0">
+                                          {{ marge.margeBrute | number }} F
+                                        </span>
+                                      </div>
+                                      <div class="marge-item">
+                                        <span class="marge-label">Marge nette:</span>
+                                        <span class="marge-value marge-net" [class.positive]="(marge.margeNet || 0) > 0" [class.negative]="(marge.margeNet || 0) < 0">
+                                          {{ marge.margeNet | number }} F
+                                        </span>
+                                      </div>
+                                      <div class="marge-item">
+                                        <span class="marge-label">Marge %:</span>
+                                        <span class="marge-value marge-percentage" [class.positive]="(marge.margePourcentage || 0) > 0" [class.negative]="(marge.margePourcentage || 0) < 0">
+                                          {{ marge.margePourcentage | number:'1.2-2' }}%
+                                        </span>
+                                      </div>
+                                    } @else {
+                                      <div class="marge-item no-facture">
+                                        <span class="marge-label">Aucune facture</span>
+                                      </div>
+                                    }
+                                  </div>
+                                </div>
+                              }
+                            }
+                          </div>
+                        }
+                      </div>
+                      }
+                    } @else {
+                    <div class="no-voyages">
+                      <p>Aucun voyage enregistré pour ce camion</p>
+                    </div>
+                    }
+                  </div>
+                </div>
+                }
+
+                @if (activeTab === 'frais' && selectedCamion.loue) {
+                <div class="tab-panel">
+                  <div class="section-header">
+                    <h4 class="section-title">Frais de location</h4>
+                    <button type="button" class="btn-add-frais" (click)="openAddFraisModal()">
+                      <span>+</span>
+                      Ajouter un paiement
+                    </button>
+                  </div>
+                  <div class="frais-summary">
+                    <div class="frais-summary-item">
+                      <span class="frais-label">Montant total à payer:</span>
+                      <span class="frais-value">{{ selectedCamion.montantLocation | number }} FCFA</span>
+                    </div>
+                    <div class="frais-summary-item">
+                      <span class="frais-label">Montant initial payé:</span>
+                      <span class="frais-value">{{ selectedCamion.montantLocationInitial | number }} FCFA</span>
+                    </div>
+                    <div class="frais-summary-item">
+                      <span class="frais-label">Total payé:</span>
+                      <span class="frais-value paid">{{ getTotalPaye() | number }} FCFA</span>
+                    </div>
+                    <div class="frais-summary-item">
+                      <span class="frais-label">Reste à payer:</span>
+                      <span class="frais-value remaining">{{ getResteAPayer() | number }} FCFA</span>
+                    </div>
+                  </div>
+                  <div class="transactions-list">
+                    @if (transactions.length > 0) {
+                      @for (transaction of transactions; track transaction.id) {
+                      <div class="transaction-item">
+                        <div class="transaction-header">
+                          <div class="transaction-date">{{ formatDate(transaction.date) }}</div>
+                          <div class="transaction-status" [class]="'status-' + transaction.statut.toLowerCase()">
+                            @if (transaction.statut === 'VALIDE') { Validé }
+                            @if (transaction.statut === 'EN_ATTENTE') { En attente }
+                            @if (transaction.statut === 'REJETE') { Rejeté }
+                            @if (transaction.statut === 'ANNULE') { Annulé }
+                          </div>
+                        </div>
+                        <div class="transaction-details">
+                          <div class="transaction-amount">{{ transaction.montant | number }} FCFA</div>
+                          @if (transaction.description) {
+                          <div class="transaction-description">{{ transaction.description }}</div>
+                          }
+                          @if (transaction.reference) {
+                          <div class="transaction-reference">Réf: {{ transaction.reference }}</div>
+                          }
+                        </div>
+                      </div>
+                      }
+                    } @else {
+                      <div class="no-transactions">
+                        <p>Aucun paiement de location enregistré</p>
+                      </div>
+                    }
+                  </div>
+                </div>
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" (click)="closeDetailModal()">
+          Fermer
+        </button>
+        @if (selectedCamion.statut !== 'EN_MAINTENANCE' && !selectedCamion.loue && canEditCamion(selectedCamion)) {
+        <button type="button" class="btn-maintenance" (click)="mettreEnMaintenance()" [disabled]="isLoading">
+          🔧 Mettre en maintenance
+        </button>
+        }
+        @if (canEditCamion(selectedCamion)) {
+        <button type="button" class="btn-edit" (click)="editCamion(selectedCamion); closeDetailModal()">
+          ✏️ Modifier
+        </button>
+        }
+      </div>
+    </div>
+  </div>
+  }
+
+  @if (showAddFraisModal && selectedCamion) {
+  <div class="modal-overlay" (click)="closeAddFraisModal()">
+    <div class="modal-content frais-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Ajouter un paiement de location</h2>
+        <button class="modal-close" (click)="closeAddFraisModal()" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="modal-body">
+        <form (ngSubmit)="addFrais()">
+          <div class="form-group">
+            <label for="montant-frais">Montant (FCFA) *</label>
+            <input
+              type="number"
+              id="montant-frais"
+              [(ngModel)]="newTransaction.montant"
+              name="montant"
+              required
+              min="0"
+              step="1000"
+              placeholder="Ex: 500000"
+            />
+            <p class="form-hint">Montant à payer pour la location</p>
+          </div>
+
+          <div class="form-group">
+            <label for="date-frais">Date *</label>
+            <input
+              type="date"
+              id="date-frais"
+              [(ngModel)]="newTransaction.date"
+              name="date"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="description-frais">Description</label>
+            <textarea
+              id="description-frais"
+              [(ngModel)]="newTransaction.description"
+              name="description"
+              rows="3"
+              placeholder="Description du paiement"
+            ></textarea>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" (click)="closeAddFraisModal()">
+              Annuler
+            </button>
+            <button type="submit" class="btn-submit" [disabled]="isLoading">
+              @if (isLoading) {
+                Enregistrement...
+              } @else {
+                Ajouter
+              }
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  }
+
+  @if (showAddVoyageModal) {
+  <div class="modal-overlay" (click)="closeAddVoyageModal()">
+    <div class="modal-content voyage-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Créer un nouveau voyage</h2>
+        <button class="modal-close" (click)="closeAddVoyageModal()" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="modal-body">
+        <form (ngSubmit)="addVoyage()">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="camion-voyage">Camion *</label>
+              <select
+                id="camion-voyage"
+                [(ngModel)]="newVoyage.camionId"
+                name="camionId"
+                required
+                [class.error]="voyageErrors['camionId']"
+              >
+                <option value="0">Sélectionner un camion</option>
+                @for (camion of camionsDisponibles; track camion.id) {
+                <option [value]="camion.id">
+                  {{ camion.immatriculation }} - {{ camion.marque }} {{ camion.modele }}
+                </option>
+                }
+              </select>
+              @if (voyageErrors['camionId']) {
+                <p class="form-error">{{ voyageErrors['camionId'] }}</p>
+              } @else {
+                <p class="form-hint">Seuls les camions disponibles sont affichés</p>
+              }
+            </div>
+
+            <div class="form-group">
+              <label for="produit-voyage">Produit *</label>
+              <select
+                id="produit-voyage"
+                [(ngModel)]="newVoyage.produitId"
+                name="produitId"
+                required
+                [class.error]="voyageErrors['produitId']"
+              >
+                <option [value]="undefined">Sélectionner un produit</option>
+                @for (produit of produits; track produit.id) {
+                <option [value]="produit.id">
+                  {{ produit.nom }} ({{ produit.typeProduit }})
+                </option>
+                }
+              </select>
+              @if (voyageErrors['produitId']) {
+                <p class="form-error">{{ voyageErrors['produitId'] }}</p>
+              }
+            </div>
+
+
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="axe-voyage">Axe *</label>
+              @if (axes.length === 0) {
+                <div class="empty-list-message">
+                  <p>Aucun axe disponible. Veuillez créer un axe pour continuer.</p>
+                  <button type="button" class="btn-add-axe" (click)="openAxeModal()">
+                    <span>➕</span> Créer un axe
+                  </button>
+                </div>
+              } @else {
+                <select
+                  id="axe-voyage"
+                  [(ngModel)]="newVoyage.axeId"
+                  name="axeId"
+                  required
+                  [class.error]="voyageErrors['axeId']"
+                >
+                  <option [value]="undefined">Sélectionner un axe</option>
+                  @for (axe of axes; track axe.id) {
+                  <option [value]="axe.id">
+                    {{ axe.nom }}
+                  </option>
+                  }
+                </select>
+                <button type="button" class="btn-add-axe-inline" (click)="openAxeModal()" title="Ajouter un nouvel axe">
+                  <span>➕</span>
+                </button>
+              }
+              @if (voyageErrors['axeId']) {
+                <p class="form-error">{{ voyageErrors['axeId'] }}</p>
+              }
+            </div>
+
+            <div class="form-group">
+              <label for="transitaire-voyage">Transitaire *</label>
+              <select
+                id="transitaire-voyage"
+                [(ngModel)]="newVoyage.transitaireId"
+                name="transitaireId"
+                required
+                [class.error]="voyageErrors['transitaireId']"
+              >
+                <option [value]="undefined">Sélectionner un transitaire</option>
+                @for (transitaire of transitaires; track transitaire.id) {
+                <option [value]="transitaire.id">
+                  {{ transitaire.nom }} - {{ transitaire.identifiant }}
+                </option>
+                }
+              </select>
+              @if (voyageErrors['transitaireId']) {
+                <p class="form-error">{{ voyageErrors['transitaireId'] }}</p>
+              }
+            </div>
+
+            <div class="form-group">
+              <label for="responsable-voyage">Responsable *</label>
+              <select
+                id="responsable-voyage"
+                [(ngModel)]="newVoyage.responsableId"
+                name="responsableId"
+                required
+                [class.error]="voyageErrors['responsableId']"
+              >
+                <option [value]="undefined">Sélectionner un responsable</option>
+                @for (u of utilisateurs; track u.id) {
+                <option [value]="u.id">
+                  {{ u.nom }} ({{ u.identifiant }})
+                </option>
+                }
+              </select>
+              @if (voyageErrors['responsableId']) {
+                <p class="form-error">{{ voyageErrors['responsableId'] }}</p>
+              }
+              <p class="form-hint">Utilisateur responsable de ce voyage</p>
+            </div>
+          </div>
+
+          <div class="form-row">
+
+
+            <div class="form-group">
+              <label for="chauffeur-voyage">Chauffeur</label>
+              <input
+                type="text"
+                id="chauffeur-voyage"
+                [(ngModel)]="newVoyage.chauffeur"
+                name="chauffeur"
+                placeholder="Nom du chauffeur"
+                class="form-input"
+              />
+              <p class="form-hint">Optionnel - nom du chauffeur</p>
+            </div>
+
+            <div class="form-group">
+              <label for="numero-chauffeur-voyage">Numéro de chauffeur</label>
+              <input
+                type="text"
+                id="numero-chauffeur-voyage"
+                [(ngModel)]="newVoyage.numeroChauffeur"
+                name="numeroChauffeur"
+                placeholder="Numéro du chauffeur"
+                class="form-input"
+              />
+              <p class="form-hint">Optionnel - numéro du chauffeur</p>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="depot-voyage">Dépôt *</label>
+              <select
+                id="depot-voyage"
+                [(ngModel)]="newVoyage.depotId"
+                name="depotId"
+                required
+                (change)="onDepotChange()"
+                [class.error]="voyageErrors['depotId']"
+              >
+                <option [value]="undefined">Sélectionner un dépôt</option>
+                @for (depot of depots; track depot.id) {
+                <option [value]="depot.id">
+                  {{ depot.nom }} - {{ depot.ville }}
+                </option>
+                }
+              </select>
+              @if (voyageErrors['depotId']) {
+                <p class="form-error">{{ voyageErrors['depotId'] }}</p>
+              } @else {
+                <p class="form-hint">Optionnel - peut être renseigné plus tard</p>
+              }
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group checkbox-group">
+              <label>
+                <input
+                  type="checkbox"
+                  [(ngModel)]="newVoyage.cession"
+                  name="cession"
+                />
+                Vente de type cession
+              </label>
+              <p class="form-hint">En cession : sélection du client (ayant déjà un achat), le coût du voyage n'est pas pris en compte.</p>
+            </div>
+          </div>
+
+          @if (newVoyage.cession) {
+            <div class="form-row">
+              <div class="form-group">
+                <label for="client-cession-voyage">Client (ayant déjà un achat) *</label>
+                <select
+                  id="client-cession-voyage"
+                  [(ngModel)]="newVoyage.clientId"
+                  name="clientIdCession"
+                  [class.error]="voyageErrors['clientId']"
+                >
+                  <option [value]="undefined">Sélectionner un client</option>
+                  @for (client of clientsWithAchat; track client.id) {
+                  <option [value]="client.id">
+                    {{ client.nom }} {{ client.codeClient ? '(' + client.codeClient + ')' : '' }}
+                  </option>
+                  }
+                </select>
+                @if (voyageErrors['clientId']) {
+                  <p class="form-error">{{ voyageErrors['clientId'] }}</p>
+                }
+                @if (clientsWithAchat.length === 0 && !voyageErrors['clientId']) {
+                  <p class="form-hint">Aucun client avec achat. Les clients ayant déjà un achat apparaissent ici.</p>
+                }
+              </div>
+            </div>
+          }
+
+          @if (!newVoyage.cession) {
+            <div class="form-row">
+              <div class="form-group">
+                <label for="prix-unitaire">Prix unitaire de transport (FCFA/litre) *</label>
+                <input
+                  type="number"
+                  id="prix-unitaire"
+                  [(ngModel)]="newVoyage.prixUnitaire"
+                  name="prixUnitaire"
+                  required
+                  min="0"
+                  step="0.01"
+                  placeholder="Ex: 50"
+                  [class.error]="voyageErrors['prixUnitaire']"
+                />
+                @if (voyageErrors['prixUnitaire']) {
+                  <p class="form-error">{{ voyageErrors['prixUnitaire'] }}</p>
+                } @else {
+                  <p class="form-hint">Prix par litre de transport (ex: 50 FCFA/litre)</p>
+                }
+              </div>
+            </div>
+          }
+
+          <div class="form-group">
+            <label for="notes-voyage">Notes</label>
+            <textarea
+              id="notes-voyage"
+              [(ngModel)]="newVoyage.notes"
+              name="notes"
+              rows="3"
+              placeholder="Notes supplémentaires sur le voyage..."
+            ></textarea>
+          </div>
+
+          @if (voyageErrors['general']) {
+            <div class="form-error-general">
+              <p>{{ voyageErrors['general'] }}</p>
+            </div>
+          }
+
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" (click)="closeAddVoyageModal()">
+              Annuler
+            </button>
+            <button type="submit" class="btn-submit" [disabled]="isLoading">
+              @if (isLoading) {
+                Création...
+              } @else {
+                Créer le voyage
+              }
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- Modal de création d'axe -->
+  @if (showAxeModal) {
+  <div class="modal-overlay" (click)="closeAxeModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Créer un nouvel axe</h2>
+        <button type="button" class="btn-close" (click)="closeAxeModal()">✕</button>
+      </div>
+      <form (ngSubmit)="createAxe()">
+        <div class="form-group">
+          <label for="axe-nom">Nom de l'axe *</label>
+          <input
+            type="text"
+            id="axe-nom"
+            [(ngModel)]="newAxeNom"
+            name="axeNom"
+            required
+            placeholder="Ex: Axe Bamako-Kayes"
+            [disabled]="isCreatingAxe"
+          />
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" (click)="closeAxeModal()" [disabled]="isCreatingAxe">
+            Annuler
+          </button>
+          <button type="submit" class="btn-submit" [disabled]="isCreatingAxe || !newAxeNom.trim()">
+            @if (isCreatingAxe) {
+              Création...
+            } @else {
+              Créer l'axe
+            }
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+  }
+</div>

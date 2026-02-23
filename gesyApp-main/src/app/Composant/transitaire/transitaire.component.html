@@ -1,0 +1,588 @@
+<div class="transitaire-container">
+  <div class="transitaire-header">
+    <div>
+      <h1>Gestion des Transitaires</h1>
+      <p>Gestion des comptes transitaires et attribution des voyages</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn-new-transitaire" (click)="nouveauTransitaire()">
+        <span>+</span>
+        Nouveau Transitaire
+      </button>
+    </div>
+  </div>
+
+  <div class="stats-cards">
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon blue">
+          <span>👥</span>
+        </div>
+      </div>
+      <div class="stat-value">{{ stats.total }}</div>
+      <div class="stat-label">Total Transitaires</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon green">
+          <span>✓</span>
+        </div>
+      </div>
+      <div class="stat-value">{{ stats.actifs }}</div>
+      <div class="stat-label">Actifs</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon orange">
+          <span>🚚</span>
+        </div>
+      </div>
+      <div class="stat-value">{{ stats.voyagesTotal }}</div>
+      <div class="stat-label">Voyages Attribués</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon red">
+          <span>⚠</span>
+        </div>
+      </div>
+      <div class="stat-value">{{ stats.inactifs }}</div>
+      <div class="stat-label">Inactifs</div>
+    </div>
+  </div>
+
+  <div class="actions-bar">
+    <div class="filters">
+      <button
+        class="filter-btn"
+        [class.active]="activeFilter === 'tous'"
+        (click)="setFilter('tous')">
+        Tous
+      </button>
+      <button
+        class="filter-btn"
+        [class.active]="activeFilter === 'actifs'"
+        (click)="setFilter('actifs')">
+        Actifs
+      </button>
+      <button
+        class="filter-btn"
+        [class.active]="activeFilter === 'inactifs'"
+        (click)="setFilter('inactifs')">
+        Inactifs
+      </button>
+    </div>
+
+    <div class="search-container">
+      <label for="search-transitaires" class="sr-only">Rechercher des transitaires</label>
+      <input
+        type="text"
+        id="search-transitaires"
+        class="search-input"
+        placeholder="Rechercher..."
+        [(ngModel)]="searchTerm"
+        aria-label="Rechercher des transitaires"
+      />
+      <span class="search-icon">🔍</span>
+    </div>
+  </div>
+
+  <div class="table-container">
+    @if (isLoading) {
+      <div class="loading-state">
+        <div class="loading-spinner"></div>
+        <p>Chargement des transitaires...</p>
+      </div>
+    } @else if (filteredTransitaires.length === 0) {
+      <div class="empty-state">
+        <div class="empty-icon">👤</div>
+        <h3>Aucun transitaire trouvé</h3>
+        <p>
+          @if (searchTerm || activeFilter !== 'tous') {
+            Aucun transitaire ne correspond à vos critères de recherche.
+          } @else {
+            Aucun transitaire n'a été enregistré pour le moment.
+          }
+        </p>
+        @if (!searchTerm && activeFilter === 'tous') {
+          <button class="btn-add-first" (click)="nouveauTransitaire()">
+            <span>+</span>
+            Ajouter le premier transitaire
+          </button>
+        }
+      </div>
+    } @else {
+      <table class="transitaires-table">
+        <thead>
+          <tr>
+            <th>Transitaire</th>
+            <th>Identifiant</th>
+            <th>Mot de Passe</th>
+            <th>Coordonnées</th>
+            <th>Voyages</th>
+            <th>Statut</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (transitaire of filteredTransitaires; track transitaire.id) {
+        <tr>
+          <td>
+            <div class="transitaire-info">
+              <div class="transitaire-avatar" [class]="'avatar-' + transitaire.couleur">
+                {{ transitaire.nom.charAt(0) }}{{ transitaire.nom.split(' ')[1]?.charAt(0) || '' }}
+              </div>
+              <div class="transitaire-details">
+                <div class="transitaire-nom">{{ transitaire.nom }}</div>
+                <div class="transitaire-date">Créé le {{ transitaire.dateCreation }}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <div class="identifiant-value">{{ transitaire.identifiant }}</div>
+          </td>
+          <td>
+            <div class="password-container">
+              <span class="password-value">
+                @if (showPassword[transitaire.id!]) {
+                {{ transitaire.defaultPass || transitaire.motDePasse || 'N/A' }}
+                } @else {
+                {{ getMaskedPassword(transitaire.defaultPass || transitaire.motDePasse) }}
+                }
+              </span>
+              <button
+                class="password-toggle"
+                (click)="togglePassword(transitaire.id!.toString())"
+                [title]="showPassword[transitaire.id!] ? 'Masquer' : 'Afficher'">
+                @if (showPassword[transitaire.id!]) {
+                <span>👁️</span>
+                } @else {
+                <span>👁️‍🗨️</span>
+                }
+              </button>
+            </div>
+          </td>
+          <td>
+            <div class="coordonnees">
+              <div class="coordonnee-item">
+                <span class="coordonnee-icon">📧</span>
+                <span>{{ transitaire.email }}</span>
+              </div>
+              <div class="coordonnee-item">
+                <span class="coordonnee-icon">📞</span>
+                <span>{{ transitaire.telephone }}</span>
+              </div>
+            </div>
+          </td>
+          <td>
+            <button
+              class="voyages-btn"
+              (click)="viewVoyages(transitaire)"
+              [class.has-voyages]="(transitaire.voyagesAttribues || 0) > 0">
+              <span>🚚</span>
+              {{ transitaire.voyagesAttribues || 0 }} voyage{{ (transitaire.voyagesAttribues || 0) > 1 ? 's' : '' }}
+            </button>
+          </td>
+          <td>
+            @if (transitaire.statut === 'ACTIF') {
+            <span class="status-badge badge-green">Actif</span>
+            }
+            @if (transitaire.statut === 'INACTIF') {
+            <span class="status-badge badge-grey">Inactif</span>
+            }
+            @if (transitaire.statut === 'SUSPENDU') {
+            <span class="status-badge badge-orange">Suspendu</span>
+            }
+          </td>
+          <td>
+            <div class="actions">
+              <button class="action-btn" (click)="viewTransitaire(transitaire)" title="Voir">
+                <span>👁️</span>
+              </button>
+              <button class="action-btn" (click)="editTransitaire(transitaire)" title="Éditer">
+                <span>✏️</span>
+              </button>
+              <!-- <button class="action-btn" (click)="resetPassword(transitaire)" title="Réinitialiser mot de passe">
+                <span>🔑</span>
+              </button> -->
+              <!-- <button class="action-btn" (click)="deleteTransitaire(transitaire)" title="Supprimer">
+                <span>🗑️</span>
+              </button> -->
+            </div>
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+    
+    <!-- Pagination -->
+    @if (totalPages > 1) {
+      <div class="pagination-container">
+        <button 
+          class="pagination-btn" 
+          (click)="changePage(currentPage - 1)"
+          [disabled]="currentPage === 0">
+          Précédent
+        </button>
+        
+        <div class="pagination-pages">
+          @for (page of getPageNumbers(); track page) {
+            <button
+              class="pagination-page"
+              [class.active]="page === currentPage"
+              (click)="changePage(page)">
+              {{ page + 1 }}
+            </button>
+          }
+        </div>
+        
+        <button 
+          class="pagination-btn" 
+          (click)="changePage(currentPage + 1)"
+          [disabled]="currentPage >= totalPages - 1">
+          Suivant
+        </button>
+        
+        <div class="pagination-info">
+          Page {{ currentPage + 1 }} sur {{ totalPages }} ({{ totalElements }} transitaires)
+        </div>
+      </div>
+    }
+    }
+  </div>
+
+  @if (showAddModal) {
+  <div class="modal-overlay" (click)="closeAddModal()">
+    <div class="modal-content add-transitaire-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Ajouter un nouveau transitaire</h2>
+        <button class="modal-close" (click)="closeAddModal()" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="modal-body">
+        <form (ngSubmit)="addTransitaire()">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="nom">Nom complet *</label>
+              <input
+                type="text"
+                id="nom"
+                [(ngModel)]="newTransitaire.nom"
+                name="nom"
+                required
+                placeholder="Ex: Alpha Diallo"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="email">Email *</label>
+              <input
+                type="email"
+                id="email"
+                [(ngModel)]="newTransitaire.email"
+                name="email"
+                required
+                placeholder="Ex: alpha.diallo@transitaire.ml"
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="telephone">Téléphone *</label>
+              <input
+                type="tel"
+                id="telephone"
+                [(ngModel)]="newTransitaire.telephone"
+                name="telephone"
+                required
+                placeholder="Ex: +223 76 12 34 56"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="statut">Statut *</label>
+              <select
+                id="statut"
+                [(ngModel)]="newTransitaire.statut"
+                name="statut"
+                required
+              >
+                <option value="ACTIF">Actif</option>
+                <option value="INACTIF">Inactif</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-info">
+            <div class="info-box">
+              <span class="info-icon">ℹ️</span>
+              <div class="info-content">
+                <p class="info-title">Génération automatique</p>
+                <p class="info-text">L'identifiant et le mot de passe seront générés automatiquement par le système après l'enregistrement.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" (click)="closeAddModal()">
+              Annuler
+            </button>
+            <button type="submit" class="btn-submit" [disabled]="isLoading">
+              @if (isLoading) {
+                Enregistrement...
+              } @else {
+                Ajouter le transitaire
+              }
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  }
+
+  @if (selectedTransitaire) {
+  <div class="modal-overlay" (click)="closeVoyagesModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Voyages de {{ selectedTransitaire.nom }}</h2>
+        <button class="modal-close" (click)="closeVoyagesModal()">×</button>
+      </div>
+      <div class="modal-body">
+        @if (selectedTransitaire.voyages && selectedTransitaire.voyages.length > 0) {
+        <div class="voyages-list">
+          @for (voyage of selectedTransitaire.voyages; track voyage.id) {
+          <div class="voyage-item">
+            <div class="voyage-header">
+              <div class="voyage-numero">{{ voyage.numero }}</div>
+              <span class="voyage-statut" [class]="'statut-' + voyage.statut">
+                @if (voyage.statut === 'en-cours') {
+                En cours
+                }
+                @if (voyage.statut === 'termine') {
+                Terminé
+                }
+                @if (voyage.statut === 'annule') {
+                Annulé
+                }
+              </span>
+            </div>
+            <div class="voyage-details">
+              <div class="voyage-route">
+                <span class="route-origin">{{ voyage.origine }}</span>
+                <span class="route-arrow">→</span>
+                <span class="route-destination">{{ voyage.destination }}</span>
+              </div>
+              <div class="voyage-info">
+                <span>Camion: {{ voyage.camion }}</span>
+                <span>Date: {{ voyage.date }}</span>
+              </div>
+            </div>
+          </div>
+          }
+        </div>
+        } @else {
+        <div class="no-voyages">
+          <p>Aucun voyage attribué à ce transitaire</p>
+        </div>
+        }
+      </div>
+    </div>
+  </div>
+  }
+
+  @if (showDetailModal && selectedTransitaire) {
+  <div class="modal-overlay" (click)="closeDetailModal()">
+    <div class="modal-content detail-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Détails du Transitaire</h2>
+        <button class="modal-close" (click)="closeDetailModal()" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="detail-section">
+          <div class="detail-header">
+            <div class="transitaire-avatar-large" [class]="'avatar-' + selectedTransitaire.couleur">
+              {{ selectedTransitaire.nom.charAt(0) }}{{ selectedTransitaire.nom.split(' ')[1]?.charAt(0) || '' }}
+            </div>
+            <div>
+              <h3 class="transitaire-name-large">{{ selectedTransitaire.nom }}</h3>
+              @if (selectedTransitaire.identifiant) {
+                <div class="transitaire-identifiant-large">{{ selectedTransitaire.identifiant }}</div>
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <h3 class="section-title">Informations Personnelles</h3>
+          <div class="detail-grid">
+            <div class="detail-item">
+              <span class="detail-label">Email</span>
+              <span class="detail-value">{{ selectedTransitaire.email }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Téléphone</span>
+              <span class="detail-value">{{ selectedTransitaire.telephone }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Statut</span>
+              <span class="detail-value">
+                @if (selectedTransitaire.statut === 'ACTIF') {
+                  <span class="status-badge badge-green">Actif</span>
+                } @else if (selectedTransitaire.statut === 'INACTIF') {
+                  <span class="status-badge badge-grey">Inactif</span>
+                } @else if (selectedTransitaire.statut === 'SUSPENDU') {
+                  <span class="status-badge badge-orange">Suspendu</span>
+                }
+              </span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Voyages attribués</span>
+              <span class="detail-value">{{ selectedTransitaire.voyagesAttribues || 0 }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <h3 class="section-title">Identifiants de Connexion</h3>
+          <div class="detail-grid">
+            <div class="detail-item">
+              <span class="detail-label">Identifiant</span>
+              <span class="detail-value">{{ selectedTransitaire.identifiant || 'N/A' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Mot de passe</span>
+              <div class="password-container">
+                <span class="detail-value">
+                  @if (showPassword['detail']) {
+                    {{ selectedTransitaire.defaultPass || selectedTransitaire.motDePasse || 'N/A' }}
+                  } @else {
+                    {{ getMaskedPassword(selectedTransitaire.defaultPass || selectedTransitaire.motDePasse) }}
+                  }
+                </span>
+                <button
+                  class="password-toggle"
+                  (click)="togglePassword('detail')"
+                  [title]="showPassword['detail'] ? 'Masquer' : 'Afficher'">
+                  @if (showPassword['detail']) {
+                    <span>👁️</span>
+                  } @else {
+                    <span>👁️‍🗨️</span>
+                  }
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" (click)="closeDetailModal()">
+            Fermer
+          </button>
+          <button type="button" class="btn-edit" (click)="editTransitaire(selectedTransitaire)">
+            <span>✏️</span>
+            Modifier
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  }
+
+  @if (showEditModal && selectedTransitaireForEdit) {
+  <div class="modal-overlay" (click)="closeEditModal()">
+    <div class="modal-content add-transitaire-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Modifier le Transitaire</h2>
+        <button class="modal-close" (click)="closeEditModal()" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="modal-body">
+        <form (ngSubmit)="updateTransitaire()">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="edit-nom">Nom complet *</label>
+              <input
+                type="text"
+                id="edit-nom"
+                [(ngModel)]="editTransitaireData.nom"
+                name="edit-nom"
+                required
+                placeholder="Ex: Alpha Diallo"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="edit-email">Email *</label>
+              <input
+                type="email"
+                id="edit-email"
+                [(ngModel)]="editTransitaireData.email"
+                name="edit-email"
+                required
+                placeholder="Ex: alpha.diallo@transitaire.ml"
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="edit-telephone">Téléphone *</label>
+              <input
+                type="tel"
+                id="edit-telephone"
+                [(ngModel)]="editTransitaireData.telephone"
+                name="edit-telephone"
+                required
+                placeholder="Ex: +223 76 12 34 56"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="edit-statut">Statut *</label>
+              <select
+                id="edit-statut"
+                [(ngModel)]="editTransitaireData.statut"
+                name="edit-statut"
+                required
+              >
+                <option value="ACTIF">Actif</option>
+                <option value="INACTIF">Inactif</option>
+                <option value="SUSPENDU">Suspendu</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-info">
+            <div class="info-box">
+              <span class="info-icon">ℹ️</span>
+              <div class="info-content">
+                <p class="info-title">Identifiant</p>
+                <p class="info-text">L'identifiant ({{ selectedTransitaireForEdit.identifiant }}) ne peut pas être modifié.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" (click)="closeEditModal()">
+              Annuler
+            </button>
+            <button type="submit" class="btn-submit" [disabled]="isLoading">
+              @if (isLoading) {
+                Mise à jour...
+              } @else {
+                Mettre à jour
+              }
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  }
+</div>

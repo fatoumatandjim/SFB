@@ -1,0 +1,885 @@
+<div class="banque-caisse-container">
+  <div class="banque-caisse-header">
+    <div>
+      <h1>Banque & Caisse</h1>
+      <p>Gestion des comptes bancaires et de la caisse</p>
+    </div>
+  </div>
+
+  <div class="stats-cards">
+    <div class="stat-card bank-card">
+      <div class="stat-header">
+        <div class="stat-icon blue">
+          <span>🏦</span>
+        </div>
+        <span class="stat-badge blue positive">{{ stats.soldeTotal.evolution }}</span>
+      </div>
+      <div class="stat-value">{{ soldeTotal | number }} F</div>
+      <div class="stat-label">Solde Total Banque</div>
+      <div class="stat-details">
+        <span>{{ stats.comptesBancaires.total }} comptes bancaires</span>
+        <span class="amount positive">{{ stats.soldeTotal.evolution }} {{ stats.soldeTotal.periode }}</span>
+      </div>
+    </div>
+
+    <div class="stat-card cash-card">
+      <div class="stat-header">
+        <div class="stat-icon green">
+          <span>💵</span>
+        </div>
+      </div>
+      <div class="stat-value">{{ stats.soldeCaisse.montant | number }} F</div>
+      <div class="stat-label">Solde Caisse</div>
+      <div class="stat-details">
+        <span>{{ stats.soldeCaisse.date }}</span>
+        <div class="cash-flows">
+          <span class="flow positive">Entrées: {{ stats.soldeCaisse.entrees | number }} F</span>
+          <span class="flow negative">Sorties: {{ stats.soldeCaisse.sorties | number }} F</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="stat-card summary-card">
+      <div class="stat-header">
+        <div class="stat-icon purple">
+          <span>📊</span>
+        </div>
+      </div>
+      <div class="summary-content">
+        <div class="summary-item">
+          <span class="summary-label">Total Entrées</span>
+          <span class="summary-value positive">{{ totalEntrees | number }} F</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">Total Sorties</span>
+          <span class="summary-value negative">{{ totalSorties | number }} F</span>
+        </div>
+        <div class="summary-item total">
+          <span class="summary-label">Solde Net</span>
+          <span class="summary-value" [class]="(totalEntrees - totalSorties) >= 0 ? 'positive' : 'negative'">
+            {{ (totalEntrees - totalSorties) | number }} F
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs-container">
+    <div class="tabs">
+      <button
+        class="tab-btn"
+        [class.active]="activeTab === 'banque'"
+        (click)="setTab('banque')">
+        <span>🏦</span>
+        Comptes Bancaires
+      </button>
+      <button
+        class="tab-btn"
+        [class.active]="activeTab === 'caisse'"
+        (click)="setTab('caisse')">
+        <span>💵</span>
+        Caisse
+      </button>
+    </div>
+
+    <div class="actions-bar">
+      <button class="btn-new-transaction" (click)="nouvelleTransaction()">
+        <span>+</span>
+        Nouvelle Transaction
+      </button>
+
+      <div class="search-container">
+        <label for="search-transactions" class="sr-only">Rechercher des transactions</label>
+        <input
+          type="text"
+          id="search-transactions"
+          class="search-input"
+          placeholder="Rechercher..."
+          [(ngModel)]="searchTerm"
+          aria-label="Rechercher des transactions"
+        />
+        <span class="search-icon">🔍</span>
+      </div>
+    </div>
+  </div>
+
+  @if (activeTab === 'banque') {
+  <div class="comptes-section">
+    <div class="section-header">
+      <h2>Comptes Bancaires</h2>
+      <button class="btn-add-banque" (click)="nouvelleBanque()">
+        <span>+</span>
+        Nouvelle Banque
+      </button>
+    </div>
+    @if (isLoading) {
+      <div class="loading-state">
+        <div class="loading-spinner"></div>
+        <p>Chargement des comptes bancaires...</p>
+      </div>
+    } @else if (!isLoading && comptesBancaires.length === 0) {
+      <div class="empty-state">
+        <div class="empty-icon">🏦</div>
+        <p class="empty-message">Aucun compte bancaire trouvé.</p>
+        <button class="btn-add-banque-empty" (click)="nouvelleBanque()">
+          <span>+</span>
+          Ajouter votre premier compte
+        </button>
+      </div>
+    } @else {
+      <div class="comptes-grid">
+        @for (compte of comptesBancaires; track compte.id) {
+      <div class="compte-card">
+        <div class="compte-header">
+          <div class="compte-info">
+            <h3>{{ compte.nom || (compte.banque + ' - ' + compte.numero) }}</h3>
+            <p class="compte-banque">{{ compte.banque }}</p>
+          </div>
+          <span class="compte-status" [class]="'status-' + compte.statut.toLowerCase()">
+            @if (compte.statut === 'ACTIF' || compte.statut === 'actif') {
+              Actif
+            } @else if (compte.statut === 'FERME' || compte.statut === 'ferme') {
+              Fermé
+            } @else if (compte.statut === 'SUSPENDU' || compte.statut === 'suspendu') {
+              Suspendu
+            } @else {
+              {{ compte.statut }}
+            }
+          </span>
+        </div>
+        <div class="compte-details">
+          <div class="compte-numero">{{ compte.numero }}</div>
+          <div class="compte-type">{{ compte.type }}</div>
+        </div>
+        <div class="compte-solde">
+          <span class="solde-label">Solde</span>
+          <span class="solde-value">{{ compte.solde | number }} {{ compte.devise || 'FCFA' }}</span>
+        </div>
+      </div>
+      }
+      </div>
+    }
+  </div>
+  }
+
+  <div class="transactions-section">
+    <div class="section-header-movements">
+      <h2>Transactions Récentes</h2>
+      <button class="btn-voir-tous" (click)="voirTousTransactions()">
+        <span>👁️</span>
+        Voir tous
+      </button>
+    </div>
+    @if (isLoadingTransactions) {
+      <div class="loading-state">
+        <p>Chargement des transactions...</p>
+      </div>
+    } @else if (transactionsRecentes.length === 0) {
+      <div class="empty-state">
+        <p>Aucune transaction récente</p>
+      </div>
+    } @else {
+      <div class="table-container">
+        <table class="transactions-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Type</th>
+              <th>Catégorie</th>
+              <th>Description</th>
+              <th>Compte</th>
+              <th>Référence</th>
+              <th>Montant</th>
+              <th>Statut</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (transaction of transactionsRecentes; track transaction.id) {
+            <tr>
+              <td>
+                <div class="date-value">{{ formatDate(transaction.date) }}</div>
+              </td>
+              <td>
+                @if (transaction.type === 'entree') {
+                <span class="type-badge badge-entree">Entrée</span>
+                }
+                @if (transaction.type === 'sortie') {
+                <span class="type-badge badge-sortie">Sortie</span>
+                }
+              </td>
+              <td>
+                <div class="categorie-value">{{ transaction.categorie }}</div>
+              </td>
+              <td>
+                <div class="description-value">{{ transaction.description || '-' }}</div>
+              </td>
+              <td>
+                <div class="compte-value">{{ transaction.compte || '-' }}</div>
+              </td>
+              <td>
+                <div class="reference-value">{{ transaction.reference || '-' }}</div>
+              </td>
+              <td>
+                <div class="montant-value" [class]="transaction.type === 'entree' ? 'positive' : 'negative'">
+                  {{ transaction.type === 'entree' ? '+' : '-' }}{{ transaction.montant | number }} F
+                </div>
+              </td>
+              <td>
+                @if (transaction.statut === 'VALIDE') {
+                <span class="status-badge badge-green">Validé</span>
+                }
+                @if (transaction.statut === 'EN_ATTENTE') {
+                <span class="status-badge badge-orange">En attente</span>
+                }
+                @if (transaction.statut === 'REJETE') {
+                <span class="status-badge badge-red">Rejeté</span>
+                }
+                @if (transaction.statut === 'ANNULE') {
+                <span class="status-badge badge-gray">Annulé</span>
+                }
+              </td>
+              <td>
+                <div class="actions">
+                  <button class="action-btn" (click)="viewTransaction(transaction)" title="Voir">
+                    <span>👁️</span>
+                  </button>
+                  <!-- <button class="action-btn" (click)="editTransaction(transaction)" title="Éditer">
+                    <span>✏️</span>
+                  </button> -->
+                </div>
+              </td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</div>
+
+@if (showAddBanqueModal) {
+  <div class="modal-overlay" (click)="closeAddBanqueModal()">
+    <div class="modal-content add-banque-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Nouvelle Banque</h2>
+        <button class="modal-close" (click)="closeAddBanqueModal()" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="modal-body">
+        <form (ngSubmit)="saveBanque()">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="banque-nom">Nom de la banque *</label>
+              <input
+                type="text"
+                id="banque-nom"
+                [(ngModel)]="newCompteBancaire.banque"
+                name="banque"
+                required
+                placeholder="Ex: Bank of Africa"
+                class="form-input"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="banque-type">Type de compte *</label>
+              <select
+                id="banque-type"
+                [(ngModel)]="newCompteBancaire.type"
+                name="type"
+                required
+                class="form-select"
+              >
+                <option value="BANQUE">Banque</option>
+                <option value="CAISSE">Caisse</option>
+                <option value="MOBILE_MONEY">Mobile Money</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="banque-numero">Numéro de compte *</label>
+              <input
+                type="text"
+                id="banque-numero"
+                [(ngModel)]="newCompteBancaire.numero"
+                name="numero"
+                required
+                placeholder="Ex: 001-234567-89"
+                class="form-input"
+              />
+              <p class="form-hint">Numéro unique du compte</p>
+            </div>
+
+            <div class="form-group">
+              <label for="banque-numero-bancaire">Numéro compte bancaire</label>
+              <input
+                type="text"
+                id="banque-numero-bancaire"
+                [(ngModel)]="newCompteBancaire.numeroCompteBancaire"
+                name="numeroCompteBancaire"
+                placeholder="Ex: 1234567890"
+                class="form-input"
+              />
+              <p class="form-hint">Optionnel - Numéro bancaire complet</p>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="banque-solde">Solde initial (FCFA) *</label>
+              <input
+                type="number"
+                id="banque-solde"
+                [(ngModel)]="newCompteBancaire.solde"
+                name="solde"
+                required
+                min="0"
+                step="0.01"
+                placeholder="0"
+                class="form-input"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="banque-statut">Statut *</label>
+              <select
+                id="banque-statut"
+                [(ngModel)]="newCompteBancaire.statut"
+                name="statut"
+                required
+                class="form-select"
+              >
+                <option value="ACTIF">Actif</option>
+                <option value="FERME">Fermé</option>
+                <option value="SUSPENDU">Suspendu</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="banque-description">Description</label>
+            <textarea
+              id="banque-description"
+              [(ngModel)]="newCompteBancaire.description"
+              name="description"
+              rows="3"
+              placeholder="Description du compte (optionnel)..."
+              class="form-textarea"
+            ></textarea>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" (click)="closeAddBanqueModal()">
+              Annuler
+            </button>
+            <button type="submit" class="btn-submit" [disabled]="isLoading">
+              @if (isLoading) {
+                Enregistrement...
+              } @else {
+                Créer le compte
+              }
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+}
+
+@if (showAddTransactionModal) {
+  <div class="modal-overlay" (click)="closeAddTransactionModal()">
+    <div class="modal-content add-transaction-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Nouvelle Transaction</h2>
+        <button class="modal-close" (click)="closeAddTransactionModal()" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="modal-body">
+        <form (ngSubmit)="saveTransaction()">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="transaction-type">Type de transaction *</label>
+              <select
+                id="transaction-type"
+                [(ngModel)]="newTransaction.type"
+                name="type"
+                required
+                class="form-select"
+              >
+                <option value="VIREMENT_SORTANT">Virement entre comptes</option>
+                <option value="VIREMENT_SIMPLE">Versement</option>
+                <option value="DEPOT">Dépôt (Caisse vers Banque)</option>
+                <option value="RETRAIT">Retrait (Banque vers Caisse)</option>
+              </select>
+              <p class="form-hint">
+                @if (newTransaction.type === 'VIREMENT_SORTANT') {
+                  Transférer de l'argent d'un compte vers un autre
+                } @else if (newTransaction.type === 'VIREMENT_SIMPLE') {
+                  @if (activeTab === 'banque') {
+                    Virement simple entre deux comptes bancaires
+                  } @else {
+                    Virement simple dans une caisse
+                  }
+                } @else if (newTransaction.type === 'DEPOT') {
+                  Déposer de l'argent de la caisse vers une banque
+                } @else if (newTransaction.type === 'RETRAIT') {
+                  Retirer de l'argent d'une banque vers la caisse
+                }
+              </p>
+            </div>
+
+            <div class="form-group">
+              <label for="transaction-montant">Montant (FCFA) *</label>
+              <input
+                type="number"
+                id="transaction-montant"
+                [(ngModel)]="newTransaction.montant"
+                name="montant"
+                required
+                min="0"
+                step="0.01"
+                placeholder="0"
+                class="form-input"
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="transaction-date">Date *</label>
+              <input
+                type="date"
+                id="transaction-date"
+                [(ngModel)]="newTransaction.date"
+                name="date"
+                required
+                class="form-input"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="transaction-statut">Statut *</label>
+              <select
+                id="transaction-statut"
+                [(ngModel)]="newTransaction.statut"
+                name="statut"
+                required
+                class="form-select"
+              >
+                <option value="VALIDE">Validée</option>
+              </select>
+            </div>
+          </div>
+
+          @if (newTransaction.type === 'VIREMENT_SORTANT') {
+            <div class="form-row">
+              <div class="form-group">
+                <label for="transaction-compte-source">Compte source (débit) *</label>
+                <select
+                  id="transaction-compte-source"
+                  [(ngModel)]="newTransaction.compteSourceId"
+                  name="compteSourceId"
+                  required
+                  class="form-select"
+                >
+                  <option [value]="undefined">Sélectionner le compte source</option>
+                  @for (compte of getComptesSource(); track compte.id) {
+                    <option [value]="compte.id">
+                      {{ compte.nom || (compte.banque + ' - ' + compte.numero) }} ({{ compte.type }})
+                    </option>
+                  }
+                </select>
+                <p class="form-hint">Compte depuis lequel l'argent sera débité</p>
+              </div>
+
+              <div class="form-group">
+                <label for="transaction-compte-destination">Compte destination (crédit) *</label>
+                <select
+                  id="transaction-compte-destination"
+                  [(ngModel)]="newTransaction.compteId"
+                  name="compteId"
+                  required
+                  class="form-select"
+                >
+                  <option [value]="undefined">Sélectionner le compte destination</option>
+                  @for (compte of getComptesDestination(); track compte.id) {
+                    <option [value]="compte.id">
+                      {{ compte.nom || (compte.banque + ' - ' + compte.numero) }} ({{ compte.type }})
+                    </option>
+                  }
+                </select>
+                <p class="form-hint">Compte vers lequel l'argent sera crédité</p>
+              </div>
+            </div>
+          } @else if (newTransaction.type === 'VIREMENT_SIMPLE') {
+            <div class="form-row">
+              @if (activeTab === 'banque') {
+                <div class="form-group">
+                  <label for="transaction-compte-destination-simple">Compte destination (optionnel)</label>
+                  <select
+                    id="transaction-compte-destination-simple"
+                    [(ngModel)]="newTransaction.compteId"
+                    name="compteId"
+                    class="form-select"
+                  >
+                    <option [value]="undefined">Aucun compte (transaction simple sans compte)</option>
+                    @for (compte of getComptesDisponibles(); track compte.id) {
+                      <option [value]="compte.id">
+                        {{ compte.nom || (compte.banque + ' - ' + compte.numero) }} ({{ compte.type }})
+                      </option>
+                    }
+                  </select>
+                  <p class="form-hint">Compte vers lequel l'argent sera crédité (optionnel)</p>
+                </div>
+              } @else {
+                <div class="form-group">
+                  <label for="transaction-caisse-destination-simple">Caisse destination (optionnel)</label>
+                  <select
+                    id="transaction-caisse-destination-simple"
+                    [(ngModel)]="newTransaction.caisseId"
+                    name="caisseId"
+                    class="form-select"
+                  >
+                    <option [value]="undefined">Aucune caisse (transaction simple sans caisse)</option>
+                    @for (caisse of getCaissesDisponibles(); track caisse.id) {
+                      <option [value]="caisse.id">
+                        {{ caisse.nom }}
+                      </option>
+                    }
+                  </select>
+                  <p class="form-hint">Caisse vers laquelle l'argent sera crédité (optionnel)</p>
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="form-group">
+              <label for="transaction-compte">
+                @if (newTransaction.type === 'DEPOT') {
+                  Compte bancaire (destination) *
+                } @else {
+                  Compte bancaire (source) *
+                }
+              </label>
+              <select
+                id="transaction-compte"
+                [(ngModel)]="newTransaction.compteId"
+                name="compteId"
+                required
+                class="form-select"
+              >
+                <option [value]="undefined">Sélectionner un compte</option>
+                @for (compte of getComptesDisponibles(); track compte.id) {
+                  <option [value]="compte.id">
+                    {{ compte.nom || (compte.banque + ' - ' + compte.numero) }} ({{ compte.type }})
+                  </option>
+                }
+              </select>
+              <p class="form-hint">
+                @if (newTransaction.type === 'DEPOT') {
+                  Compte bancaire qui recevra l'argent depuis la caisse
+                } @else {
+                  Compte bancaire depuis lequel l'argent sera retiré vers la caisse
+                }
+              </p>
+            </div>
+          }
+
+          <div class="form-group">
+            <label for="transaction-reference">Référence</label>
+            <input
+              type="text"
+              id="transaction-reference"
+              [(ngModel)]="newTransaction.reference"
+              name="reference"
+              placeholder="Ex: VIR-2024-0456"
+              class="form-input"
+            />
+            <p class="form-hint">Numéro de référence de la transaction (optionnel)</p>
+          </div>
+
+          <div class="form-group">
+            <label for="transaction-description">Description</label>
+            <textarea
+              id="transaction-description"
+              [(ngModel)]="newTransaction.description"
+              name="description"
+              rows="3"
+              placeholder="Description de la transaction..."
+              class="form-textarea"
+            ></textarea>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" (click)="closeAddTransactionModal()">
+              Annuler
+            </button>
+            <button type="submit" class="btn-submit" [disabled]="isLoading">
+              @if (isLoading) {
+                Enregistrement...
+              } @else {
+                Créer la transaction
+              }
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+}
+
+@if (showAllTransactionsModal) {
+  <div class="modal-overlay" (click)="closeAllTransactionsModal()">
+    <div class="modal-content transactions-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Toutes les transactions</h2>
+        <button class="modal-close" (click)="closeAllTransactionsModal()" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="filters-section">
+          <div class="filter-group">
+            <label>
+              <input type="radio" name="filterTypeTransactions" value="all" [(ngModel)]="filterType" (change)="applyFilter()" />
+              Tous
+            </label>
+            <label>
+              <input type="radio" name="filterTypeTransactions" value="date" [(ngModel)]="filterType" (change)="applyFilter()" />
+              Par date
+            </label>
+            <label>
+              <input type="radio" name="filterTypeTransactions" value="range" [(ngModel)]="filterType" (change)="applyFilter()" />
+              Intervalle de dates
+            </label>
+          </div>
+
+          @if (filterType === 'date') {
+            <div class="filter-input">
+              <label for="filterDate">Date:</label>
+              <input type="date" id="filterDate" [(ngModel)]="filterDate" (change)="applyFilter()" />
+            </div>
+          }
+
+          @if (filterType === 'range') {
+            <div class="filter-inputs">
+              <div class="filter-input">
+                <label for="filterStartDate">Date début:</label>
+                <input type="date" id="filterStartDate" [(ngModel)]="filterStartDate" (change)="applyFilter()" />
+              </div>
+              <div class="filter-input">
+                <label for="filterEndDate">Date fin:</label>
+                <input type="date" id="filterEndDate" [(ngModel)]="filterEndDate" (change)="applyFilter()" />
+              </div>
+            </div>
+          }
+        </div>
+
+        @if (isLoadingTransactions) {
+          <div class="loading-state">
+            <p>Chargement...</p>
+          </div>
+        } @else if (transactionsPage && transactionsPage.transactions.length === 0) {
+          <div class="empty-state">
+            <p>Aucune transaction trouvée</p>
+          </div>
+        } @else if (transactionsPage) {
+          <div class="table-container">
+            <table class="transactions-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Type</th>
+                  <th>Catégorie</th>
+                  <th>Description</th>
+                  <th>Compte</th>
+                  <th>Référence</th>
+                  <th>Montant</th>
+                  <th>Statut</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (transaction of transactionsPage.transactions; track transaction.id) {
+                <tr>
+                  <td>
+                    <div class="date-value">{{ formatDate(transaction.date) }}, {{ formatTime(transaction.date) }}</div>
+                  </td>
+                  <td>
+                    @if (transaction.type === 'entree') {
+                    <span class="type-badge badge-entree">Entrée</span>
+                    }
+                    @if (transaction.type === 'sortie') {
+                    <span class="type-badge badge-sortie">Sortie</span>
+                    }
+                  </td>
+                  <td>
+                    <div class="categorie-value">{{ getTransactionCategorie(transaction) }}</div>
+                  </td>
+                  <td>
+                    <div class="description-value">{{ transaction.description || '-' }}</div>
+                  </td>
+                  <td>
+                    <div class="compte-value">{{ getTransactionCompte(transaction) }}</div>
+                  </td>
+                  <td>
+                    <div class="reference-value">{{ transaction.reference || '-' }}</div>
+                  </td>
+                  <td>
+                    <div class="montant-value" [class]="transaction.type === 'entree' ? 'positive' : 'negative'">
+                      {{ transaction.type === 'entree' ? '+' : '-' }}{{ transaction.montant | number }} F
+                    </div>
+                  </td>
+                  <td>
+                    @if (transaction.statut === 'VALIDE') {
+                    <span class="status-badge badge-green">Validé</span>
+                    }
+                    @if (transaction.statut === 'EN_ATTENTE') {
+                    <span class="status-badge badge-orange">En attente</span>
+                    }
+                    @if (transaction.statut === 'REJETE') {
+                    <span class="status-badge badge-red">Rejeté</span>
+                    }
+                    @if (transaction.statut === 'ANNULE') {
+                    <span class="status-badge badge-gray">Annulé</span>
+                    }
+                  </td>
+                  <td>
+                    <div class="actions">
+                      <button class="action-btn" (click)="viewTransactionFromPage(transaction)" title="Voir">
+                        <span>👁️</span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          @if (transactionsPage.totalPages > 1) {
+            <div class="pagination">
+              <button
+                class="btn-pagination"
+                [disabled]="currentPage === 0"
+                (click)="changePage(currentPage - 1)">
+                Précédent
+              </button>
+              <span class="page-info">
+                Page {{ currentPage + 1 }} / {{ transactionsPage.totalPages }} ({{ transactionsPage.totalElements }} transactions)
+              </span>
+              <button
+                class="btn-pagination"
+                [disabled]="currentPage >= transactionsPage.totalPages - 1"
+                (click)="changePage(currentPage + 1)">
+                Suivant
+              </button>
+            </div>
+          }
+        }
+      </div>
+    </div>
+  </div>
+}
+
+@if (showDetailModal && selectedTransaction) {
+<div class="modal-overlay" (click)="closeDetailModal()">
+  <div class="modal-content detail-modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Détails de la Transaction</h2>
+      <button class="modal-close" (click)="closeDetailModal()" aria-label="Fermer">×</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="detail-section">
+        <div class="detail-header">
+          <span class="detail-label">N° Transaction</span>
+          <span class="detail-value">{{ selectedTransaction.id }}</span>
+        </div>
+        @if (selectedTransaction.reference) {
+        <div class="detail-header">
+          <span class="detail-label">Référence</span>
+          <span class="detail-value">{{ selectedTransaction.reference }}</span>
+        </div>
+        }
+      </div>
+
+      <div class="detail-section">
+        <h3 class="section-title">Informations de la Transaction</h3>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">Montant</span>
+            <span class="detail-value amount" [class]="getTransactionTypeForDisplay(selectedTransaction.type || '') === 'entree' ? 'positive' : 'negative'">
+              {{ getTransactionTypeForDisplay(selectedTransaction.type || '') === 'entree' ? '+' : '-' }}{{ selectedTransaction.montant | number }} FCFA
+            </span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Date</span>
+            <span class="detail-value">{{ formatDate(selectedTransaction.date || '') }} {{ formatTime(selectedTransaction.date || '') }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Type</span>
+            <span class="detail-value">{{ getTransactionTypeLabel(selectedTransaction.type || '') }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Catégorie</span>
+            <span class="detail-value">{{ getTransactionCategory(selectedTransaction.type || '') }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Statut</span>
+            <span class="detail-value">
+              <span class="status-badge" [class]="getStatutClass(selectedTransaction.statut || '')">
+                {{ getStatutLabel(selectedTransaction.statut || '') }}
+              </span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      @if (selectedTransaction.description) {
+      <div class="detail-section">
+        <h3 class="section-title">Description</h3>
+        <p class="description-text">{{ selectedTransaction.description }}</p>
+      </div>
+      }
+
+      <div class="detail-section">
+        <h3 class="section-title">Compte(s) Concerné(s)</h3>
+        @if (selectedTransaction.compteId) {
+        @for (compte of comptesBancaires; track compte.id) {
+        @if (compte.id === selectedTransaction.compteId) {
+        <div class="account-info">
+          <div class="account-name">{{ compte.banque }}</div>
+          <div class="account-details">
+            <span>N°: {{ compte.numero }}</span>
+            <span>Solde: {{ compte.solde | number }} FCFA</span>
+          </div>
+        </div>
+        }
+        }
+        } @else if (selectedTransaction.caisseId) {
+        @for (caisse of caisses; track caisse.id) {
+        @if (caisse.id === selectedTransaction.caisseId) {
+        <div class="account-info">
+          <div class="account-name">{{ caisse.nom }}</div>
+          <div class="account-details">
+            <span>Solde: {{ caisse.solde | number }} FCFA</span>
+          </div>
+        </div>
+        }
+        }
+        } @else {
+        <p class="no-account">Aucun compte associé</p>
+        }
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" (click)="closeDetailModal()">
+          Fermer
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+}

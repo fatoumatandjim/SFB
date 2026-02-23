@@ -1,0 +1,1798 @@
+<div class="suivi-transport-container">
+  <div class="suivi-transport-header">
+    <div>
+      <h1>Suivi des Transports</h1>
+      <p>Gestion et suivi des voyages de camions</p>
+    </div>
+  </div>
+
+  <div class="tabs-container">
+    <div class="tabs-and-dropdown">
+      <div class="list-view-dropdown">
+        <label for="list-view-select" class="dropdown-label">Vue liste</label>
+        <select id="list-view-select" class="list-view-select" [(ngModel)]="dropdownListView" (ngModelChange)="onListViewChangeByValue($event)">
+          <option value="actifs">🚛 Voyages Actifs</option>
+          <option value="non-declares">⏭️ Non Déclarés</option>
+          <option value="archives">📦 Archives</option>
+          <option value="partiellement-decharges">⚠️ Partiellement Déchargés</option>
+          @if (isAdmin) {
+          <option value="sans-prix-achat">💰 Attribués sans Prix d'Achat</option>
+          }
+        </select>
+      </div>
+      <div class="tabs">
+        <button class="tab-btn" [class.active]="activeTab === 'receptionnes'" (click)="setTab('receptionnes')">
+          <span>✅</span>
+          Sortie de douane
+        </button>
+        <button class="tab-btn" [class.active]="activeTab === 'en-cours'" (click)="setTab('en-cours')">
+          <span>🔄</span>
+          Voyage en cours
+        </button>
+      </div>
+    </div>
+
+    <div class="actions-bar">
+      @if (activeTab === 'actifs' && voyagesEnChargement.length > 0) {
+      <div class="bon-enlevement-actions">
+        <button class="btn-generate-bon" (click)="generateBonEnlevement()" [disabled]="selectedChargementCount === 0"
+          title="Générer les bons d'enlèvement pour les voyages sélectionnés">
+          <span>📄</span>
+          Générer bon(s) d'enlèvement
+          @if (selectedChargementCount > 0) {
+          <span class="badge-count">({{ selectedChargementCount }})</span>
+          }
+        </button>
+        <button class="btn-generate-excel" (click)="generateListeCamionsExcel()"
+          title="Télécharger la liste Excel des camions par dépôt">
+          <span>📊</span>
+          Liste Excel
+        </button>
+      </div>
+      }
+      <button class="btn-rapport-pdf-camions" (click)="generateRapportCamionsPdf()"
+        [disabled]="rapportPdfGenerating"
+        title="Exporter un rapport PDF des voyages en cours (non déchargés) avec clients (immatriculation, chauffeur, clients)">
+        <span>📋</span>
+        {{ rapportPdfGenerating ? 'Génération...' : 'Rapport PDF camions / clients' }}
+      </button>
+      <div class="search-container">
+        <label for="search-voyages" class="sr-only">Rechercher des voyages</label>
+        <input type="text" id="search-voyages" class="search-input"
+          placeholder="Rechercher par numéro, client, destination..." [(ngModel)]="searchTerm"
+          (input)="onSearchChange()" aria-label="Rechercher des voyages" />
+        <span class="search-icon">🔍</span>
+      </div>
+
+      @if (activeTab === 'sans-prix-achat') {
+      <div class="group-by-client-filter">
+        <button class="btn-group-client" [class.active]="groupByClient" (click)="toggleGroupByClient()"
+          title="Regrouper les voyages par client">
+          <span>{{ groupByClient ? '📋' : '📄' }}</span>
+          {{ groupByClient ? 'Par client' : 'Liste' }}
+        </button>
+      </div>
+      }
+      <div class="filters">
+        <label class="filter-radio">
+          <input type="radio" name="filterType" value="tous" [(ngModel)]="filterType" (change)="onFilterChange()" />
+          <span>Tous</span>
+        </label>
+        <label class="filter-radio">
+          <input type="radio" name="filterType" value="date" [(ngModel)]="filterType" (change)="onFilterChange()" />
+          <span>Par date</span>
+        </label>
+        <label class="filter-radio">
+          <input type="radio" name="filterType" value="range" [(ngModel)]="filterType" (change)="onFilterChange()" />
+          <span>Intervalle</span>
+        </label>
+        <label class="filter-radio">
+          <input type="radio" name="filterType" value="axe" [(ngModel)]="filterType" (change)="onFilterChange()" />
+          <span>Par axe</span>
+        </label>
+      </div>
+
+      @if (filterType === 'date') {
+      <div class="filter-date-input">
+        <input type="date" [(ngModel)]="filterDate" (change)="onFilterChange()" class="date-input" />
+      </div>
+      }
+
+      @if (filterType === 'range') {
+      <div class="filter-date-range">
+        <input type="date" [(ngModel)]="filterStartDate" (change)="onFilterChange()" class="date-input"
+          placeholder="Date début" />
+        <span>à</span>
+        <input type="date" [(ngModel)]="filterEndDate" (change)="onFilterChange()" class="date-input"
+          placeholder="Date fin" />
+      </div>
+      }
+
+      @if (filterType === 'axe') {
+      <div class="filter-axe-input">
+        <select [(ngModel)]="filterAxeId" (change)="onFilterChange()" class="select-input">
+          <option [value]="undefined">Sélectionner un axe</option>
+          @for (axe of axes; track axe.id) {
+          <option [value]="axe.id">{{ axe.nom }}</option>
+          }
+        </select>
+      </div>
+      }
+    </div>
+  </div>
+
+  <div class="table-container">
+    <table class="voyages-table">
+      <thead>
+        <tr>
+          @if (activeTab === 'actifs' || activeTab === 'non-declares') {
+          <th class="checkbox-header">
+            @if (activeTab === 'actifs' && voyagesEnChargement.length > 0) {
+            <input type="checkbox" [checked]="allChargementSelected" (change)="toggleSelectAllChargement()"
+              title="Sélectionner tous les voyages en chargement" />
+            }
+          </th>
+          }
+          <th>Numéro Voyage</th>
+          <th>Camion</th>
+          <th>Client</th>
+          <th>Statut</th>
+          <th>Déclaré</th>
+          <th>Type Produit</th>
+          <th>Quantité restante</th>
+          <th>Départ</th>
+          <th>Dépôt</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (isLoading) {
+        <tr>
+          <td [attr.colspan]="(activeTab === 'actifs' || activeTab === 'non-declares') ? 12 : 11" class="empty-state">
+            <div class="empty-message">Chargement...</div>
+          </td>
+        </tr>
+        } @else if (activeTab === 'partiellement-decharges' && voyagesPartiellementDechargesPage) {
+        @for (voyage of voyagesPartiellementDechargesPage.voyages; track voyage.id) {
+        <tr>
+          <td>
+            <div class="voyage-numero">{{ voyage.numeroVoyage }}</div>
+          </td>
+          <td>{{ voyage.camionImmatriculation || 'N/A' }}</td>
+          <td>
+            @if (voyage.clientVoyages && voyage.clientVoyages.length > 0) {
+            <div class="client-count-badge" (click)="showClientsList(voyage.clientVoyages, $event)"
+                 [title]="voyage.clientVoyages.length + ' client(s)'">
+              {{ voyage.clientVoyages.length }} client{{ voyage.clientVoyages.length > 1 ? 's' : '' }}
+            </div>
+            } @else {
+            <span class="no-client">-</span>
+            }
+          </td>
+          <td>{{ voyage.transitaireNom || 'N/A' }}</td>
+          <td>{{ voyage.destination || 'N/A' }}</td>
+          <td>{{ formatDate(voyage.dateDepart) }}</td>
+          <td>{{ getQuantiteRestanteNonAttribuee(voyage) }} L</td>
+          <td>
+            <span class="statut-badge statut-partiellement-decharge">Partiellement Déchargé</span>
+          </td>
+          <td>
+            <div class="action-buttons">
+              <button class="action-btn btn-view" (click)="viewVoyage(voyage)" title="Voir les détails">
+                <span>👁️</span>
+              </button>
+              @if (canUpdateVoyageStatus(voyage)) {
+              <button class="action-btn btn-statut" (click)="openStatutModal(voyage)" title="Changer le statut">
+                <span>🔄</span>
+              </button>
+              }
+            </div>
+          </td>
+        </tr>
+        }
+        } @else if (activeTab === 'non-declares' && voyagesNonDeclares.length > 0) {
+        @for (voyage of voyagesNonDeclares; track voyage.id) {
+        <tr>
+          <td class="checkbox-cell">
+            <!-- Pas de checkbox pour non-declares -->
+          </td>
+          <td>
+            <div class="voyage-numero">{{ voyage.numeroVoyage }}</div>
+          </td>
+          <td>
+            <div class="camion-info">
+              <div class="truck-icon">🚛</div>
+              <div class="camion-details">
+                <div class="camion-id">{{ voyage.camionImmatriculation || 'N/A' }}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            @if (voyage.clientVoyages && voyage.clientVoyages.length > 0) {
+            <div class="client-count-badge" (click)="showClientsList(voyage.clientVoyages, $event)"
+                 [title]="voyage.clientVoyages.length + ' client(s)'">
+              {{ voyage.clientVoyages.length }} client{{ voyage.clientVoyages.length > 1 ? 's' : '' }}
+            </div>
+            } @else if (voyage.clientNom) {
+            <div class="client-count-badge" title="1 client">
+              1 client
+            </div>
+            } @else {
+            <div class="no-client">-</div>
+            }
+          </td>
+          <td>
+            @if (canUpdateVoyageStatus(voyage)) {
+            <button class="btn-change-statut" (click)="openStatutModal(voyage)" [class]="getStatutClass(voyage.statut)"
+              title="Changer le statut">
+              {{ getStatutLabel(voyage.statut) }}
+            </button>
+            } @else {
+            <span class="statut-badge-readonly" [class]="getStatutClass(voyage.statut)">{{ getStatutLabel(voyage.statut) }}</span>
+            }
+          </td>
+          <td>
+            <div class="declaration-status">
+              @if (voyage.declarer) {
+              <span class="badge-declared">Déclaré</span>
+              } @else if (voyage.passager === 'passer_non_declarer') {
+              <span class="badge-skipped">Passé Non Déclaré</span>
+              } @else {
+              <span class="badge-not-declared">-</span>
+              }
+            </div>
+          </td>
+          <td>
+            <div class="type-produit">{{ voyage.produitNom || voyage.typeProduit || 'N/A' }}</div>
+            @if (voyage.typeProduit) {
+            <div class="type-produit-badge">{{ voyage.typeProduit }}</div>
+            }
+          </td>
+          <td>
+            <div class="quantite-value">{{ voyage.quantite | number }} L</div>
+          </td>
+          <td>
+            <div class="date-info">
+              <div class="date-value">{{ formatDate(voyage.dateDepart) }}</div>
+              <div class="lieu-value">{{ voyage.lieuDepart }}</div>
+            </div>
+          </td>
+          <td>
+            <div class="destination-value">{{ voyage.depotNom }}</div>
+            @if (voyage.dateArrivee) {
+            <div class="date-arrivee">Arrivé: {{ formatDate(voyage.dateArrivee) }}</div>
+            }
+          </td>
+          <td>
+            <div class="actions">
+              <button class="action-btn" (click)="viewVoyage(voyage)" title="Voir détails">
+                <span>👁️</span>
+              </button>
+            </div>
+          </td>
+        </tr>
+        }
+        } @else if (activeTab === 'sans-prix-achat' && groupByClient && voyagesParClientPage) {
+        @for (clientVoyages of voyagesParClientPage.clientsVoyages; track clientVoyages.clientId) {
+        <tr class="client-group-header">
+          <td [attr.colspan]="11" class="client-header-cell">
+            <div class="client-group-info">
+              <div class="client-avatar" [class]="'avatar-' + getClientColor(clientVoyages.clientNom)">
+                {{ getClientInitiales(clientVoyages.clientNom) }}
+              </div>
+              <div class="client-group-details">
+                <div class="client-group-name">{{ clientVoyages.clientNom }}</div>
+                @if (clientVoyages.clientEmail) {
+                <div class="client-group-email">{{ clientVoyages.clientEmail }}</div>
+                }
+                <div class="client-group-count">{{ clientVoyages.nombreVoyages }} voyage{{ clientVoyages.nombreVoyages >
+                  1 ? 's' : '' }}</div>
+              </div>
+            </div>
+          </td>
+        </tr>
+        @for (voyage of clientVoyages.voyages; track voyage.id) {
+        <tr class="voyage-row-grouped">
+          <td>
+            <div class="voyage-numero">{{ voyage.numeroVoyage }}</div>
+          </td>
+          <td>
+            <div class="camion-info">
+              <div class="truck-icon">🚛</div>
+              <div class="camion-details">
+                <div class="camion-id">{{ voyage.camionImmatriculation || 'N/A' }}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <div class="client-info">
+              <div class="client-avatar" [class]="'avatar-' + getClientColor(voyage.clientNom)">
+                {{ getClientInitiales(voyage.clientNom) }}
+              </div>
+              <div class="client-details">
+                <div class="client-nom">{{ voyage.clientNom }}</div>
+                <div class="client-email">{{ voyage.clientEmail || '' }}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            @if (canUpdateVoyageStatus(voyage)) {
+            <button class="btn-change-statut" (click)="openStatutModal(voyage)" [class]="getStatutClass(voyage.statut)"
+              title="Changer le statut">
+              {{ getStatutLabel(voyage.statut) }}
+            </button>
+            } @else {
+            <span class="statut-badge-readonly" [class]="getStatutClass(voyage.statut)">{{ getStatutLabel(voyage.statut) }}</span>
+            }
+          </td>
+          <td>
+            <div class="declaration-status">
+              @if (voyage.declarer) {
+              <span class="badge-declared">Déclaré</span>
+              } @else if (voyage.passager === 'passer_non_declarer') {
+              <span class="badge-skipped">Passé Non Déclaré</span>
+              } @else {
+              <span class="badge-not-declared">-</span>
+              }
+            </div>
+          </td>
+          <td>
+            <div class="type-produit">{{ voyage.produitNom || voyage.typeProduit || 'N/A' }}</div>
+            @if (voyage.typeProduit) {
+            <div class="type-produit-badge">{{ voyage.typeProduit }}</div>
+            }
+          </td>
+          <td>
+            <div class="quantite-value">{{ voyage.quantite | number }} L</div>
+          </td>
+          <td>
+            <div class="date-info">
+              <div class="date-value">{{ formatDate(voyage.dateDepart) }}</div>
+              <div class="lieu-value">{{ voyage.lieuDepart }}</div>
+            </div>
+          </td>
+          <td>
+            <div class="destination-value">{{ voyage.depotNom }}</div>
+            @if (voyage.dateArrivee) {
+            <div class="date-arrivee">Arrivé: {{ formatDate(voyage.dateArrivee) }}</div>
+            }
+          </td>
+          <td>
+            <div class="actions">
+              <button class="action-btn" (click)="viewVoyage(voyage)" title="Voir détails">
+                <span>👁️</span>
+              </button>
+              <!-- @if (voyage.clientId && !voyage.factureId) {
+              <button class="action-btn btn-prix-achat" (click)="openPrixAchatModal(voyage)"
+                title="Donner le prix d'achat">
+                <span>💰</span>
+              </button>
+              } -->
+            </div>
+          </td>
+        </tr>
+        }
+        }
+        } @else if (activeTab === 'en-cours' && voyagesEnCoursPage) {
+        @for (voyage of voyagesEnCoursPage.voyages; track voyage.id) {
+        <tr>
+          <td>
+            <div class="voyage-numero">{{ voyage.numeroVoyage }}</div>
+          </td>
+          <td>{{ voyage.camionImmatriculation || 'N/A' }}</td>
+          <td>
+            @if (voyage.clientVoyages && voyage.clientVoyages.length > 0) {
+            <div class="client-count-badge" (click)="showClientsList(voyage.clientVoyages, $event)"
+                 [title]="voyage.clientVoyages.length + ' client(s)'">
+              {{ voyage.clientVoyages.length }} client{{ voyage.clientVoyages.length > 1 ? 's' : '' }}
+            </div>
+            } @else {
+            <span class="no-client">-</span>
+            }
+          </td>
+          <td>
+            @if (canUpdateVoyageStatus(voyage)) {
+            <button class="btn-change-statut" (click)="openStatutModal(voyage)" [class]="getStatutClass(voyage.statut)"
+              title="Changer le statut">
+              {{ getStatutLabel(voyage.statut) }}
+            </button>
+            } @else {
+            <span class="statut-badge-readonly" [class]="getStatutClass(voyage.statut)">{{ getStatutLabel(voyage.statut) }}</span>
+            }
+          </td>
+          <td>
+            <div class="declaration-status">
+              @if (voyage.declarer) {
+              <span class="badge-declared">Déclaré</span>
+              } @else if (voyage.passager === 'passer_non_declarer') {
+              <span class="badge-skipped">Passé Non Déclaré</span>
+              } @else {
+              <span class="badge-not-declared">-</span>
+              }
+            </div>
+          </td>
+          <td>
+            <div class="type-produit">{{ voyage.produitNom || voyage.typeProduit || 'N/A' }}</div>
+          </td>
+          <td>{{ voyage.quantite }} L</td>
+          <td>{{ formatDate(voyage.dateDepart) }}</td>
+          <td>{{ voyage.depotNom }}</td>
+          <td>
+            <div class="action-buttons">
+              <button class="action-btn btn-view" (click)="viewVoyage(voyage)" title="Voir les détails">
+                <span>👁️</span>
+              </button>
+              @if (canUpdateVoyageStatus(voyage)) {
+              <button class="action-btn btn-statut" (click)="openStatutModal(voyage)" title="Changer le statut">
+                <span>🔄</span>
+              </button>
+              }
+            </div>
+          </td>
+        </tr>
+        }
+        } @else if (activeTab === 'archives' && voyagesArchivesPage) {
+        <tr>
+          <td [attr.colspan]="11" class="archives-filter-row">
+            <button
+              class="btn-group-client"
+              [class.active]="showOnlyDeclaredArchives"
+              (click)="showOnlyDeclaredArchives = !showOnlyDeclaredArchives">
+              {{ showOnlyDeclaredArchives ? 'Afficher tous les voyages' : 'Afficher uniquement les voyages déclarés' }}
+            </button>
+          </td>
+        </tr>
+        @for (voyage of voyagesArchivesFiltered; track voyage.id) {
+        <tr>
+          <td>
+            <div class="voyage-numero">{{ voyage.numeroVoyage }}</div>
+          </td>
+          <td>{{ voyage.camionImmatriculation || 'N/A' }}</td>
+          <td>
+            @if (voyage.clientVoyages && voyage.clientVoyages.length > 0) {
+            <div class="client-count-badge" (click)="showClientsList(voyage.clientVoyages, $event)"
+                 [title]="voyage.clientVoyages.length + ' client(s)'">
+              {{ voyage.clientVoyages.length }} client{{ voyage.clientVoyages.length > 1 ? 's' : '' }}
+            </div>
+            } @else {
+            <span class="no-client">-</span>
+            }
+          </td>
+          <td>
+            @if (canUpdateVoyageStatus(voyage)) {
+            <button class="btn-change-statut" (click)="openStatutModal(voyage)" [class]="getStatutClass(voyage.statut)"
+              title="Changer le statut">
+              {{ getStatutLabel(voyage.statut) }}
+            </button>
+            } @else {
+            <span class="statut-badge-readonly" [class]="getStatutClass(voyage.statut)">{{ getStatutLabel(voyage.statut) }}</span>
+            }
+          </td>
+          <td>
+            <div class="declaration-status">
+              @if (voyage.declarer) {
+              <span class="badge-declared">Déclaré</span>
+              } @else if (voyage.passager === 'passer_non_declarer') {
+              <span class="badge-skipped">Passé Non Déclaré</span>
+              } @else {
+              <span class="badge-not-declared">-</span>
+              }
+            </div>
+          </td>
+          <td>
+            <div class="type-produit">{{ voyage.produitNom || voyage.typeProduit || 'N/A' }}</div>
+          </td>
+          <td>{{ voyage.quantite }} L</td>
+          <td>{{ formatDate(voyage.dateDepart) }}</td>
+          <td>{{ voyage.depotNom }}</td>
+          <td>
+            <div class="action-buttons">
+              <button class="action-btn btn-view" (click)="viewVoyage(voyage)" title="Voir les détails">
+                <span>👁️</span>
+              </button>
+            </div>
+          </td>
+        </tr>
+        }
+        } @else if (filteredVoyages.length === 0) {
+        <tr>
+          <td [attr.colspan]="(activeTab === 'actifs' || activeTab === 'non-declares') ? 12 : 11" class="empty-state">
+            <div class="empty-message">
+              @if (activeTab === 'actifs') {
+              Aucun voyage actif trouvé
+              } @else if (activeTab === 'receptionnes') {
+              Aucun voyage en sortie de douane trouvé
+              } @else if (activeTab === 'non-declares') {
+              Aucun voyage non déclaré trouvé
+              } @else if (activeTab === 'partiellement-decharges') {
+              Aucun voyage partiellement déchargé trouvé
+              } @else if (activeTab === 'en-cours') {
+              Aucun voyage en cours trouvé
+              } @else if (activeTab === 'archives') {
+              Aucune archive trouvée
+              } @else if (activeTab === 'sans-prix-achat') {
+              Aucun voyage sans prix d'achat trouvé
+              } @else {
+              Aucun voyage trouvé
+              }
+            </div>
+          </td>
+        </tr>
+        } @else {
+        @for (voyage of filteredVoyages; track voyage.id) {
+        <tr>
+          @if (activeTab === 'actifs') {
+          <td class="checkbox-cell">
+            @if (activeTab === 'actifs' && voyage.statut === 'CHARGEMENT') {
+            <input type="checkbox" [checked]="isVoyageSelected(voyage.id)" (change)="toggleVoyageSelection(voyage.id)"
+              title="Sélectionner pour générer le bon d'enlèvement" />
+            }
+          </td>
+          }
+          <td>
+            <div class="voyage-numero">{{ voyage.numeroVoyage }}</div>
+          </td>
+          <td>
+            <div class="camion-info">
+              <div class="truck-icon">🚛</div>
+              <div class="camion-details">
+                <div class="camion-id">{{ voyage.camionImmatriculation || 'N/A' }}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            @if (voyage.clientVoyages && voyage.clientVoyages.length > 0) {
+            <div class="client-count-badge" (click)="showClientsList(voyage.clientVoyages, $event)"
+                 [title]="voyage.clientVoyages.length + ' client(s)'">
+              {{ voyage.clientVoyages.length }} client{{ voyage.clientVoyages.length > 1 ? 's' : '' }}
+            </div>
+            } @else if (voyage.clientNom) {
+            <div class="client-count-badge" title="1 client">
+              1 client
+            </div>
+            } @else {
+            <div class="no-client">-</div>
+            }
+          </td>
+          <td>
+            @if (canUpdateVoyageStatus(voyage)) {
+            <button class="btn-change-statut" (click)="openStatutModal(voyage)" [class]="getStatutClass(voyage.statut)"
+              title="Changer le statut">
+              {{ getStatutLabel(voyage.statut) }}
+            </button>
+            } @else {
+            <span class="statut-badge-readonly" [class]="getStatutClass(voyage.statut)">{{ getStatutLabel(voyage.statut) }}</span>
+            }
+          </td>
+          <td>
+            <div class="declaration-status">
+              @if (voyage.declarer) {
+              <span class="badge-declared">Déclaré</span>
+              } @else if (voyage.passager === 'passer_non_declarer') {
+              <span class="badge-skipped">Passé Non Déclaré</span>
+              } @else {
+              <span class="badge-not-declared">-</span>
+              }
+            </div>
+          </td>
+          <td>
+            <div class="type-produit">{{ voyage.produitNom || voyage.typeProduit || 'N/A' }}</div>
+            @if (voyage.typeProduit) {
+            <div class="type-produit-badge">{{ voyage.typeProduit }}</div>
+            }
+          </td>
+          <td>
+            <div class="quantite-value">{{ voyage.quantite | number }} L</div>
+          </td>
+          <td>
+            <div class="date-info">
+              <div class="date-value">{{ formatDate(voyage.dateDepart) }}</div>
+              <div class="lieu-value">{{ voyage.lieuDepart }}</div>
+            </div>
+          </td>
+          <td>
+            <div class="destination-value">{{ voyage.depotNom }}</div>
+            @if (voyage.dateArrivee) {
+            <div class="date-arrivee">Arrivé: {{ formatDate(voyage.dateArrivee) }}</div>
+            }
+          </td>
+          <td>
+            <div class="actions">
+              <button class="action-btn" (click)="viewVoyage(voyage)" title="Voir détails">
+                <span>👁️</span>
+              </button>
+              @if (activeTab === 'actifs' && voyage.statut === 'CHARGEMENT') {
+              <button class="action-btn btn-bon" (click)="generateBonEnlevement(voyage.id)"
+                title="Générer le bon d'enlèvement">
+                <span>📄</span>
+              </button>
+              }
+            </div>
+          </td>
+        </tr>
+        }
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (filterType === 'axe' && voyagesAxePage && voyagesAxePage.totalPages > 1) {
+  <div class="pagination-container">
+    <div class="pagination-info">
+      Page {{ voyagesAxePage.currentPage + 1 }} sur {{ voyagesAxePage.totalPages }}
+      ({{ voyagesAxePage.totalElements }} voyage{{ voyagesAxePage.totalElements > 1 ? 's' : '' }})
+    </div>
+    <div class="pagination-controls">
+      <button class="pagination-btn" (click)="changePageAxe(voyagesAxePage.currentPage - 1)"
+        [disabled]="voyagesAxePage.currentPage === 0 || isLoading" title="Page précédente">
+        ‹ Précédent
+      </button>
+      <div class="pagination-numbers">
+        @for (page of getPageNumbers(voyagesAxePage.currentPage, voyagesAxePage.totalPages); track page) {
+        @if (page === '...') {
+        <span class="pagination-ellipsis">...</span>
+        } @else if (typeof page === 'number') {
+        <button class="pagination-number" [class.active]="page === voyagesAxePage.currentPage"
+          (click)="changePageAxe(page)" [disabled]="isLoading">
+          {{ page + 1 }}
+        </button>
+        }
+        }
+      </div>
+      <button class="pagination-btn" (click)="changePageAxe(voyagesAxePage.currentPage + 1)"
+        [disabled]="voyagesAxePage.currentPage >= voyagesAxePage.totalPages - 1 || isLoading" title="Page suivante">
+        Suivant ›
+      </button>
+    </div>
+  </div>
+  }
+
+  @if (activeTab === 'partiellement-decharges' && voyagesPartiellementDechargesPage && voyagesPartiellementDechargesPage.totalPages > 1) {
+  <div class="pagination-container">
+    <div class="pagination-info">
+      Page {{ voyagesPartiellementDechargesPage.currentPage + 1 }} sur {{ voyagesPartiellementDechargesPage.totalPages }}
+      ({{ voyagesPartiellementDechargesPage.totalElements }} voyage{{ voyagesPartiellementDechargesPage.totalElements > 1 ? 's' : '' }})
+    </div>
+    <div class="pagination-controls">
+      <button class="pagination-btn" (click)="changePagePartiellementDecharges(voyagesPartiellementDechargesPage.currentPage - 1)"
+        [disabled]="voyagesPartiellementDechargesPage.currentPage === 0 || isLoading" title="Page précédente">
+        ‹ Précédent
+      </button>
+      <div class="pagination-numbers">
+        @for (page of getPageNumbers(voyagesPartiellementDechargesPage.currentPage, voyagesPartiellementDechargesPage.totalPages); track page) {
+        @if (page === '...') {
+        <span class="pagination-ellipsis">...</span>
+        } @else if (typeof page === 'number') {
+        <button class="pagination-number" [class.active]="page === voyagesPartiellementDechargesPage.currentPage"
+          (click)="changePagePartiellementDecharges(page)" [disabled]="isLoading">
+          {{ page + 1 }}
+        </button>
+        }
+        }
+      </div>
+      <button class="pagination-btn" (click)="changePagePartiellementDecharges(voyagesPartiellementDechargesPage.currentPage + 1)"
+        [disabled]="voyagesPartiellementDechargesPage.currentPage >= voyagesPartiellementDechargesPage.totalPages - 1 || isLoading" title="Page suivante">
+        Suivant ›
+      </button>
+    </div>
+  </div>
+  }
+
+  @if (activeTab === 'sans-prix-achat') {
+  @if (groupByClient && voyagesParClientPage && voyagesParClientPage.totalPages > 1) {
+  <div class="pagination-container">
+    <div class="pagination-info">
+      Page {{ voyagesParClientPage.currentPage + 1 }} sur {{ voyagesParClientPage.totalPages }}
+      ({{ voyagesParClientPage.totalElements }} client{{ voyagesParClientPage.totalElements > 1 ? 's' : '' }})
+    </div>
+    <div class="pagination-controls">
+      <button class="pagination-btn" (click)="changePageSansPrixAchat(voyagesParClientPage.currentPage - 1)"
+        [disabled]="voyagesParClientPage.currentPage === 0 || isLoading" title="Page précédente">
+        ‹ Précédent
+      </button>
+      <div class="pagination-numbers">
+        @for (page of getPageNumbers(voyagesParClientPage.currentPage, voyagesParClientPage.totalPages); track page) {
+        @if (page === '...') {
+        <span class="pagination-ellipsis">...</span>
+        } @else if (typeof page === 'number') {
+        <button class="pagination-number" [class.active]="page === voyagesParClientPage.currentPage"
+          (click)="changePageSansPrixAchat(page)" [disabled]="isLoading">
+          {{ page + 1 }}
+        </button>
+        }
+        }
+      </div>
+      <button class="pagination-btn" (click)="changePageSansPrixAchat(voyagesParClientPage.currentPage + 1)"
+        [disabled]="voyagesParClientPage.currentPage >= voyagesParClientPage.totalPages - 1 || isLoading"
+        title="Page suivante">
+        Suivant ›
+      </button>
+    </div>
+  </div>
+  } @else if (!groupByClient && voyagesSansPrixAchatPage && voyagesSansPrixAchatPage.totalPages > 1) {
+  <div class="pagination-container">
+    <div class="pagination-info">
+      Page {{ voyagesSansPrixAchatPage.currentPage + 1 }} sur {{ voyagesSansPrixAchatPage.totalPages }}
+      ({{ voyagesSansPrixAchatPage.totalElements }} voyage{{ voyagesSansPrixAchatPage.totalElements > 1 ? 's' : '' }})
+    </div>
+    <div class="pagination-controls">
+      <button class="pagination-btn" (click)="changePageSansPrixAchat(voyagesSansPrixAchatPage.currentPage - 1)"
+        [disabled]="voyagesSansPrixAchatPage.currentPage === 0 || isLoading" title="Page précédente">
+        ‹ Précédent
+      </button>
+      <div class="pagination-numbers">
+        @for (page of getPageNumbers(voyagesSansPrixAchatPage.currentPage, voyagesSansPrixAchatPage.totalPages); track
+        page) {
+        @if (page === '...') {
+        <span class="pagination-ellipsis">...</span>
+        } @else if (typeof page === 'number') {
+        <button class="pagination-number" [class.active]="page === voyagesSansPrixAchatPage.currentPage"
+          (click)="changePageSansPrixAchat(page)" [disabled]="isLoading">
+          {{ page + 1 }}
+        </button>
+        }
+        }
+      </div>
+      <button class="pagination-btn" (click)="changePageSansPrixAchat(voyagesSansPrixAchatPage.currentPage + 1)"
+        [disabled]="voyagesSansPrixAchatPage.currentPage >= voyagesSansPrixAchatPage.totalPages - 1 || isLoading"
+        title="Page suivante">
+        Suivant ›
+      </button>
+    </div>
+  </div>
+  }
+  }
+</div>
+
+@if (activeTab === 'en-cours' && voyagesEnCoursPage && voyagesEnCoursPage.totalPages > 1) {
+<div class="pagination-container">
+  <div class="pagination-info">
+    Page {{ voyagesEnCoursPage.currentPage + 1 }} sur {{ voyagesEnCoursPage.totalPages }}
+    ({{ voyagesEnCoursPage.totalElements }} voyage{{ voyagesEnCoursPage.totalElements > 1 ? 's' : '' }})
+  </div>
+  <div class="pagination-controls">
+    <button class="pagination-btn" (click)="changePageEnCours(voyagesEnCoursPage.currentPage - 1)"
+      [disabled]="voyagesEnCoursPage.currentPage === 0 || isLoading" title="Page précédente">
+      ‹ Précédent
+    </button>
+    <div class="pagination-numbers">
+      @for (page of getPageNumbers(voyagesEnCoursPage.currentPage, voyagesEnCoursPage.totalPages); track page) {
+      @if (page === '...') {
+      <span class="pagination-ellipsis">...</span>
+      } @else if (typeof page === 'number') {
+      <button class="pagination-number" [class.active]="page === voyagesEnCoursPage.currentPage"
+        (click)="changePageEnCours(page)" [disabled]="isLoading">
+        {{ page + 1 }}
+      </button>
+      }
+      }
+    </div>
+    <button class="pagination-btn" (click)="changePageEnCours(voyagesEnCoursPage.currentPage + 1)"
+      [disabled]="voyagesEnCoursPage.currentPage >= voyagesEnCoursPage.totalPages - 1 || isLoading" title="Page suivante">
+      Suivant ›
+    </button>
+  </div>
+</div>
+}
+
+@if (activeTab === 'archives' && voyagesArchivesPage && voyagesArchivesPage.totalPages > 1) {
+<div class="pagination-container">
+  <div class="pagination-info">
+    Page {{ voyagesArchivesPage.currentPage + 1 }} sur {{ voyagesArchivesPage.totalPages }}
+    ({{ voyagesArchivesPage.totalElements }} voyage{{ voyagesArchivesPage.totalElements > 1 ? 's' : '' }})
+  </div>
+  <div class="pagination-controls">
+    <button class="pagination-btn" (click)="changePageArchives(voyagesArchivesPage.currentPage - 1)"
+      [disabled]="voyagesArchivesPage.currentPage === 0 || isLoading" title="Page précédente">
+      ‹ Précédent
+    </button>
+    <div class="pagination-numbers">
+      @for (page of getPageNumbers(voyagesArchivesPage.currentPage, voyagesArchivesPage.totalPages); track page) {
+      @if (page === '...') {
+      <span class="pagination-ellipsis">...</span>
+      } @else if (typeof page === 'number') {
+      <button class="pagination-number" [class.active]="page === voyagesArchivesPage.currentPage"
+        (click)="changePageArchives(page)" [disabled]="isLoading">
+        {{ page + 1 }}
+      </button>
+      }
+      }
+    </div>
+    <button class="pagination-btn" (click)="changePageArchives(voyagesArchivesPage.currentPage + 1)"
+      [disabled]="voyagesArchivesPage.currentPage >= voyagesArchivesPage.totalPages - 1 || isLoading" title="Page suivante">
+      Suivant ›
+    </button>
+  </div>
+</div>
+}
+
+@if (showDetailModal && selectedVoyage) {
+<div class="modal-overlay" (click)="closeDetailModal()">
+  <div class="modal-content voyage-detail-modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Détails du Voyage {{ selectedVoyage.numeroVoyage }}</h2>
+      <button class="modal-close" (click)="closeDetailModal()" aria-label="Fermer">×</button>
+    </div>
+
+    <div class="modal-tabs">
+      <button class="tab-btn" [class.active]="activeDetailTab === 'details'" (click)="setDetailTab('details')">
+        Détails
+      </button>
+      @if (selectedVoyage.transitaireId) {
+      <button class="tab-btn" [class.active]="activeDetailTab === 'frais'" (click)="setDetailTab('frais')">
+        Frais Transitaire
+      </button>
+      }
+    </div>
+
+    <div class="modal-body">
+      @if (activeDetailTab === 'details') {
+      <div class="voyage-details">
+        <div class="detail-section">
+          <h3>Informations générales</h3>
+          <div class="detail-grid">
+            <div class="detail-item">
+              <span class="detail-label">Numéro de voyage:</span>
+              <span class="detail-value">{{ selectedVoyage.numeroVoyage }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Statut:</span>
+              <span class="status-badge" [class]="getStatutClass(selectedVoyage.statut)">
+                {{ getStatutLabel(selectedVoyage.statut) }}
+              </span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Camion:</span>
+              <span class="detail-value">{{ selectedVoyage.camionImmatriculation || 'N/A' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Produit:</span>
+              <span class="detail-value">{{ selectedVoyage.produitNom || 'N/A' }} ({{ selectedVoyage.typeProduit ||
+                'N/A' }})</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Dépôt:</span>
+              <span class="detail-value">{{ selectedVoyage.depotNom || 'Non renseigné' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Quantité:</span>
+              <span class="detail-value">{{ selectedVoyage.quantite | number }} L</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <h3>Itinéraire</h3>
+          <div class="detail-grid">
+            <div class="detail-item">
+              <span class="detail-label">Lieu de départ:</span>
+              <span class="detail-value">{{ selectedVoyage.lieuDepart }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Destination:</span>
+              <span class="detail-value">{{ selectedVoyage.destination }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Date de départ:</span>
+              <span class="detail-value">{{ formatDateTime(selectedVoyage.dateDepart) }}</span>
+            </div>
+            @if (selectedVoyage.dateArrivee) {
+            <div class="detail-item">
+              <span class="detail-label">Date d'arrivée:</span>
+              <span class="detail-value">{{ formatDateTime(selectedVoyage.dateArrivee) }}</span>
+            </div>
+            }
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <div class="section-header-with-action">
+            <h3>Clients</h3>
+            @if (canAssignClient(selectedVoyage) && canAssignClientByRole()) {
+            <button class="btn-add-client-detail" (click)="addClientInDetail()" title="Ajouter un client">
+              <span>+</span>
+              Ajouter un client
+            </button>
+            }
+          </div>
+          @if (selectedVoyage.clientVoyages && selectedVoyage.clientVoyages.length > 0) {
+          <div class="clients-list-detail">
+            @for (clientVoyage of selectedVoyage.clientVoyages; track clientVoyage.id) {
+            <div class="client-voyage-card">
+              <div class="client-card-header">
+                <div class="client-avatar" [class]="'avatar-' + getClientColor(clientVoyage.clientNom || '')">
+                  {{ getClientInitiales(clientVoyage.clientNom || '') }}
+                </div>
+                <div class="client-details">
+                  <div class="client-nom">{{ clientVoyage.clientNom }}</div>
+                  @if (clientVoyage.clientEmail) {
+                  <div class="client-email">{{ clientVoyage.clientEmail }}</div>
+                  }
+                </div>
+              </div>
+              <div class="client-voyage-info">
+                <div class="info-row">
+                  <span class="info-label">Quantité:</span>
+                  <span class="info-value">{{ clientVoyage.quantite || 0 }} L</span>
+                </div>
+                @if (clientVoyage.manquant && clientVoyage.manquant > 0) {
+                <div class="info-row">
+                  <span class="info-label">Manquant:</span>
+                  <span class="info-value warning">{{ clientVoyage.manquant }} L</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Quantité livrée:</span>
+                  <span class="info-value">{{ (clientVoyage.quantite || 0) - clientVoyage.manquant }} L</span>
+                </div>
+                }
+                @if (clientVoyage.prixAchat) {
+                <div class="info-row">
+                  <span class="info-label">Prix d'achat:</span>
+                  <span class="info-value success">{{ clientVoyage.prixAchat | number }} FCFA/L</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Total:</span>
+                  <span class="info-value success">
+                    {{ ((clientVoyage.quantite || 0) - (clientVoyage.manquant || 0)) * clientVoyage.prixAchat | number }} FCFA
+                  </span>
+                </div>
+                } @else {
+                <div class="info-row">
+                  <span class="info-label">Prix d'achat:</span>
+                  <span class="info-value missing">Non défini</span>
+                </div>
+                <button class="btn-add-prix-achat-small" (click)="openPrixAchatModal(selectedVoyage, clientVoyage)"
+                  title="Donner le prix d'achat pour ce client">
+                  <span>💰</span>
+                  Donner le prix d'achat
+                </button>
+                }
+                @if (clientVoyage.prixAchat) {
+                <button class="btn-add-prix-achat-small" (click)="openPrixAchatModal(selectedVoyage, clientVoyage)"
+                  title="Modifier le prix d'achat pour ce client">
+                  <span>✏️</span>
+                  Modifier le prix d'achat
+                </button>
+                }
+                <button class="btn-add-prix-achat-small" (click)="openEditClientVoyageModal(selectedVoyage, clientVoyage)"
+                  title="Modifier la quantité attribuée à ce client">
+                  <span>⚙️</span>
+                  Modifier le client
+                </button>
+                @if (clientVoyage.statut) {
+                <div class="info-row">
+                  <span class="info-label">Statut:</span>
+                  <span class="status-badge-small" [class.livrer]="clientVoyage.statut === 'LIVRER'"
+                    [class.non-livre]="clientVoyage.statut === 'NON_LIVRE'">
+                    {{ clientVoyage.statut === 'LIVRER' ? 'Livré' : 'Non livré' }}
+                  </span>
+                </div>
+                }
+              </div>
+            </div>
+            }
+          </div>
+          } @else if (selectedVoyage.clientNom) {
+          <!-- Compatibilité avec l'ancien format -->
+          <div class="client-card">
+            <div class="client-avatar" [class]="'avatar-' + getClientColor(selectedVoyage.clientNom)">
+              {{ getClientInitiales(selectedVoyage.clientNom) }}
+            </div>
+            <div class="client-details">
+              <div class="client-nom">{{ selectedVoyage.clientNom }}</div>
+              <div class="client-email">{{ selectedVoyage.clientEmail || '' }}</div>
+            </div>
+          </div>
+          } @else {
+          @if (canAssignClient(selectedVoyage) && canAssignClientByRole()) {
+          <div class="assign-client">
+            <button class="btn-select-client" (click)="addClientInDetail()">
+              <span>+</span>
+              Assigner un client
+            </button>
+          </div>
+          } @else {
+          <div class="no-client">Aucun client assigné</div>
+          }
+          }
+        </div>
+
+        <div class="detail-section">
+          <h3>Transitaire</h3>
+          @if (selectedVoyage.transitaireNom) {
+          <div class="transitaire-info">
+            <div class="transitaire-nom">{{ selectedVoyage.transitaireNom }}</div>
+            @if (selectedVoyage.transitaireIdentifiant) {
+            <div class="transitaire-identifiant">N°: {{ selectedVoyage.transitaireIdentifiant }} &nbsp; | &nbsp; Tél: {{
+              selectedVoyage.transitairePhone }}</div>
+            }
+          </div>
+          } @else {
+          <div class="no-transitaire">
+            <p>Aucun transitaire assigné</p>
+            <button class="btn-add-transitaire" (click)="openSelectModal('transitaire')">
+              <span>+</span>
+              Assigner un transitaire
+            </button>
+          </div>
+          }
+        </div>
+
+        <div class="detail-section">
+          <h3>Factures</h3>
+          @if (selectedVoyage.factures && selectedVoyage.factures.length > 0) {
+          <div class="factures-list-detail">
+            @for (facture of selectedVoyage.factures; track facture.id) {
+            <div class="facture-card">
+              <div class="facture-card-header">
+                <div class="facture-numero">Facture #{{ facture.numero }}</div>
+                <span class="status-badge-small" [class]="getFactureStatutClass(facture.statut)">
+                  {{ getFactureStatutLabel(facture.statut) }}
+                </span>
+              </div>
+              <div class="facture-info">
+                <div class="info-row">
+                  <span class="info-label">Date:</span>
+                  <span class="info-value">{{ formatDate(facture.date) }}</span>
+                </div>
+                @if (facture.clientNom) {
+                <div class="info-row">
+                  <span class="info-label">Client:</span>
+                  <span class="info-value">{{ facture.clientNom }}</span>
+                </div>
+                }
+                <div class="info-row">
+                  <span class="info-label">Montant:</span>
+                  <span class="info-value">{{ facture.montant | number }} FCFA</span>
+                </div>
+                @if (facture.montantPaye !== undefined && facture.montantPaye !== null) {
+                <div class="info-row">
+                  <span class="info-label">Montant payé:</span>
+                  <span class="info-value">{{ facture.montantPaye | number }} FCFA</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Reste à payer:</span>
+                  <span class="info-value">{{ (facture.montant || 0) - (facture.montantPaye || 0) | number }} FCFA</span>
+                </div>
+                }
+                @if (facture.dateEcheance) {
+                <div class="info-row">
+                  <span class="info-label">Date d'échéance:</span>
+                  <span class="info-value">{{ formatDate(facture.dateEcheance) }}</span>
+                </div>
+                }
+                @if (facture.description) {
+                <div class="info-row">
+                  <span class="info-label">Description:</span>
+                  <span class="info-value">{{ facture.description }}</span>
+                </div>
+                }
+                @if (facture.statut !== 'PAYEE' && facture.montant && (facture.montantPaye || 0) < facture.montant) {
+                <div class="info-row">
+                  <button class="btn-marquer-paye" (click)="marquerFacturePayee(facture)" title="Marquer la facture comme payée">
+                    ✓ Marquer comme payée
+                  </button>
+                </div>
+                }
+              </div>
+            </div>
+            }
+          </div>
+          } @else if (selectedVoyage.factureId) {
+          <!-- Compatibilité avec l'ancien format -->
+          <div class="facture-card">
+            <div class="facture-card-header">
+              <div class="facture-numero">Facture #{{ selectedVoyage.factureNumero }}</div>
+              @if (selectedVoyage.factureStatut) {
+              <span class="status-badge-small" [class]="getFactureStatutClass(selectedVoyage.factureStatut)">
+                {{ getFactureStatutLabel(selectedVoyage.factureStatut) }}
+              </span>
+              }
+            </div>
+            <div class="facture-info">
+              <div class="info-row">
+                <span class="info-label">Montant:</span>
+                <span class="info-value">{{ selectedVoyage.factureMontant | number }} FCFA</span>
+              </div>
+              @if (selectedVoyage.factureMontantPaye !== undefined && selectedVoyage.factureMontantPaye !== null) {
+              <div class="info-row">
+                <span class="info-label">Montant payé:</span>
+                <span class="info-value">{{ selectedVoyage.factureMontantPaye | number }} FCFA</span>
+              </div>
+              }
+            </div>
+          </div>
+          } @else {
+          <div class="no-facture">Aucune facture associée</div>
+          }
+        </div>
+
+        @if (selectedVoyage.notes) {
+        <div class="detail-section">
+          <h3>Notes</h3>
+          <p class="notes-text">{{ selectedVoyage.notes }}</p>
+        </div>
+        }
+
+        <!-- La section Prix d'achat est maintenant intégrée dans la section Clients ci-dessus -->
+      </div>
+      } @else if (activeDetailTab === 'frais') {
+      <div class="frais-section">
+        <!-- <div class="frais-header">
+          <h3>Frais</h3>
+          <button class="btn-add-frais" (click)="toggleAddFraisForm()">
+            <span>+</span>
+            Ajouter des frais
+          </button>
+        </div> -->
+
+        @if (showAddFraisForm) {
+        <div class="add-frais-form">
+          <h4>Nouveau frais</h4>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="frais-type">Type de frais *</label>
+              <select id="frais-type" [(ngModel)]="newFrais.type" class="form-select">
+                @for (fraistype of getAvailableFraisTypes(); track fraistype) {
+                <option [value]="fraistype">{{ getFraisTypeLabel(fraistype) }}</option>
+                }
+              </select>
+              <p class="form-hint">
+                @if (selectedVoyage && selectedVoyage.statut === 'DOUANE') {
+                Frais disponibles pour un voyage à la douane
+                } @else {
+                Tous les types de frais sont disponibles
+                }
+              </p>
+            </div>
+            <div class="form-group">
+              <label for="frais-montant">Montant (FCFA) *</label>
+              <input type="number" id="frais-montant" [(ngModel)]="newFrais.montant" class="form-input" min="0"
+                step="0.01" required />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="frais-date">Date *</label>
+              <input type="date" id="frais-date" [(ngModel)]="newFrais.date" class="form-input" required />
+            </div>
+            <div class="form-group">
+              <label for="frais-statut">Statut *</label>
+              <select id="frais-statut" [(ngModel)]="newFrais.statut" class="form-select">
+                <option value="EN_ATTENTE">En attente</option>
+                <option value="VALIDE">Validée</option>
+                <option value="REJETE">Rejetée</option>
+                <option value="ANNULE">Annulée</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="frais-description">Description *</label>
+            <textarea id="frais-description" [(ngModel)]="newFrais.description" class="form-textarea" rows="3" required
+              placeholder="Description du frais..."></textarea>
+          </div>
+          <div class="form-group">
+            <label>Compte à débiter *</label>
+            <div class="radio-group">
+              <label class="radio-label">
+                <input type="radio" name="compteType" value="banque" [(ngModel)]="compteType"
+                  (change)="onCompteTypeChange()" />
+                <span>Banque</span>
+              </label>
+              <label class="radio-label">
+                <input type="radio" name="compteType" value="caisse" [(ngModel)]="compteType"
+                  (change)="onCompteTypeChange()" />
+                <span>Caisse</span>
+              </label>
+            </div>
+          </div>
+          @if (compteType === 'banque') {
+          <div class="form-group">
+            <label for="frais-compte">Compte bancaire *</label>
+            <select id="frais-compte" [(ngModel)]="newFrais.compteId" class="form-select" required>
+              <option [value]="undefined">Sélectionner un compte</option>
+              @for (compte of comptesBancaires; track compte.id) {
+              <option [value]="compte.id">
+                {{ compte.banque }} - {{ compte.numeroCompteBancaire || compte.numero }} ({{ compte.solde | number }}
+                FCFA)
+              </option>
+              }
+            </select>
+          </div>
+          } @else {
+          <div class="form-group">
+            <label for="frais-caisse">Caisse *</label>
+            <select id="frais-caisse" [(ngModel)]="newFrais.caisseId" class="form-select" required>
+              <option [value]="undefined">Sélectionner une caisse</option>
+              @for (caisse of caisses; track caisse.id) {
+              <option [value]="caisse.id">
+                {{ caisse.nom }} ({{ caisse.solde | number }} FCFA)
+              </option>
+              }
+            </select>
+          </div>
+          }
+          <div class="form-actions">
+            <button class="btn-cancel" (click)="toggleAddFraisForm()">
+              Annuler
+            </button>
+            <button class="btn-submit" (click)="addFrais()" [disabled]="isLoading">
+              @if (isLoading) {
+              Enregistrement...
+              } @else {
+              Ajouter
+              }
+            </button>
+          </div>
+        </div>
+        }
+
+        @if (!selectedVoyage.transactions || selectedVoyage.transactions.length === 0) {
+        <div class="empty-state">
+          <p>Aucun frais enregistré pour ce voyage.</p>
+        </div>
+        } @else {
+        <div class="transactions-table-container">
+          <table class="transactions-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Description</th>
+                <th>Montant</th>
+                <th>Statut</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (transaction of selectedVoyage.transactions; track transaction.id) {
+              <tr>
+                <td>{{ formatDateTime(transaction.date) }}</td>
+                <td>
+                  <span class="transaction-type-badge">{{ getTransactionTypeLabel(transaction.type) }}</span>
+                </td>
+                <td>{{ transaction.description || '-' }}</td>
+                <td>
+                  <span class="transaction-montant">{{ transaction.montant | number }} FCFA</span>
+                </td>
+                <td>
+                  <span class="status-badge" [class.badge-green]="transaction.statut === 'VALIDE'"
+                    [class.badge-orange]="transaction.statut === 'EN_ATTENTE'"
+                    [class.badge-red]="transaction.statut === 'REJETE' || transaction.statut === 'ANNULE'">
+                    @if (transaction.statut === 'VALIDE') {
+                    Validée
+                    } @else if (transaction.statut === 'EN_ATTENTE') {
+                    En attente
+                    } @else if (transaction.statut === 'REJETE') {
+                    Rejetée
+                    } @else if (transaction.statut === 'ANNULE') {
+                    Annulée
+                    } @else {
+                    {{ transaction.statut }}
+                    }
+                  </span>
+                </td>
+              </tr>
+              }
+            </tbody>
+            <tfoot>
+              <tr class="total-row">
+                <td colspan="3"><strong>Total des frais:</strong></td>
+                <td colspan="2">
+                  <strong class="total-montant">{{ getTotalFrais() | number }} FCFA</strong>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        }
+      </div>
+      }
+    </div>
+  </div>
+</div>
+}
+
+@if (showStatutModal && voyageForStatutChange) {
+<div class="modal-overlay" (click)="closeStatutModal()">
+  <div class="modal-content statut-modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Changer le statut du voyage</h2>
+      <button class="modal-close" (click)="closeStatutModal()" aria-label="Fermer">×</button>
+    </div>
+    <div class="modal-body">
+      <p class="voyage-info">Voyage: <strong>{{ voyageForStatutChange.numeroVoyage }}</strong></p>
+      <div class="etats-list">
+        @for (etat of getVisibleEtats(); track etat.etat) {
+          @if ((etat.etat === 'Chargé' || etat.etat === 'Départ' || etat.etat === 'Réceptionné') && etat.valider) {
+            <div class="etat-item" [class.etat-valide]="etat.valider"
+              [class.etat-selected]="selectedStatut === getStatutFromEtat(etat.etat)" [class.etat-disabled]="etat.valider"
+              (click)="canSelectEtat(etat) && (selectedStatut = getStatutFromEtat(etat.etat))">
+              <div class="etat-content">
+                <div class="etat-label">
+                  @if (etat.valider) {
+                    <span class="check-icon">✓</span>
+                  }
+                  <span>{{ getEtatLabel(etat.etat) }}</span>
+                </div>
+                @if (etat.valider && etat.dateHeure) {
+                  <div class="etat-date">{{ formatDateTime(etat.dateHeure) }}</div>
+                }
+              </div>
+            </div>
+          }@else if ((etat.etat === 'Réceptionné') && !voyageForStatutChange.liberer) {
+           <div class="etat-info">Le transitaire n'a pas libéré ce voyage.</div>
+          } @else if (!(etat.etat === 'Réceptionné' && voyageForStatutChange.liberer)) {
+            <div class="etat-item" [class.etat-valide]="etat.valider"
+              [class.etat-selected]="selectedStatut === getStatutFromEtat(etat.etat)" [class.etat-disabled]="etat.valider"
+              (click)="canSelectEtat(etat) && (selectedStatut = getStatutFromEtat(etat.etat))">
+              <div class="etat-content">
+                <div class="etat-label">
+                  @if (etat.valider) {
+                    <span class="check-icon">✓</span>
+                  }
+                  <span>{{ getEtatLabel(etat.etat) }}</span>
+                </div>
+                @if (etat.valider && etat.dateHeure) {
+                  <div class="etat-date">{{ formatDateTime(etat.dateHeure) }}</div>
+                }
+              </div>
+            </div>
+          }
+        }
+      </div>
+      <!-- Formulaire pour le statut LIVRE -->
+      @if (selectedStatut === 'LIVRE') {
+      <div class="livre-form">
+        <h3>Informations d'attribution</h3>
+
+        <!-- Liste des clients existants -->
+        @if (voyageForStatutChange.clientVoyages && voyageForStatutChange.clientVoyages.length > 0) {
+        <div class="existing-clients-section">
+          <h4>Clients existants</h4>
+          @for (clientVoyage of voyageForStatutChange.clientVoyages; track clientVoyage.id) {
+          <div class="client-voyage-item">
+            <div class="client-info">
+              <strong>{{ clientVoyage.clientNom }}</strong>
+              @if (clientVoyage.clientEmail) {
+              <span class="client-email">{{ clientVoyage.clientEmail }}</span>
+              }
+            </div>
+            <div class="client-quantity">
+              Quantité: {{ clientVoyage.quantite || 0 }} L
+            </div>
+          </div>
+          }
+        </div>
+        }
+
+        <!-- Ajouter de nouveaux clients -->
+        <div class="new-clients-section">
+          <h4>Ajouter des clients</h4>
+          <div class="clients-list">
+            @for (clientItem of livreClients; track $index) {
+            <div class="client-item-form">
+              <div class="form-group">
+                <label>Client *</label>
+                <button type="button" class="btn-select-client" (click)="addClientForLivre()">
+                  @if (clientItem.clientId) {
+                  {{ getClientName(clientItem.clientId) }}
+                  } @else {
+                  Sélectionner un client
+                  }
+                </button>
+              </div>
+              <div class="form-group">
+                <label>Quantité (litres) *</label>
+                <input type="number" class="form-input" [(ngModel)]="clientItem.quantite" min="0" step="0.01"
+                  placeholder="0" />
+              </div>
+              <button type="button" class="btn-remove-client" (click)="removeClientForLivre($index)">×</button>
+            </div>
+            }
+          </div>
+          <button type="button" class="btn-add-client" (click)="addClientForLivre()">
+            + Ajouter un client
+          </button>
+          @if (voyageForStatutChange.quantite) {
+          <div class="quantity-info">
+            <small>Quantité totale du voyage: {{ voyageForStatutChange.quantite }} L</small>
+            <small>Déjà attribuée (clients existants): {{ getTotalQuantiteClientsExistants() }} L</small>
+            <small>À attribuer (nouveaux clients): {{ getTotalQuantiteClients() }} L</small>
+            <small>Total attribué: {{ getTotalQuantiteAttribueeLIVRE() }} L</small>
+            <small>Reste: {{ getResteQuantiteLIVRE() }} L</small>
+          </div>
+          }
+        </div>
+      </div>
+      }
+
+      <!-- Formulaire pour le statut DECHARGER -->
+      @if (selectedStatut === 'DECHARGER') {
+      <div class="decharger-form">
+        <h3>Informations de déchargement</h3>
+        <p class="form-help" style="margin-bottom: 1rem;">
+          Cochez les clients qui ont été livrés. Seuls les clients cochés seront traités lors du déchargement.
+        </p>
+
+        <!-- Manquant par ClientVoyage -->
+        @if (voyageForStatutChange.clientVoyages && voyageForStatutChange.clientVoyages.length > 0) {
+        @for (clientVoyage of voyageForStatutChange.clientVoyages; track clientVoyage.id) {
+        <div class="form-group" [class.client-livre]="isClientLivrer(clientVoyage.id)">
+          <div class="client-livre-header">
+            <label class="toggle-label">
+              <input type="checkbox"
+                [checked]="isClientLivrer(clientVoyage.id)"
+                (change)="toggleClientLivrer(clientVoyage.id)"
+                class="toggle-checkbox" />
+              <span class="toggle-text">
+                {{ clientVoyage.clientNom }} - {{ clientVoyage.quantite }} L
+                @if (isClientLivrer(clientVoyage.id)) {
+                  <span class="livre-badge">✓ Livré</span>
+                }
+              </span>
+            </label>
+            @if (isClientLivrer(clientVoyage.id)) {
+              <button type="button" class="btn-modifier" (click)="toggleModifierMode(clientVoyage.id)">
+                @if (isModifierMode(clientVoyage.id)) {
+                  Annuler
+                } @else {
+                  Modifier
+                }
+              </button>
+            }
+          </div>
+
+          <div class="manquant-input-container">
+            <label for="decharger-manquant-{{ clientVoyage.id }}">Manquant (litres)</label>
+            <input
+              type="number"
+              id="decharger-manquant-{{ clientVoyage.id }}"
+              class="form-input"
+              [class.disabled]="isClientFieldDisabled(clientVoyage.id)"
+              [ngModel]="dechargerManquants[clientVoyage.id || 0]"
+              (ngModelChange)="onDechargerManquantChange(clientVoyage.id, $event)"
+              [disabled]="isClientFieldDisabled(clientVoyage.id)"
+              [readonly]="isClientFieldDisabled(clientVoyage.id)"
+              min="0"
+              step="0.01"
+              placeholder="0" />
+            <small class="form-help">
+              Quantité manquante pour ce client
+              @if (isClientLivrer(clientVoyage.id) && !isModifierMode(clientVoyage.id)) {
+                (déjà livré - cliquez sur "Modifier" pour changer)
+              }
+            </small>
+          </div>
+        </div>
+        }
+        } @else {
+        <div class="form-group">
+          <label for="decharger-manquant">Manquant (litres)</label>
+          <input type="number" id="decharger-manquant" class="form-input" min="0" step="0.01" placeholder="0" />
+          <small class="form-help">Quantité manquante par rapport à la quantité initiale</small>
+        </div>
+        }
+      </div>
+      }
+
+      <div class="modal-actions">
+        <button class="btn-cancel" (click)="closeStatutModal()">
+          Annuler
+        </button>
+        <button class="btn-submit" (click)="confirmStatutChange()" [disabled]="!selectedStatut || isLoading">
+          @if (isLoading) {
+          Enregistrement...
+          } @else {
+          Valider
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+}
+
+@if (showSelectModal) {
+<div class="modal-overlay" (click)="closeSelectModal()">
+  <div class="modal-content select-modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>
+        @if (selectModalType === 'transitaire') {
+        Sélectionner un transitaire
+        } @else {
+        Sélectionner un client
+        }
+      </h2>
+      <button class="modal-close" (click)="closeSelectModal()" aria-label="Fermer">×</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="search-container-modal">
+        <input type="text" class="search-input-modal" placeholder="Rechercher..." [(ngModel)]="searchSelectTerm"
+          (input)="onSearchSelectChange()" />
+        <span class="search-icon-modal">🔍</span>
+      </div>
+
+      <div class="select-list-container">
+        @if (selectModalType === 'transitaire') {
+        @if (filteredTransitaires.length === 0) {
+        <div class="empty-select-list">
+          @if (searchSelectTerm) {
+          Aucun transitaire trouvé pour "{{ searchSelectTerm }}"
+          } @else {
+          Aucun transitaire disponible
+          }
+        </div>
+        } @else {
+        @for (transitaire of filteredTransitaires; track transitaire.id) {
+        <div class="select-item" (click)="selectTransitaire(transitaire)">
+          <div class="select-item-icon">🚚</div>
+          <div class="select-item-content">
+            <div class="select-item-name">{{ transitaire.nom }}</div>
+            <div class="select-item-details">
+              N°: {{ transitaire.identifiant }}
+              @if (transitaire.telephone) {
+              &nbsp; | &nbsp; 📞 {{ transitaire.telephone }}
+              }
+            </div>
+          </div>
+        </div>
+        }
+        }
+        } @else if (selectModalType === 'client') {
+        @if (filteredClients.length === 0) {
+        <div class="empty-select-list">
+          @if (searchSelectTerm) {
+          Aucun client trouvé pour "{{ searchSelectTerm }}"
+          } @else {
+          Aucun client disponible
+          }
+        </div>
+        } @else {
+        @for (client of filteredClients; track client.id) {
+        <div class="select-item" (click)="showStatutModal ? selectClientForLivre(client) : selectClient(client); $event.stopPropagation()">
+          <div class="select-item-icon" [class]="'avatar-' + getClientColor(client.nom)">
+            {{ getClientInitiales(client.nom) }}
+          </div>
+          <div class="select-item-content">
+            <div class="select-item-name">{{ client.nom }}</div>
+            <div class="select-item-details">
+              @if (client.email) {
+              {{ client.email }}
+              }
+            </div>
+          </div>
+        </div>
+        }
+        }
+        }
+      </div>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Modal pour donner le prix d'achat -->
+@if (showPrixAchatModal && voyageForPrixAchat && clientVoyageForPrixAchat) {
+<div class="modal-overlay" (click)="closePrixAchatModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>@if (clientVoyageForPrixAchat && clientVoyageForPrixAchat.prixAchat) { Modifier le prix d'achat } @else { Donner le prix d'achat }</h2>
+      <button class="modal-close" (click)="closePrixAchatModal()" aria-label="Fermer">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label for="prix-achat">Prix d'achat (FCFA/litre) *</label>
+        <input type="number" id="prix-achat" class="form-input" [(ngModel)]="prixAchatValue" min="0" step="0.01"
+          placeholder="0" required />
+        <small class="form-help">Prix d'achat par litre pour la création de la facture</small>
+      </div>
+      <div class="form-info">
+        <p><strong>Voyage:</strong> {{ voyageForPrixAchat.numeroVoyage }}</p>
+        <p><strong>Client:</strong> {{ clientVoyageForPrixAchat.clientNom || 'Non assigné' }}</p>
+        @if (clientVoyageForPrixAchat.clientEmail) {
+        <p><strong>Email:</strong> {{ clientVoyageForPrixAchat.clientEmail }}</p>
+        }
+        <p><strong>Quantité:</strong> {{ clientVoyageForPrixAchat.quantite || 0 }} L</p>
+        @if (clientVoyageForPrixAchat.manquant && clientVoyageForPrixAchat.manquant > 0) {
+        <p><strong>Manquant:</strong> {{ clientVoyageForPrixAchat.manquant }} L</p>
+        <p><strong>Quantité livrée:</strong> {{ (clientVoyageForPrixAchat.quantite || 0) - clientVoyageForPrixAchat.manquant }} L
+        </p>
+        }
+      </div>
+      @if (voyageForPrixAchat.clientVoyages && voyageForPrixAchat.clientVoyages.length > 1) {
+      <div class="other-clients-info">
+        <p><strong>Autres clients de ce voyage:</strong></p>
+        <ul>
+          @for (cv of voyageForPrixAchat.clientVoyages; track cv.id) {
+          @if (cv.id !== clientVoyageForPrixAchat.id) {
+          <li>
+            {{ cv.clientNom }} - {{ cv.quantite }} L
+            @if (cv.prixAchat) {
+            <span class="prix-exists">(Prix: {{ cv.prixAchat }} FCFA/L)</span>
+            } @else {
+            <span class="prix-missing">(Prix non défini)</span>
+            }
+          </li>
+          }
+          }
+        </ul>
+      </div>
+      }
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" (click)="closePrixAchatModal()">
+        Annuler
+      </button>
+      <button class="btn-submit" (click)="donnerPrixAchat()"
+        [disabled]="!prixAchatValue || prixAchatValue <= 0 || isLoading">
+        @if (isLoading) {
+        Enregistrement...
+        } @else if (clientVoyageForPrixAchat && clientVoyageForPrixAchat.prixAchat) {
+        Modifier
+        } @else {
+        Enregistrer
+        }
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Modal pour modifier la quantité d'un ClientVoyage -->
+@if (showEditClientVoyageModal && selectedVoyage && clientVoyageForEdit) {
+<div class="modal-overlay" (click)="closeEditClientVoyageModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Modifier la quantité attribuée</h2>
+      <button class="modal-close" (click)="closeEditClientVoyageModal()" aria-label="Fermer">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-info" style="margin-bottom: 1.5rem;">
+        <p><strong>Voyage:</strong> {{ selectedVoyage.numeroVoyage }}</p>
+        <p><strong>Client:</strong> {{ clientVoyageForEdit.clientNom || 'Non assigné' }}</p>
+        @if (clientVoyageForEdit.clientEmail) {
+        <p><strong>Email:</strong> {{ clientVoyageForEdit.clientEmail }}</p>
+        }
+        <p><strong>Quantité totale du voyage:</strong> {{ selectedVoyage.quantite || 0 }} L</p>
+        <p><strong>Quantité actuelle de ce client:</strong> {{ clientVoyageForEdit.quantite || 0 }} L</p>
+      </div>
+      <div class="form-group">
+        <label for="client-edit">Client *</label>
+        <select id="client-edit" class="form-select" [(ngModel)]="editClientId">
+          <option [ngValue]="undefined">Sélectionner un client</option>
+          @for (client of clients; track client.id) {
+          <option [ngValue]="client.id">{{ client.nom }}</option>
+          }
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="quantite-client-edit">Nouvelle quantité (litres) *</label>
+        <input
+          type="number"
+          id="quantite-client-edit"
+          class="form-input"
+          [(ngModel)]="quantiteClientVoyageValue"
+          min="0"
+          step="0.01"
+          placeholder="0"
+          required />
+        <small class="form-help">
+          Nouvelle quantité attribuée à ce client. La somme des quantités de tous les clients ne doit pas dépasser la quantité du voyage.
+        </small>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" (click)="closeEditClientVoyageModal()">
+          Annuler
+        </button>
+        <button class="btn-submit" (click)="saveClientVoyageQuantite()" [disabled]="!editClientId || !quantiteClientVoyageValue || quantiteClientVoyageValue <= 0 || isLoading">
+          @if (isLoading) {
+          Enregistrement...
+          } @else {
+          Valider
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Modal pour saisir la quantité lors de l'ajout d'un client -->
+@if (showQuantiteModal && selectedClientForAdd && selectedVoyage) {
+<div class="modal-overlay" (click)="closeQuantiteModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Ajouter un client au voyage</h2>
+      <button class="modal-close" (click)="closeQuantiteModal()" aria-label="Fermer">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-info" style="margin-bottom: 1.5rem;">
+        <p><strong>Voyage:</strong> {{ selectedVoyage.numeroVoyage }}</p>
+        <p><strong>Client:</strong> {{ selectedClientForAdd.nom }}</p>
+        @if (selectedClientForAdd.email) {
+        <p><strong>Email:</strong> {{ selectedClientForAdd.email }}</p>
+        }
+        <p><strong>Quantité totale du voyage:</strong> {{ selectedVoyage.quantite || 0 }} L</p>
+        <p><strong>Quantité déjà attribuée:</strong> {{ getQuantiteTotaleAttribuee() }} L</p>
+        <p><strong>Quantité disponible:</strong> <span style="color: #10b981; font-weight: 600;">{{ getQuantiteDisponible() }} L</span></p>
+      </div>
+      <div class="form-group">
+        <label for="quantite-client">Quantité à attribuer (litres) *</label>
+        <input
+          type="number"
+          id="quantite-client"
+          class="form-input"
+          [(ngModel)]="quantiteToAdd"
+          [max]="getQuantiteDisponible()"
+          min="0"
+          step="0.01"
+          placeholder="0"
+          required />
+        <small class="form-help">
+          Quantité à attribuer à ce client (maximum: {{ getQuantiteDisponible() }} L)
+        </small>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" (click)="closeQuantiteModal()">
+          Annuler
+        </button>
+        <button class="btn-submit" (click)="confirmAddClientToVoyage()" [disabled]="!quantiteToAdd || quantiteToAdd <= 0 || quantiteToAdd > getQuantiteDisponible() || isLoading">
+          @if (isLoading) {
+          Enregistrement...
+          } @else {
+          Valider
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Popup pour afficher la liste des clients -->
+@if (showClientsPopup && clientsForPopup.length > 0) {
+<div class="modal-overlay" (click)="closeClientsPopup()">
+  <div class="modal-content clients-modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Clients du voyage ({{ clientsForPopup.length }})</h2>
+      <button class="modal-close" (click)="closeClientsPopup()" aria-label="Fermer">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="clients-list-modal">
+        @for (clientVoyage of clientsForPopup; track clientVoyage.id) {
+        <div class="client-item-modal">
+          <div class="client-avatar-modal" [class]="'avatar-' + getClientColor(clientVoyage.clientNom || '')">
+            {{ getClientInitiales(clientVoyage.clientNom || '') }}
+          </div>
+          <div class="client-details-modal">
+            <div class="client-nom-modal">{{ clientVoyage.clientNom }}</div>
+            @if (clientVoyage.clientEmail) {
+            <div class="client-email-modal">{{ clientVoyage.clientEmail }}</div>
+            }
+            <div class="client-info-modal">
+              <span class="info-item">Quantité: <strong>{{ clientVoyage.quantite || 0 }} L</strong></span>
+              @if (clientVoyage.manquant && clientVoyage.manquant > 0) {
+              <span class="info-item warning">Manquant: <strong>{{ clientVoyage.manquant }} L</strong></span>
+              }
+              @if (clientVoyage.prixAchat) {
+              <span class="info-item success">Prix: <strong>{{ clientVoyage.prixAchat }} FCFA/L</strong></span>
+              }
+            </div>
+            @if (clientVoyage.statut) {
+            <div class="client-statut-modal">
+              <span class="status-badge-small" [class.livrer]="clientVoyage.statut === 'LIVRER'"
+                [class.non-livre]="clientVoyage.statut === 'NON_LIVRE'">
+                {{ clientVoyage.statut === 'LIVRER' ? 'Livré' : 'Non livré' }}
+              </span>
+            </div>
+            }
+          </div>
+        </div>
+        }
+      </div>
+    </div>
+  </div>
+</div>
+}
+

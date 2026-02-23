@@ -1,0 +1,29 @@
+<div class="alert-overlay" (click)="close()">
+  <div class="alert-container" (click)="$event.stopPropagation()">
+    <div class="alert-header">
+      @if (title) {
+        <h3 class="alert-title">{{ title }}</h3>
+      }
+      <button class="alert-close" (click)="close()" aria-label="Fermer">×</button>
+    </div>
+    <div class="alert-body">
+      <div class="alert-icon alert-icon-{{ type }}">
+        {{ getIcon() }}
+      </div>
+      <div class="alert-message">{{ message }}</div>
+    </div>
+    <div class="alert-footer">
+      @if (showCancelButton) {
+        <button class="alert-btn alert-btn-cancel" (click)="onCancel()">
+          {{ cancelText }}
+        </button>
+      }
+      @if (showConfirmButton) {
+        <button class="alert-btn alert-btn-confirm alert-btn-{{ type }}" (click)="onConfirm()">
+          {{ confirmText }}
+        </button>
+      }
+    </div>
+  </div>
+</div>
+

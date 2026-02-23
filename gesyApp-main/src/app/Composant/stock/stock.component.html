@@ -1,0 +1,755 @@
+<div class="stock-container">
+  <div class="stock-header">
+    <div>
+      <h1>Gestion des Stocks</h1>
+      <p>Suivi des niveaux de stock et mouvements</p>
+    </div>
+    <div class="header-actions">
+      <!-- <button class="btn-new-stock" (click)="nouveauStock()">
+        <span>📦</span>
+        Ajouter Stock
+      </button> -->
+      <button class="btn-new-product" (click)="nouveauProduit()">
+        <span>+</span>
+        Nouveau Produit
+      </button>
+    </div>
+  </div>
+
+  @if (stats) {
+  <div class="stats-cards">
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon purple">
+          <span>📦</span>
+        </div>
+        <span class="stat-badge green positive">+{{ stats.evolutionTotalUnites }}</span>
+      </div>
+      <div class="stat-value">{{ stats.totalUnites | number }}</div>
+      <div class="stat-label">Total</div>
+      <div class="stat-description">Unités en Stock</div>
+      <div class="stat-trend">
+        <span class="trend-arrow positive">↑</span>
+        <span>{{ stats.evolutionTotalUnites }} {{ stats.periodeTotalUnites }}</span>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon blue">
+          <span>🏭</span>
+        </div>
+        <span class="stat-badge">Actifs</span>
+      </div>
+      <div class="stat-value">{{ stats.totalDepots }}</div>
+      <div class="stat-label">Dépôts/Entrepôts</div>
+      <div class="stat-info">
+        <span class="info-icon">📍</span>
+        <span>{{ stats.villesDepots }} villes</span>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon yellow">
+          <span>⚠️</span>
+        </div>
+        <span class="stat-badge orange">Alerte</span>
+      </div>
+      <div class="stat-value">{{ stats.produitsCritiques }}</div>
+      <div class="stat-label">Produits Critiques</div>
+      <div class="stat-alert">
+        <span class="alert-icon">⚠</span>
+        <span>Réappro. urgent</span>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon green">
+          <span>📈</span>
+        </div>
+        <span class="stat-badge">Valeur</span>
+      </div>
+      <div class="stat-value">{{ stats.valeurStock / 1000000 | number:'1.1-1' }}M</div>
+      <div class="stat-label">Valeur Stock (F)</div>
+      <div class="stat-trend">
+        <span class="trend-arrow positive">↑</span>
+        <span>{{ stats.evolutionValeurStock }} {{ stats.periodeValeurStock }}</span>
+      </div>
+    </div>
+  </div>
+  }
+
+  <!-- Tabs -->
+  <div class="tabs-container">
+    <div class="tabs">
+      <button
+        class="tab-btn"
+        [class.active]="activeTab === 'stocks'"
+        (click)="setTab('stocks')">
+        <span>📦</span>
+        Stocks
+      </button>
+      <button
+        class="tab-btn"
+        [class.active]="activeTab === 'mouvements'"
+        (click)="setTab('mouvements')">
+        <span>📊</span>
+        Mouvements
+      </button>
+      <button
+        class="tab-btn"
+        [class.active]="activeTab === 'manquants'"
+        (click)="setTab('manquants')">
+        <span>⚠️</span>
+        Manquants
+      </button>
+    </div>
+  </div>
+
+  <!-- Stocks Tab -->
+  @if (activeTab === 'stocks') {
+  <div class="main-content">
+    <div class="stock-levels-section">
+      <div class="section-header">
+        <h2>Niveaux de Stock par Produit</h2>
+        <label for="depot-select" class="sr-only">Sélectionner un dépôt</label>
+        <select id="depot-select" class="depot-select" [(ngModel)]="selectedDepot" aria-label="Sélectionner un dépôt">
+          <option value="tous">Tous les dépôts</option>
+          <option value="depot1">Dépôt Principal</option>
+          <option value="depot2">Dépôt Secondaire</option>
+          <option value="depot3">Dépôt Nord</option>
+        </select>
+      </div>
+
+      <div class="produits-list">
+        @if (isLoading) {
+          <div class="loading-state">
+            <p>Chargement des produits...</p>
+          </div>
+        } @else if (produitsAvecStocks.length === 0) {
+          <div class="empty-state">
+            <p>Aucun produit en stock</p>
+          </div>
+        } @else {
+          @for (produit of produitsAvecStocks; track produit.id) {
+          <div class="produit-card">
+            <div class="produit-header">
+              <div class="produit-icon" [class]="'icon-' + getTypeProduitColor(produit.typeProduit)">
+                {{ getTypeProduitIcon(produit.typeProduit) }}
+              </div>
+              <div class="produit-info">
+                <h3>{{ produit.nom }}</h3>
+                <p class="produit-details">Type: {{ produit.typeProduit }}</p>
+              </div>
+            </div>
+
+            <div class="stock-bar-container">
+              <div
+                class="stock-bar"
+                [class]="'bar-' + getNiveauStock(produit)"
+                [style.width.%]="getPourcentageStock(produit)">
+              </div>
+            </div>
+
+            <div class="stock-details">
+              <div class="stock-value">{{ produit.quantiteTotale | number }} {{ getUniteProduit(produit) }}</div>
+              <div class="stock-status" [class]="'status-' + getNiveauStock(produit)">
+                Niveau: {{ getNiveauStockLabel(produit) }}
+              </div>
+            </div>
+
+            @if (produit.stocks && produit.stocks.length > 0) {
+              <div class="produit-stocks-list">
+                <div class="stocks-header">
+                  <span class="stocks-title">Stocks:</span>
+                </div>
+                @for (stock of produit.stocks; track stock.stockId) {
+                  <div class="stock-item" [class.stock-citerne]="stock.citerne">
+                    <div class="stock-depot">
+                      @if (stock.citerne) {
+                        <span class="citerne-badge">🚛 Citerne</span>
+                        <span class="depot-name">{{ stock.nom || 'Stock Citerne' }}</span>
+                      } @else {
+                        <span class="depot-name">{{ stock.depotNom || stock.nom }}</span>
+                        @if (stock.depotVille) {
+                          <span class="depot-ville">({{ stock.depotVille }})</span>
+                        }
+                      }
+                    </div>
+                    <div class="stock-quantite">
+                      {{ stock.quantite | number }} {{ stock.unite || 'L' }}
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+
+            <button class="btn-mouvements" (click)="voirMouvements(produit)">
+              <span>⇄</span>
+              Mouvements
+            </button>
+          </div>
+          }
+        }
+      </div>
+    </div>
+
+    <div class="movements-section">
+      <div class="section-header-movements">
+        <h2>Mouvements Récents</h2>
+        <button class="btn-voir-tous" (click)="voirTousMouvements()">
+          Voir tous
+        </button>
+      </div>
+      @if (isLoadingMouvements) {
+        <div class="loading-state">
+          <p>Chargement des mouvements...</p>
+        </div>
+      } @else if (mouvementsRecents.length === 0) {
+        <div class="empty-state">
+          <p>Aucun mouvement récent</p>
+        </div>
+      } @else {
+        <div class="movements-list">
+          @for (mouvement of mouvementsRecents; track mouvement.id) {
+          <div class="movement-item">
+            <div class="movement-icon" [class]="'icon-' + mouvement.typeMouvement.toLowerCase()">
+              <span>{{ getTypeMouvementIcon(mouvement.typeMouvement) }}</span>
+            </div>
+            <div class="movement-details">
+              <div class="movement-type">
+                {{ getTypeMouvementLabel(mouvement.typeMouvement) }}
+              </div>
+              <div class="movement-info">
+                {{ mouvement.description || 'Mouvement' }} • {{ mouvement.quantite | number }} {{ mouvement.unite || 'L' }}
+              </div>
+            </div>
+            <div class="movement-time">
+              {{ formatDate(mouvement.dateMouvement || '') }}, {{ formatTime(mouvement.dateMouvement || '') }}
+            </div>
+          </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+  }
+
+  <!-- Mouvements Tab -->
+  @if (activeTab === 'mouvements') {
+  <div class="main-content">
+    <div class="movements-section">
+      <div class="section-header-movements">
+        <h2>Mouvements Récents</h2>
+        <button class="btn-voir-tous" (click)="voirTousMouvements()">
+          Voir tous
+        </button>
+      </div>
+      @if (isLoadingMouvements) {
+        <div class="loading-state">
+          <p>Chargement des mouvements...</p>
+        </div>
+      } @else if (mouvementsRecents.length === 0) {
+        <div class="empty-state">
+          <p>Aucun mouvement récent</p>
+        </div>
+      } @else {
+        <div class="movements-list">
+          @for (mouvement of mouvementsRecents; track mouvement.id) {
+          <div class="movement-item">
+            <div class="movement-icon" [class]="'icon-' + mouvement.typeMouvement.toLowerCase()">
+              <span>{{ getTypeMouvementIcon(mouvement.typeMouvement) }}</span>
+            </div>
+            <div class="movement-details">
+              <div class="movement-type">{{ getTypeMouvementLabel(mouvement.typeMouvement) }}</div>
+              <div class="movement-info">
+                {{ mouvement.quantite }} {{ mouvement.unite || 'L' }}
+                @if (mouvement.description) {
+                  - {{ mouvement.description }}
+                }
+              </div>
+            </div>
+            <div class="movement-time">
+              {{ formatDate(mouvement.dateMouvement || '') }}, {{ formatTime(mouvement.dateMouvement || '') }}
+            </div>
+          </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+  }
+
+  <!-- Manquants Tab -->
+  @if (activeTab === 'manquants') {
+  <div class="main-content">
+    <div class="manquants-section">
+      <div class="section-header">
+        <h2>Liste des Manquants</h2>
+      </div>
+
+      <!-- Filters -->
+      <div class="filters-section">
+        <div class="filter-group">
+          <label class="filter-radio">
+            <input type="radio" name="filterTypeManquants" value="all" [(ngModel)]="filterTypeManquants" (change)="applyFilterManquants()" />
+            <span>Tous</span>
+          </label>
+          <label class="filter-radio">
+            <input type="radio" name="filterTypeManquants" value="date" [(ngModel)]="filterTypeManquants" (change)="applyFilterManquants()" />
+            <span>Par date</span>
+          </label>
+          <label class="filter-radio">
+            <input type="radio" name="filterTypeManquants" value="range" [(ngModel)]="filterTypeManquants" (change)="applyFilterManquants()" />
+            <span>Intervalle</span>
+          </label>
+        </div>
+
+        @if (filterTypeManquants === 'date') {
+          <div class="filter-date-input">
+            <input
+              type="date"
+              [(ngModel)]="filterDateManquants"
+              (change)="applyFilterManquants()"
+              class="date-input"
+            />
+          </div>
+        }
+
+        @if (filterTypeManquants === 'range') {
+          <div class="filter-date-range">
+            <input
+              type="date"
+              [(ngModel)]="filterStartDateManquants"
+              (change)="applyFilterManquants()"
+              class="date-input"
+              placeholder="Date début"
+            />
+            <span>à</span>
+            <input
+              type="date"
+              [(ngModel)]="filterEndDateManquants"
+              (change)="applyFilterManquants()"
+              class="date-input"
+              placeholder="Date fin"
+            />
+          </div>
+        }
+      </div>
+
+      <!-- Table -->
+      <div class="table-container">
+        @if (isLoadingManquants) {
+          <div class="loading-state">
+            <p>Chargement des manquants...</p>
+          </div>
+        } @else if (manquants.length === 0) {
+          <div class="empty-state">
+            <p>Aucun manquant trouvé</p>
+          </div>
+        } @else {
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Numéro Voyage</th>
+                <th>Camion</th>
+                <th>Produit</th>
+                <th>Dépôt</th>
+                <th>Quantité Manquante</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (manquant of manquants; track manquant.id) {
+                <tr>
+                  <td>{{ formatDateManquant(manquant.dateCreation) }}</td>
+                  <td>{{ manquant.numeroVoyage }}</td>
+                  <td>{{ manquant.camionImmatriculation || '-' }}</td>
+                  <td>{{ manquant.produitNom || '-' }}</td>
+                  <td>{{ manquant.depotNom || '-' }}</td>
+                  <td class="quantite-cell">{{ manquant.quantite }} L</td>
+                  <td>{{ manquant.description || '-' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+
+          <!-- Pagination -->
+          @if (manquantsPage && manquantsPage.totalPages > 1) {
+            <div class="pagination">
+              <button 
+                class="page-btn" 
+                [disabled]="currentPageManquants === 0"
+                (click)="changePageManquants(0)">
+                ≪
+              </button>
+              <button 
+                class="page-btn" 
+                [disabled]="currentPageManquants === 0"
+                (click)="changePageManquants(currentPageManquants - 1)">
+                ‹
+              </button>
+              
+              @for (page of getPagesArray(manquantsPage.totalPages); track page) {
+                <button 
+                  class="page-btn"
+                  [class.active]="page === currentPageManquants"
+                  (click)="changePageManquants(page)">
+                  {{ page + 1 }}
+                </button>
+              }
+              
+              <button 
+                class="page-btn" 
+                [disabled]="currentPageManquants === manquantsPage.totalPages - 1"
+                (click)="changePageManquants(currentPageManquants + 1)">
+                ›
+              </button>
+              <button 
+                class="page-btn" 
+                [disabled]="currentPageManquants === manquantsPage.totalPages - 1"
+                (click)="changePageManquants(manquantsPage.totalPages - 1)">
+                ≫
+              </button>
+              
+              <span class="page-info">
+                Page {{ currentPageManquants + 1 }} sur {{ manquantsPage.totalPages }} ({{ manquantsPage.totalElements }} éléments)
+              </span>
+            </div>
+          }
+        }
+      </div>
+    </div>
+  </div>
+  }
+
+  @if (showAddProduitModal) {
+  <div class="modal-overlay" (click)="closeAddProduitModal()">
+    <div class="modal-content add-produit-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Créer un nouveau produit</h2>
+        <button class="modal-close" (click)="closeAddProduitModal()" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="modal-body">
+        <form (ngSubmit)="addProduit()">
+          <div class="form-group">
+            <label for="produit-nom">Nom du produit *</label>
+            <input
+              type="text"
+              id="produit-nom"
+              [(ngModel)]="newProduit.nom"
+              name="produit-nom"
+              required
+              placeholder="Ex: Essence Super"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="produit-type">Type de produit *</label>
+            <select
+              id="produit-type"
+              [(ngModel)]="newProduit.typeProduit"
+              name="produit-type"
+              required
+              aria-label="Type de produit"
+            >
+              <option value="ESSENCE">Essence</option>
+              <option value="GAZOLE">Gazole (Diesel)</option>
+              <option value="KEROSENE">Kérosène</option>
+              <option value="GPL">GPL</option>
+              <option value="AUTRE">Autre</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="produit-description">Description</label>
+            <textarea
+              id="produit-description"
+              [(ngModel)]="newProduit.description"
+              name="produit-description"
+              rows="4"
+              placeholder="Description du produit (optionnel)"
+            ></textarea>
+          </div>
+
+          <div class="form-info">
+            <div class="info-box">
+              <span class="info-icon">ℹ️</span>
+              <div class="info-content">
+                <p class="info-title">Information</p>
+                <p class="info-text">Après la création du produit, vous pourrez l'ajouter au stock d'un dépôt.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" (click)="closeAddProduitModal()">
+              Annuler
+            </button>
+            <button type="submit" class="btn-submit" [disabled]="isLoading">
+              @if (isLoading) {
+                Création...
+              } @else {
+                Créer le produit
+              }
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  }
+
+  @if (showAddStockModal) {
+  <div class="modal-overlay" (click)="closeAddStockModal()">
+    <div class="modal-content add-stock-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Ajouter un produit au stock</h2>
+        <button class="modal-close" (click)="closeAddStockModal()" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="modal-body">
+        <form (ngSubmit)="addStock()">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="produitId">Produit *</label>
+              <select
+                id="produitId"
+                [(ngModel)]="newStock.produitId"
+                name="produitId"
+                (change)="onProduitChange()"
+                required
+                aria-label="Sélectionner un produit"
+              >
+                <option [value]="undefined">Sélectionner un produit</option>
+                @for (produit of produitsAPI; track produit.id) {
+                  <option [value]="produit.id">{{ produit.nom }} ({{ produit.typeProduit }})</option>
+                }
+              </select>
+              <p class="form-hint">Le type de produit sera automatiquement défini</p>
+            </div>
+
+            <div class="form-group">
+              <label for="typeProduit">Type de produit</label>
+              <input
+                type="text"
+                id="typeProduit"
+                [value]="newStock.typeProduit"
+                disabled
+                readonly
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="depotId">Dépôt *</label>
+              <select
+                id="depotId"
+                [(ngModel)]="newStock.depotId"
+                name="depotId"
+                required
+                aria-label="Sélectionner un dépôt"
+              >
+                <option [value]="undefined">Sélectionner un dépôt</option>
+                @for (depot of depots; track depot.id) {
+                  <option [value]="depot.id">{{ depot.nom }} - {{ depot.ville || '' }}</option>
+                }
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="unite">Unité *</label>
+              <select
+                id="unite"
+                [(ngModel)]="newStock.unite"
+                name="unite"
+                required
+                aria-label="Unité de mesure"
+              >
+                <option value="L">Litres (L)</option>
+                <option value="kg">Kilogrammes (kg)</option>
+                <option value="m3">Mètres cubes (m³)</option>
+                <option value="U">Unités (U)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="quantite">Quantité *</label>
+              <input
+                type="number"
+                id="quantite"
+                [(ngModel)]="newStock.quantite"
+                name="quantite"
+                required
+                min="0"
+                step="0.01"
+                placeholder="0"
+              />
+              <p class="form-hint">Quantité en {{ newStock.unite }}</p>
+            </div>
+
+            <div class="form-group">
+              <label for="prixUnitaire">Prix unitaire (FCFA)</label>
+              <input
+                type="number"
+                id="prixUnitaire"
+                [(ngModel)]="newStock.prixUnitaire"
+                name="prixUnitaire"
+                min="0"
+                step="0.01"
+                placeholder="0"
+              />
+              <p class="form-hint">Prix par {{ newStock.unite }}</p>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="seuilMinimum">Seuil minimum</label>
+            <input
+              type="number"
+              id="seuilMinimum"
+              [(ngModel)]="newStock.seuilMinimum"
+              name="seuilMinimum"
+              min="0"
+              step="0.01"
+              placeholder="0"
+            />
+            <p class="form-hint">Quantité minimale avant alerte de réapprovisionnement</p>
+          </div>
+
+          <div class="form-info">
+            <div class="info-box">
+              <span class="info-icon">ℹ️</span>
+              <div class="info-content">
+                <p class="info-title">Information</p>
+                <p class="info-text">La date de dernière mise à jour sera automatiquement enregistrée lors de la création du stock.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" (click)="closeAddStockModal()">
+              Annuler
+            </button>
+            <button type="submit" class="btn-submit" [disabled]="isLoading">
+              @if (isLoading) {
+                Enregistrement...
+              } @else {
+                Ajouter au stock
+              }
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  }
+
+  @if (showAllMouvementsModal) {
+  <div class="modal-overlay" (click)="closeAllMouvementsModal()">
+    <div class="modal-content mouvements-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Tous les mouvements</h2>
+        <button class="modal-close" (click)="closeAllMouvementsModal()" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="filters-section">
+          <div class="filter-group">
+            <label>
+              <input type="radio" name="filterType" value="all" [(ngModel)]="filterType" (change)="applyFilter()" />
+              Tous
+            </label>
+            <label>
+              <input type="radio" name="filterType" value="date" [(ngModel)]="filterType" (change)="applyFilter()" />
+              Par date
+            </label>
+            <label>
+              <input type="radio" name="filterType" value="range" [(ngModel)]="filterType" (change)="applyFilter()" />
+              Intervalle de dates
+            </label>
+          </div>
+
+          @if (filterType === 'date') {
+            <div class="filter-input">
+              <label for="filterDate">Date:</label>
+              <input type="date" id="filterDate" [(ngModel)]="filterDate" (change)="applyFilter()" />
+            </div>
+          }
+
+          @if (filterType === 'range') {
+            <div class="filter-inputs">
+              <div class="filter-input">
+                <label for="filterStartDate">Date début:</label>
+                <input type="date" id="filterStartDate" [(ngModel)]="filterStartDate" (change)="applyFilter()" />
+              </div>
+              <div class="filter-input">
+                <label for="filterEndDate">Date fin:</label>
+                <input type="date" id="filterEndDate" [(ngModel)]="filterEndDate" (change)="applyFilter()" />
+              </div>
+            </div>
+          }
+        </div>
+
+        @if (isLoadingMouvements) {
+          <div class="loading-state">
+            <p>Chargement...</p>
+          </div>
+        } @else if (mouvementsPage && mouvementsPage.mouvements.length === 0) {
+          <div class="empty-state">
+            <p>Aucun mouvement trouvé</p>
+          </div>
+        } @else if (mouvementsPage) {
+          <div class="movements-list-modal">
+            @for (mouvement of mouvementsPage.mouvements; track mouvement.id) {
+            <div class="movement-item">
+              <div class="movement-icon" [class]="'icon-' + mouvement.typeMouvement.toLowerCase()">
+                <span>{{ getTypeMouvementIcon(mouvement.typeMouvement) }}</span>
+              </div>
+              <div class="movement-details">
+                <div class="movement-type">
+                  {{ getTypeMouvementLabel(mouvement.typeMouvement) }}
+                </div>
+                <div class="movement-info">
+                  {{ mouvement.description || 'Mouvement' }} • {{ mouvement.quantite | number }} {{ mouvement.unite || 'L' }}
+                </div>
+              </div>
+              <div class="movement-time">
+                {{ formatDate(mouvement.dateMouvement || '') }}, {{ formatTime(mouvement.dateMouvement || '') }}
+              </div>
+            </div>
+            }
+          </div>
+
+          @if (mouvementsPage.totalPages > 1) {
+            <div class="pagination">
+              <button
+                class="btn-pagination"
+                [disabled]="currentPage === 0"
+                (click)="changePage(currentPage - 1)">
+                Précédent
+              </button>
+              <span class="page-info">
+                Page {{ currentPage + 1 }} / {{ mouvementsPage.totalPages }} ({{ mouvementsPage.totalElements }} mouvements)
+              </span>
+              <button
+                class="btn-pagination"
+                [disabled]="currentPage >= mouvementsPage.totalPages - 1"
+                (click)="changePage(currentPage + 1)">
+                Suivant
+              </button>
+            </div>
+          }
+        }
+      </div>
+    </div>
+  </div>
+  }
+</div>

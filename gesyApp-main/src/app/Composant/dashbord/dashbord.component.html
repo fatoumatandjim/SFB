@@ -1,0 +1,233 @@
+<div class="dashboard">
+  <div class="dashboard-header">
+    <div>
+      <h1>Vue d'Ensemble</h1>
+      <p>Statistiques en temps réel de vos opérations</p>
+    </div>
+  </div>
+
+  @if (isLoading) {
+    <div class="loading-state">
+      <p>Chargement des statistiques...</p>
+    </div>
+  } @else if (error) {
+    <div class="error-state">
+      <p>{{ error }}</p>
+      <button (click)="loadDashboardStats()">Réessayer</button>
+    </div>
+  } @else {
+  <div class="stats-grid">
+    <div class="stat-card blue">
+      <div class="stat-header">
+        <div class="stat-icon">🚛</div>
+        <span class="stat-change positive">{{ statsData.camionsActifs.change }}</span>
+      </div>
+      <div class="stat-value">{{ statsData.camionsActifs.value }}</div>
+      <div class="stat-label">Camions Actifs</div>
+      <div class="stat-details">
+        <span>En route: {{ statsData.camionsActifs.enRoute }}</span>
+        <span>Disponibles: {{ statsData.camionsActifs.disponibles }}</span>
+      </div>
+    </div>
+
+    <div class="stat-card green">
+      <div class="stat-header">
+        <div class="stat-icon">💰</div>
+        <span class="stat-change positive">{{ statsData.chiffreAffaires.change }}</span>
+      </div>
+      <div class="stat-value">{{ statsData.chiffreAffaires.value }} <span class="currency">{{ statsData.chiffreAffaires.currency }}</span></div>
+      <div class="stat-label">Chiffre d'Affaires</div>
+      <div class="stat-details">
+        <span>{{ statsData.chiffreAffaires.period }}</span>
+        <span class="positive">{{ statsData.chiffreAffaires.increase }}</span>
+      </div>
+    </div>
+
+    <div class="stat-card orange">
+      <div class="stat-header">
+        <div class="stat-icon">📄</div>
+        @if (statsData.facturesAttente.badge) {
+          <span class="stat-badge">{{ statsData.facturesAttente.badge }}</span>
+        }
+      </div>
+      <div class="stat-value">{{ statsData.facturesAttente.value }}</div>
+      <div class="stat-label">Factures en Attente</div>
+      <div class="stat-details">
+        <span>Montant: {{ statsData.facturesAttente.montant }}</span>
+        <span class="negative">En retard: {{ statsData.facturesAttente.enRetard }}</span>
+      </div>
+    </div>
+
+    <div class="stat-card purple stock-card-expanded">
+      <div class="stat-header">
+        <div class="stat-icon">📦</div>
+        @if (statsData.unitesStock.alert) {
+          <span class="alert-badge">Alerte</span>
+        }
+      </div>
+      <div class="stat-value">{{ statsData.unitesStock.value }}</div>
+      <div class="stat-label">Unités en Stock</div>
+      <div class="stat-details">
+        <span>Total stock: {{ statsData.unitesStock.stockRestant }} L</span>
+        @if (statsData.unitesStock.niveauCritique > 0) {
+          <span class="negative">Niveau critique: {{ statsData.unitesStock.niveauCritique }}</span>
+        }
+        <span>Dépôts: {{ statsData.unitesStock.depots }}</span>
+      </div>
+
+      @if (statsData.unitesStock.stocksParProduit && statsData.unitesStock.stocksParProduit.length > 0) {
+        <div class="stock-by-product">
+          <div class="stock-by-product-header">
+            <h4>Stock par Produit</h4>
+          </div>
+          <div class="stock-by-product-list">
+            @for (stock of statsData.unitesStock.stocksParProduit; track stock.produitId) {
+              <div class="stock-product-item" [class.alert]="stock.alert">
+                <div class="stock-product-info">
+                  <div class="stock-product-name">{{ stock.produitNom }}</div>
+                  @if (stock.typeProduit) {
+                    <div class="stock-product-type">{{ stock.typeProduit }}</div>
+                  }
+                </div>
+                <div class="stock-product-details">
+                  <div class="stock-product-quantity">{{ stock.quantiteTotale }} L</div>
+                  <div class="stock-product-depots">{{ stock.nombreDepots }} dépôt{{ stock.nombreDepots > 1 ? 's' : '' }}</div>
+                </div>
+                @if (stock.alert) {
+                  <div class="stock-product-alert">⚠️</div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+
+  <div class="finance-grid">
+    <div class="finance-card">
+      <div class="finance-icon">🏦</div>
+      <div class="finance-content">
+        <div class="finance-value">{{ financesData.soldeBanque.value }} <span class="currency">{{ financesData.soldeBanque.currency }}</span></div>
+        <div class="finance-label">Solde Banque</div>
+        <div class="finance-details">
+          <span>{{ financesData.soldeBanque.comptes }} comptes bancaires</span>
+          <span class="positive">{{ financesData.soldeBanque.change }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="finance-card">
+      <div class="finance-icon">💵</div>
+      <div class="finance-content">
+        <div class="finance-value">{{ financesData.soldeCaisse.value }} <span class="currency">{{ financesData.soldeCaisse.currency }}</span></div>
+        <div class="finance-label">Solde Caisse</div>
+        <div class="finance-details">
+          <span>{{ financesData.soldeCaisse.date }}</span>
+          <span>Entrées: {{ financesData.soldeCaisse.entrees }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="finance-card">
+      <div class="finance-icon">🤝</div>
+      <div class="finance-content">
+        <div class="finance-value">{{ financesData.creancesClients.value }} <span class="currency">{{ financesData.creancesClients.currency }}</span></div>
+        <div class="finance-label">Créances Clients</div>
+        <div class="finance-details">
+          <span>{{ financesData.creancesClients.clients }} clients concernés</span>
+          <span class="negative">Retard: {{ financesData.creancesClients.retard }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  @if (isAdmin && douaneData) {
+  <div class="douane-section">
+    <div class="section-header">
+      <div>
+        <h2>Statistiques Douane</h2>
+        <p>Camions déclarés et frais payés ce mois</p>
+      </div>
+    </div>
+    <div class="douane-stats-grid">
+      <div class="stat-item">
+        <div class="stat-icon">🚛</div>
+        <div class="stat-value">{{ douaneData.nombreCamionsDeclares }}</div>
+        <div class="stat-label">Camions déclarés ce mois</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-icon">⚠️</div>
+        <div class="stat-value">{{ douaneData.nombreCamionsNonDeclares }}</div>
+        <div class="stat-label">Camions non déclarés ce mois</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-icon">📋</div>
+        <div class="stat-value">{{ douaneData.montantT1 }}</div>
+        <div class="stat-label">Montant T1 ce mois</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-icon">💰</div>
+        <div class="stat-value">{{ douaneData.montantFraisDouane }}</div>
+        <div class="stat-label">Frais de douane ce mois</div>
+      </div>
+    </div>
+  </div>
+  }
+
+  <div class="trucks-section">
+    <div class="section-header">
+      <div>
+        <h2>Suivi des Voyages en Temps Réel</h2>
+        <p>Statistiques des voyages en cours</p>
+      </div>
+    </div>
+    @if (stats?.voyagesStats) {
+      <div class="voyages-stats-grid">
+        <div class="stat-item">
+          <div class="stat-value">{{ stats?.voyagesStats?.totalVoyagesEnCours || 0 }}</div>
+          <div class="stat-label">En cours</div>
+          <div class="stat-sublabel">(En chargement / Départ)</div>
+        </div>
+        <!-- <div class="stat-item">
+          <div class="stat-value">{{ stats?.voyagesStats?.voyagesArrives || 0 }}</div>
+          <div class="stat-label">Arrivés</div>
+          <div class="stat-sublabel">(Arrivés a Bamako)</div>
+        </div> -->
+        <div class="stat-item">
+          <div class="stat-value">{{ stats?.voyagesStats?.voyagesALaDouane || 0 }}</div>
+          <div class="stat-label">À la douane</div>
+          <div class="stat-sublabel">(Déclarés / Sortie)</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">{{ stats?.voyagesStats?.voyagesLivre || 0 }}</div>
+          <div class="stat-label">Livrés</div>
+          <div class="stat-sublabel">(Livrés / Dépotés)</div>
+        </div>
+      </div>
+
+      @if ((stats?.voyagesStats?.voyagesRecents || []).length > 0) {
+        <div class="voyages-recents">
+          <h3>Voyages Récents</h3>
+          <div class="voyages-list">
+            @for (voyage of (stats?.voyagesStats?.voyagesRecents || []); track voyage.id) {
+              <div class="voyage-item">
+                <div class="voyage-info">
+                  <span class="voyage-numero">{{ voyage.numeroVoyage }}</span>
+                  <span class="voyage-camion">{{ voyage.camionImmatriculation }}</span>
+                  <span class="voyage-client">{{ voyage.clientNom }}</span>
+                  <span class="voyage-destination">{{ voyage.destination }}</span>
+                </div>
+                <div class="voyage-meta">
+                  <span class="voyage-statut">{{ voyage.statut }}</span>
+                  <span class="voyage-date">{{ voyage.dateDepart }}</span>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    }
+  </div>
+  }
+</div>

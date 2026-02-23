@@ -1,0 +1,85 @@
+@if (isMobile && isOpen) {
+<div class="navbar-overlay" (click)="closeMenu()"></div>
+}
+<div class="navbar" [class.open]="isOpen" [class.mobile]="isMobile">
+  <div class="navbar-header">
+    <div class="logo">
+      <div class="logo-icon">⛽</div>
+      <div class="logo-text">
+        <h2>GesY</h2>
+        <p>Gestion Hydrocarbure</p>
+      </div>
+    </div>
+    <div class="company-info">
+      <div class="company-name">SFB</div>
+      <!-- <div class="company-name">Société</div> -->
+      <span class="status-badge active">Actif</span>
+    </div>
+  </div>
+
+  <nav class="nav-menu">
+    <div class="menu-section">
+      <ul class="menu-list">
+        @for (item of menuPrincipal; track item.id) {
+        <li
+          [class.active]="currentSection === item.id"
+          (click)="selectSection(item.id)">
+          <span class="menu-icon">{{ item.icon }}</span>
+          <span class="menu-label">{{ item.label }}</span>
+          <!-- @if (item.badge) {
+          <span class="badge">{{ item.badge }}</span>
+          } -->
+        </li>
+        }
+      </ul>
+    </div>
+
+    <div class="menu-section">
+      <h3 class="section-title">LOGISTIQUE</h3>
+      <ul class="menu-list">
+        @for (item of logistique; track item.id) {
+        <li
+          [class.active]="currentSection === item.id"
+          (click)="selectSection(item.id)">
+          <span class="menu-icon">{{ item.icon }}</span>
+          <span class="menu-label">{{ item.label }}</span>
+        </li>
+        }
+      </ul>
+    </div>
+
+    @if (rapport.length > 0) {
+    <div class="menu-section">
+      <h3 class="section-title">RAPPORT</h3>
+      <ul class="menu-list">
+        @for (item of rapport; track item.id) {
+        <li
+          [class.active]="currentSection === item.id"
+          (click)="selectSection(item.id)">
+          <span class="menu-icon">{{ item.icon }}</span>
+          <span class="menu-label">{{ item.label }}</span>
+        </li>
+        }
+      </ul>
+    </div>
+    }
+
+    <!-- <div class="premium-section">
+      <div class="premium-content">
+        <span class="premium-icon">👑</span>
+        <p>Débloquez toutes les fonctionnalités</p>
+        <button class="upgrade-btn">Mettre à niveau</button>
+      </div>
+    </div> -->
+  </nav>
+
+  <div class="navbar-footer">
+    <div class="user-info">
+      <div class="user-avatar">{{ getUserInitiales() }}</div>
+      <div class="user-details">
+        <div class="user-name">{{ getUserName() }}</div>
+        <div class="user-role">{{ getUserRole() }}</div>
+      </div>
+    </div>
+  </div>
+</div>

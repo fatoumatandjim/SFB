@@ -1,0 +1,774 @@
+<div class="depot-container">
+  <div class="depot-header">
+    <div>
+      <h1>Gestion des Dépôts</h1>
+      <p>Gestion de vos dépôts et entrepôts</p>
+    </div>
+    <div class="header-actions">
+      @if (isLogistique) {
+      <button class="btn-new-depot" (click)="nouveauDepot()">
+        <span>+</span>
+        Nouveau Dépôt
+      </button>
+      }
+    </div>
+  </div>
+
+  <div class="stats-cards">
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon blue">
+          <span>🏭</span>
+        </div>
+      </div>
+      <div class="stat-value">{{ stats.total }}</div>
+      <div class="stat-label">Total Dépôts</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon green">
+          <span>✓</span>
+        </div>
+      </div>
+      <div class="stat-value">{{ stats.actifs }}</div>
+      <div class="stat-label">Actifs</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon purple">
+          <span>📦</span>
+        </div>
+      </div>
+      <div class="stat-value">{{ stats.stockTotal | number }}</div>
+      <div class="stat-label">Stock Total (L)</div>
+    </div>
+
+    <!-- <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon orange">
+          <span>📊</span>
+        </div>
+      </div>
+      <div class="stat-value">{{ stats.capaciteTotale | number }}</div>
+      <div class="stat-label">Capacité Totale (L)</div>
+    </div> -->
+  </div>
+
+  <div class="actions-bar">
+    <!-- <div class="filters">
+      <button
+        class="filter-btn"
+        [class.active]="activeFilter === 'tous'"
+        (click)="setFilter('tous')">
+        Tous
+      </button>
+      <button
+        class="filter-btn"
+        [class.active]="activeFilter === 'actifs'"
+        (click)="setFilter('actifs')">
+        Actifs
+      </button>
+      <button
+        class="filter-btn"
+        [class.active]="activeFilter === 'inactifs'"
+        (click)="setFilter('inactifs')">
+        Inactifs
+      </button>
+      <button
+        class="filter-btn"
+        [class.active]="activeFilter === 'maintenance'"
+        (click)="setFilter('maintenance')">
+        Maintenance
+      </button>
+    </div> -->
+
+    <div class="search-container">
+      <label for="search-depots" class="sr-only">Rechercher des dépôts</label>
+      <input
+        type="text"
+        id="search-depots"
+        class="search-input"
+        placeholder="Rechercher..."
+        [(ngModel)]="searchTerm"
+        aria-label="Rechercher des dépôts"
+      />
+      <span class="search-icon">🔍</span>
+    </div>
+  </div>
+
+  <div class="depots-grid">
+    @if (isLoading) {
+      <div class="loading-state">
+        <div class="loading-spinner"></div>
+        <p>Chargement des dépôts...</p>
+      </div>
+    } @else if (filteredDepots.length === 0) {
+      <div class="empty-state">
+        <div class="empty-icon">🏭</div>
+        <h3>Aucun dépôt trouvé</h3>
+        <p>
+          @if (searchTerm || activeFilter !== 'tous') {
+            Aucun dépôt ne correspond à vos critères de recherche.
+          } @else {
+            Aucun dépôt n'a été enregistré pour le moment.
+          }
+        </p>
+        @if (!searchTerm && activeFilter === 'tous') {
+          <button class="btn-add-first" (click)="nouveauDepot()">
+            <span>+</span>
+            Ajouter le premier dépôt
+          </button>
+        }
+      </div>
+    } @else {
+      @for (depot of filteredDepots; track depot.id) {
+    <div class="depot-card">
+      <div class="depot-card-header">
+        <div class="depot-icon" [class]="'icon-' + depot.couleur">
+          <span>🏭</span>
+        </div>
+        <div class="depot-status" [class]="'status-' + (depot.statut?.toLowerCase() || 'actif')">
+          @if (depot.statut === 'ACTIF') {
+          Actif
+          }
+          @if (depot.statut === 'INACTIF') {
+          Inactif
+          }
+          @if (depot.statut === 'EN_MAINTENANCE') {
+          Maintenance
+          }
+          @if (depot.statut === 'PLEIN') {
+          Plein
+          }
+        </div>
+      </div>
+
+      <div class="depot-card-body">
+        <h3 class="depot-nom">{{ depot.nom }}</h3>
+        <div class="depot-location">
+          <span class="location-icon">📍</span>
+          <span>{{ depot.ville }}</span>
+        </div>
+        <div class="depot-adresse">{{ depot.adresse }}</div>
+
+        <div class="depot-info">
+          <div class="info-item">
+            <span class="info-label">Responsable:</span>
+            <span class="info-value">{{ depot.responsable }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Téléphone:</span>
+            <span class="info-value">{{ depot.telephone }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Date création:</span>
+            <span class="info-value">{{ depot.dateCreation }}</span>
+          </div>
+        </div>
+
+        <div class="stock-section">
+          <div class="stock-header">
+            <span class="stock-label">Stock</span>
+            <span class="stock-percentage">{{ getPourcentageStock(depot) }}%</span>
+          </div>
+          <div class="stock-bar-container">
+            <div
+              class="stock-bar"
+              [class]="getPourcentageStock(depot) > 80 ? 'bar-high' : getPourcentageStock(depot) > 30 ? 'bar-medium' : 'bar-low'"
+              [style.width.%]="getPourcentageStock(depot)">
+            </div>
+          </div>
+          <div class="stock-details">
+            <span>Utilisée: {{ (depot.stockActuel ?? depot.capaciteUtilisee ?? 0) | number }} L</span>
+            <span>Restant: {{ getCapaciteRestante(depot) | number }} L</span>
+            <span>Capacité: {{ depot.capacite | number }} L</span>
+          </div>
+        </div>
+
+        <div class="produits-preview">
+          <div class="produits-label">Stock par type de produit:</div>
+          <div class="produits-list">
+            @if (depot.produits && depot.produits.length > 0) {
+              @for (produit of depot.produits; track produit.nom) {
+              <div class="produit-item">
+                <div class="produit-item-header">
+                  <span class="produit-nom">{{ produit.nom }}</span>
+                  <span class="produit-niveau" [class]="'niveau-' + produit.niveau" [title]="'Niveau: ' + produit.niveau">
+                    @if (produit.niveau === 'optimal') { ✓ Optimal }
+                    @if (produit.niveau === 'faible') { ⚠ Faible }
+                    @if (produit.niveau === 'critique') { ⚠ Critique }
+                  </span>
+                </div>
+                <div class="produit-item-stocks">
+                  <div class="stock-row stock-total">
+                    <span class="stock-label">Stock</span>
+                    <span class="stock-value">{{ produit.quantite | number }} {{ produit.unite }}</span>
+                  </div>
+                  @if (produit.quantityCession && produit.quantityCession > 0) {
+                  <div class="stock-row stock-cession">
+                    <span class="stock-label">Stock en cession</span>
+                    <span class="stock-value">{{ produit.quantityCession | number }} {{ produit.unite }}</span>
+                  </div>
+                  }
+                </div>
+              </div>
+              }
+            } @else {
+              <div class="produit-item empty">
+                <span class="produit-nom">Aucun produit en stock</span>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      @if (isLogistique) {
+      <div class="depot-card-actions">
+        <!-- <button class="action-btn sortie" (click)="sortirStock(depot)" title="Sortir du stock">
+          <span>📤</span>
+          Sortir
+        </button>
+        <button class="action-btn approvisionnement" (click)="approvisionnerDepot(depot)" title="Approvisionner">
+          <span>📦</span>
+          Approvisionner
+        </button> -->
+        <button class="action-btn" (click)="editDepot(depot)" title="Éditer">
+          <span>Modifier</span>
+        </button>
+        @if (isAdmin) {
+        <button class="action-btn" (click)="deleteDepot(depot)" title="Supprimer">
+          <span>🗑️</span>
+        </button>
+        }
+      </div>
+      }
+    </div>
+      }
+    }
+  </div>
+
+  @if (showAddModal) {
+  <div class="modal-overlay" (click)="closeAddModal()">
+    <div class="modal-content add-depot-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Ajouter un nouveau dépôt</h2>
+        <button class="modal-close" (click)="closeAddModal()" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="modal-body">
+        <form (ngSubmit)="addDepot()">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="nom">Nom du dépôt *</label>
+              <input
+                type="text"
+                id="nom"
+                [(ngModel)]="newDepot.nom"
+                name="nom"
+                required
+                placeholder="Ex: Dépôt Principal Bamako"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="ville">Ville *</label>
+              <input
+                type="text"
+                id="ville"
+                [(ngModel)]="newDepot.ville"
+                name="ville"
+                required
+                placeholder="Ex: Bamako"
+              />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="adresse">Adresse complète *</label>
+            <input
+              type="text"
+              id="adresse"
+              [(ngModel)]="newDepot.adresse"
+              name="adresse"
+              required
+              placeholder="Ex: Route de Koulikoro, Bamako"
+            />
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="responsable">Responsable *</label>
+              <input
+                type="text"
+                id="responsable"
+                [(ngModel)]="newDepot.responsable"
+                name="responsable"
+                required
+                placeholder="Ex: Amadou Diallo"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="telephone">Téléphone *</label>
+              <input
+                type="tel"
+                id="telephone"
+                [(ngModel)]="newDepot.telephone"
+                name="telephone"
+                required
+                placeholder="Ex: +223 20 12 34 56"
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="capacite">Capacité (L) *</label>
+              <input
+                type="number"
+                id="capacite"
+                [(ngModel)]="newDepot.capacite"
+                name="capacite"
+                required
+                min="1"
+                step="1"
+                placeholder="Ex: 100000"
+              />
+              <p class="form-hint">Capacité maximale de stockage en litres</p>
+            </div>
+
+            <div class="form-group">
+              <label for="statut">Statut *</label>
+              <select
+                id="statut"
+                [(ngModel)]="newDepot.statut"
+                name="statut"
+                required
+              >
+                <option value="ACTIF">Actif</option>
+                <option value="INACTIF">Inactif</option>
+                <option value="EN_MAINTENANCE">En maintenance</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-info">
+            <div class="info-box">
+              <span class="info-icon">ℹ️</span>
+              <div class="info-content">
+                <p class="info-title">Stock initial</p>
+                <p class="info-text">Le stock actuel sera initialisé à 0. Vous pourrez ajouter des produits après la création du dépôt.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" (click)="closeAddModal()">
+              Annuler
+            </button>
+            <button type="submit" class="btn-submit" [disabled]="isLoading">
+              @if (isLoading) {
+                Enregistrement...
+              } @else {
+                Ajouter le dépôt
+              }
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  }
+
+  @if (showApprovisionnementModal && depotPourApprovisionnement) {
+  <div class="modal-overlay" (click)="closeApprovisionnementModal()">
+    <div class="modal-content approvisionnement-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Approvisionner le dépôt</h2>
+        <button class="modal-close" (click)="closeApprovisionnementModal()" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="depot-info-section">
+          <div class="depot-info-card">
+            <div class="depot-info-icon">🏭</div>
+            <div class="depot-info-details">
+              <h3>{{ depotPourApprovisionnement.nom }}</h3>
+              <div class="depot-info-stats">
+                <div class="stat-item">
+                  <span class="stat-label">Capacité:</span>
+                  <span class="stat-value">{{ depotPourApprovisionnement.capacite | number }} L</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">Stock actuel:</span>
+                  <span class="stat-value">{{ depotPourApprovisionnement.stockActuel || 0 | number }} L</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-label">Capacité restante:</span>
+                  <span class="stat-value" [class.warning]="getCapaciteRestante() < 10000">
+                    {{ getCapaciteRestante() | number }} L
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="approvisionnement-section">
+          <h3>Choisir un produit à ajouter</h3>
+
+          <form (ngSubmit)="saveApprovisionnement()">
+            <div class="form-group">
+              <label for="produit-id">Produit *</label>
+              <select
+                id="produit-id"
+                [(ngModel)]="produitApprovisionnement.produitId"
+                name="produit-id"
+                required
+                aria-label="Sélectionner un produit"
+              >
+                <option [value]="undefined">Sélectionner un produit</option>
+                @for (prod of produitsDisponibles; track prod.id) {
+                  <option [value]="prod.id">{{ prod.nom }} ({{ prod.typeProduit }})</option>
+                }
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="produit-quantite">Quantité ({{ getProduitUnite(produitApprovisionnement.produitId) }}) *</label>
+              <input
+                type="number"
+                id="produit-quantite"
+                [(ngModel)]="produitApprovisionnement.quantite"
+                name="produit-quantite"
+                min="0.01"
+                step="0.01"
+                placeholder="0"
+                required
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="produit-prix">Prix unitaire (FCFA)</label>
+              <input
+                type="number"
+                id="produit-prix"
+                [(ngModel)]="produitApprovisionnement.prixUnitaire"
+                name="produit-prix"
+                min="0"
+                step="0.01"
+                placeholder="0"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="produit-seuil">Seuil minimum</label>
+              <input
+                type="number"
+                id="produit-seuil"
+                [(ngModel)]="produitApprovisionnement.seuilMinimum"
+                name="produit-seuil"
+                min="0"
+                step="0.01"
+                placeholder="0"
+              />
+            </div>
+
+            <div class="approvisionnement-summary">
+              <div class="summary-item">
+                <span class="summary-label">Capacité restante:</span>
+                <span class="summary-value" [class.warning]="getCapaciteRestante() < (produitApprovisionnement.quantite || 0)">
+                  {{ getCapaciteRestante() | number }} L
+                </span>
+              </div>
+              @if (produitApprovisionnement.quantite && !canAddProduit()) {
+                <div class="summary-error">
+                  ⚠️ La quantité dépasse la capacité restante du dépôt
+                </div>
+              }
+            </div>
+          </form>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" (click)="closeApprovisionnementModal()">
+            Annuler
+          </button>
+          <button
+            type="button"
+            class="btn-submit"
+            (click)="saveApprovisionnement()"
+            [disabled]="isLoading || !produitApprovisionnement.produitId || !canAddProduit()"
+          >
+            @if (isLoading) {
+              Enregistrement...
+            } @else {
+              Ajouter au dépôt
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  }
+
+  @if (showSortieModal && depotPourSortie) {
+  <div class="modal-overlay" (click)="closeSortieModal()">
+    <div class="modal-content sortie-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Sortir du stock - {{ depotPourSortie.nom }}</h2>
+        <button class="modal-close" (click)="closeSortieModal()" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="depot-info-section">
+          <div class="depot-info-card">
+            <div class="depot-info-icon">📤</div>
+            <div class="depot-info-details">
+              <h3>{{ depotPourSortie.nom }}</h3>
+              <div class="depot-info-stats">
+                <div class="stat-item">
+                  <span class="stat-label">Stock actuel:</span>
+                  <span class="stat-value">{{ depotPourSortie.stockActuel || 0 | number }} L</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sortie-section">
+          <h3>Choisir un produit à sortir</h3>
+
+          <form (ngSubmit)="saveSortie()">
+            <div class="form-group">
+              <label for="stock-id">Produit *</label>
+              <select
+                id="stock-id"
+                [(ngModel)]="produitSortie.stockId"
+                name="stock-id"
+                required
+                aria-label="Sélectionner un produit"
+              >
+                <option [ngValue]="undefined">Sélectionner un produit</option>
+                @for (stock of stocksDepot; track stock.id) {
+                  <option [ngValue]="stock.id">
+                    {{ stock.produitNom || 'Produit inconnu' }} - {{ stock.quantite | number }} {{ stock.unite || 'L' }} disponible(s)
+                  </option>
+                }
+              </select>
+            </div>
+
+            @if (produitSortie.stockId) {
+              <div class="stock-info-box">
+                <div class="info-item">
+                  <span class="info-label">Quantité disponible:</span>
+                  <span class="info-value">{{ getQuantiteDisponible() | number }} {{ getStockSelected()?.unite || 'L' }}</span>
+                </div>
+              </div>
+            }
+
+            <div class="form-group">
+              <label for="quantite-sortie">Quantité à sortir ({{ getStockSelected()?.unite || 'L' }}) *</label>
+              <input
+                type="number"
+                id="quantite-sortie"
+                [(ngModel)]="produitSortie.quantite"
+                name="quantite-sortie"
+                [max]="getQuantiteDisponible()"
+                min="0.01"
+                step="0.01"
+                placeholder="0"
+                required
+              />
+              @if (produitSortie.stockId) {
+                <p class="form-hint">Maximum: {{ getQuantiteDisponible() | number }} {{ getStockSelected()?.unite || 'L' }}</p>
+              }
+            </div>
+
+            @if (produitSortie.quantite && produitSortie.quantite > getQuantiteDisponible()) {
+              <div class="error-message">
+                ⚠️ La quantité à sortir dépasse la quantité disponible
+              </div>
+            }
+
+            @if (produitSortie.stockId && produitSortie.quantite) {
+              <div class="sortie-summary">
+                <div class="summary-item">
+                  <span class="summary-label">Quantité après sortie:</span>
+                  <span class="summary-value">
+                    {{ (getQuantiteDisponible() - produitSortie.quantite) | number }} {{ getStockSelected()?.unite || 'L' }}
+                  </span>
+                </div>
+              </div>
+            }
+          </form>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" (click)="closeSortieModal()">
+            Annuler
+          </button>
+          <button
+            type="button"
+            class="btn-submit"
+            (click)="saveSortie()"
+            [disabled]="isLoading || !produitSortie.stockId || !canSortirStock()"
+          >
+            @if (isLoading) {
+              Enregistrement...
+            } @else {
+              Sortir du stock
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  }
+
+  @if (showEditModal && selectedDepotForEdit) {
+  <div class="modal-overlay" (click)="closeEditModal()">
+    <div class="modal-content add-depot-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Modifier le Dépôt</h2>
+        <button class="modal-close" (click)="closeEditModal()" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="modal-body">
+        <form (ngSubmit)="updateDepot()">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="edit-nom">Nom du dépôt *</label>
+              <input
+                type="text"
+                id="edit-nom"
+                [(ngModel)]="editDepotData.nom"
+                name="edit-nom"
+                required
+                placeholder="Ex: Dépôt Principal Bamako"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="edit-ville">Ville *</label>
+              <input
+                type="text"
+                id="edit-ville"
+                [(ngModel)]="editDepotData.ville"
+                name="edit-ville"
+                required
+                placeholder="Ex: Bamako"
+              />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="edit-adresse">Adresse complète *</label>
+            <input
+              type="text"
+              id="edit-adresse"
+              [(ngModel)]="editDepotData.adresse"
+              name="edit-adresse"
+              required
+              placeholder="Ex: Route de Koulikoro, Bamako"
+            />
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="edit-responsable">Responsable *</label>
+              <input
+                type="text"
+                id="edit-responsable"
+                [(ngModel)]="editDepotData.responsable"
+                name="edit-responsable"
+                required
+                placeholder="Ex: Amadou Diallo"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="edit-telephone">Téléphone *</label>
+              <input
+                type="tel"
+                id="edit-telephone"
+                [(ngModel)]="editDepotData.telephone"
+                name="edit-telephone"
+                required
+                placeholder="Ex: +223 20 12 34 56"
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="edit-capacite">Capacité (L) *</label>
+              <input
+                type="number"
+                id="edit-capacite"
+                [(ngModel)]="editDepotData.capacite"
+                name="edit-capacite"
+                required
+                [min]="selectedDepotForEdit.capaciteUtilisee || 0"
+                step="1"
+                placeholder="Ex: 100000"
+              />
+              <p class="form-hint">
+                Capacité maximale de stockage en litres
+                @if (selectedDepotForEdit.capaciteUtilisee && selectedDepotForEdit.capaciteUtilisee > 0) {
+                  <br>Minimum: {{ selectedDepotForEdit.capaciteUtilisee | number }} L (capacité utilisée)
+                }
+              </p>
+            </div>
+
+            <div class="form-group">
+              <label for="edit-statut">Statut *</label>
+              <select
+                id="edit-statut"
+                [(ngModel)]="editDepotData.statut"
+                name="edit-statut"
+                required
+              >
+                <option value="ACTIF">Actif</option>
+                <option value="INACTIF">Inactif</option>
+                <option value="EN_MAINTENANCE">En maintenance</option>
+                <option value="PLEIN">Plein</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-info">
+            <div class="info-box">
+              <span class="info-icon">ℹ️</span>
+              <div class="info-content">
+                <p class="info-title">Informations</p>
+                <p class="info-text">
+                  Stock actuel: {{ selectedDepotForEdit.capaciteUtilisee || 0 | number }} L
+                  @if (selectedDepotForEdit.capaciteUtilisee && selectedDepotForEdit.capaciteUtilisee > 0) {
+                    <br>La capacité ne peut pas être inférieure à la capacité utilisée.
+                  }
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" (click)="closeEditModal()">
+              Annuler
+            </button>
+            <button type="submit" class="btn-submit" [disabled]="isLoading">
+              @if (isLoading) {
+                Mise à jour...
+              } @else {
+                Mettre à jour
+              }
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  }
+</div>

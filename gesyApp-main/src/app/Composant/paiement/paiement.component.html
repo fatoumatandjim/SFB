@@ -1,0 +1,819 @@
+<div class="paiement-container">
+  <div class="paiement-header">
+    <div>
+      <h1>Gestion des Paiements</h1>
+      <p>Suivi et gestion de tous les paiements clients et fournisseurs</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn-export" (click)="exportTransactionsToPdf()" [disabled]="isLoading">
+        <span>📥</span>
+        @if (isLoading) {
+          Export en cours...
+        } @else {
+          Exporter en PDF
+        }
+      </button>
+    </div>
+  </div>
+
+  <div class="stats-cards">
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon green">
+          <span>✓</span>
+        </div>
+        <span class="stat-badge green">{{ stats.paiementsEffectues.evolution }}</span>
+      </div>
+      <div class="stat-value">{{ stats.paiementsEffectues.total }}</div>
+      <div class="stat-label">Paiements Effectués</div>
+      <div class="stat-details">
+        <span>{{ stats.paiementsEffectues.periode }}</span>
+        <span class="amount positive">{{ stats.paiementsEffectues.montant | number }} F</span>
+      </div>
+    </div>
+
+    <!-- <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon orange">
+          <span>⏳</span>
+        </div>
+        <span class="stat-badge orange">{{ stats.paiementsEnAttente.pourcentage }}</span>
+      </div>
+      <div class="stat-value">{{ stats.paiementsEnAttente.total }}</div>
+      <div class="stat-label">Paiements en Attente</div>
+      <div class="stat-details">
+        <span>Montant</span>
+        <span class="amount warning">{{ stats.paiementsEnAttente.montant | number }} F</span>
+      </div>
+    </div> -->
+
+    <!-- <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon red">
+          <span>⚠</span>
+        </div>
+        <span class="stat-badge red urgent">Attention</span>
+      </div>
+      <div class="stat-value">{{ stats.paiementsEchec.total }}</div>
+      <div class="stat-label">Paiements en Échec</div>
+      <div class="stat-details">
+        <span>Montant</span>
+        <span class="amount negative">{{ stats.paiementsEchec.montant | number }} F</span>
+      </div>
+    </div> -->
+  </div>
+
+  <!-- Onglets -->
+  <div class="tabs-container">
+    <div class="tabs">
+      <button
+        class="tab-btn"
+        [class.active]="activeTab === 'transactions'"
+        (click)="onTabChange('transactions')">
+        Transactions
+      </button>
+      <button
+        class="tab-btn"
+        [class.active]="activeTab === 'paiements-non-effectues'"
+        (click)="onTabChange('paiements-non-effectues')">
+        Paiements Non Effectués
+      </button>
+    </div>
+  </div>
+
+  <div class="actions-bar">
+    <button class="btn-new-payment" (click)="nouveauPaiement()">
+      <span>+</span>
+      Nouveau Paiement
+    </button>
+
+    <div class="filters">
+      <label class="filter-radio">
+        <input type="radio" name="filterType" value="tous" [(ngModel)]="filterType" (change)="onFilterChange()" [disabled]="customFilterActive" />
+        <span>Tous</span>
+      </label>
+      <label class="filter-radio">
+        <input type="radio" name="filterType" value="date" [(ngModel)]="filterType" (change)="onFilterChange()" [disabled]="customFilterActive" />
+        <span>Par date</span>
+      </label>
+      <label class="filter-radio">
+        <input type="radio" name="filterType" value="range" [(ngModel)]="filterType" (change)="onFilterChange()" [disabled]="customFilterActive" />
+        <span>Intervalle</span>
+      </label>
+    </div>
+
+    @if (filterType === 'date' && !customFilterActive) {
+    <div class="filter-date-input">
+      <input
+        type="date"
+        [(ngModel)]="filterDate"
+        (change)="onFilterChange()"
+        class="date-input"
+      />
+    </div>
+    }
+
+    @if (filterType === 'range' && !customFilterActive) {
+    <div class="filter-date-range">
+      <input
+        type="date"
+        [(ngModel)]="filterStartDate"
+        (change)="onFilterChange()"
+        class="date-input"
+        placeholder="Date début"
+      />
+      <span>à</span>
+      <input
+        type="date"
+        [(ngModel)]="filterEndDate"
+        (change)="onFilterChange()"
+        class="date-input"
+        placeholder="Date fin"
+      />
+    </div>
+    }
+
+    <div class="search-container">
+      <label for="search-paiements" class="sr-only">Rechercher des paiements</label>
+      <input
+        type="text"
+        id="search-paiements"
+        class="search-input"
+        placeholder="Rechercher..."
+        [(ngModel)]="searchTerm"
+        (input)="onSearchChange()"
+        aria-label="Rechercher des paiements"
+      />
+      <span class="search-icon">🔍</span>
+    </div>
+  </div>
+
+  <!-- Filtre personnalisé (type + date / intervalle) -->
+  <div class="custom-filter-card">
+    <div class="custom-filter-header">
+      <label class="custom-filter-toggle">
+        <input type="checkbox" [(ngModel)]="customFilterActive" (change)="toggleCustomFilter()" />
+        <span class="toggle-label">Filtre personnalisé</span>
+      </label>
+      <span class="custom-filter-hint">Filtrer par type de transaction et par date ou intervalle</span>
+    </div>
+    @if (customFilterActive) {
+    <div class="custom-filter-body">
+      <div class="custom-filter-row">
+        <div class="form-group custom-filter-type">
+          <label for="custom-filter-type">Type de transaction</label>
+          <select
+            id="custom-filter-type"
+            [(ngModel)]="customFilterType"
+            name="customFilterType"
+            class="form-select"
+          >
+            @for (opt of transactionTypes; track opt.value) {
+              <option [value]="opt.value">{{ opt.label }}</option>
+            }
+          </select>
+        </div>
+        <div class="custom-filter-date-mode">
+          <label class="filter-radio">
+            <input type="radio" name="customDateMode" value="tous" [(ngModel)]="customFilterDateMode" (change)="applyCustomFilter()" />
+            <span>Toutes les dates</span>
+          </label>
+          <label class="filter-radio">
+            <input type="radio" name="customDateMode" value="date" [(ngModel)]="customFilterDateMode" (change)="applyCustomFilter()" />
+            <span>Par date</span>
+          </label>
+          <label class="filter-radio">
+            <input type="radio" name="customDateMode" value="range" [(ngModel)]="customFilterDateMode" (change)="applyCustomFilter()" />
+            <span>Intervalle</span>
+          </label>
+        </div>
+      </div>
+      @if (customFilterDateMode === 'date') {
+      <div class="custom-filter-row">
+        <div class="form-group">
+          <label for="custom-filter-date">Date</label>
+          <input type="date" id="custom-filter-date" [(ngModel)]="customFilterDate" name="customFilterDate" class="date-input" (change)="applyCustomFilter()" />
+        </div>
+      </div>
+      }
+      @if (customFilterDateMode === 'range') {
+      <div class="custom-filter-row filter-date-range">
+        <div class="form-group">
+          <label>Du</label>
+          <input type="date" [(ngModel)]="customFilterStartDate" name="customFilterStartDate" class="date-input" (change)="applyCustomFilter()" />
+        </div>
+        <span class="range-sep">au</span>
+        <div class="form-group">
+          <label>Au</label>
+          <input type="date" [(ngModel)]="customFilterEndDate" name="customFilterEndDate" class="date-input" (change)="applyCustomFilter()" />
+        </div>
+      </div>
+      }
+      <div class="custom-filter-actions">
+        <button type="button" class="btn-apply-filter" (click)="applyCustomFilter()" [disabled]="isLoadingTransactions">
+          @if (isLoadingTransactions) { Chargement... } @else { Appliquer le filtre }
+        </button>
+      </div>
+      @if (filterResult !== null) {
+      <div class="custom-filter-totals">
+        <div class="total-badge total-count">
+          <span class="total-label">Nombre total</span>
+          <span class="total-value">{{ filterResult.totalCount }}</span>
+          <span class="total-unit">transaction(s)</span>
+        </div>
+        <div class="total-badge total-amount">
+          <span class="total-label">Montant total</span>
+          <span class="total-value">{{ filterResult.totalMontant | number:'1.0-0' }}</span>
+          <span class="total-unit">F</span>
+        </div>
+      </div>
+      }
+    </div>
+    }
+  </div>
+
+  <!-- Contenu pour l'onglet Transactions -->
+  @if (activeTab === 'transactions') {
+  <div class="table-container">
+    @if (isLoadingTransactions) {
+    <div class="loading-state">
+      <p>Chargement des paiements...</p>
+    </div>
+    } @else if (filteredPaiements.length === 0) {
+    <div class="empty-state">
+      <div class="empty-icon">💳</div>
+      <h3>Aucun paiement trouvé</h3>
+      <p>Aucun paiement ne correspond à vos critères de recherche.</p>
+    </div>
+    } @else {
+    <table class="paiements-table">
+      <thead>
+        <tr>
+          <th>N° Paiement</th>
+          <th>Description</th>
+          <th>Date</th>
+          <th>Montant</th>
+          <th>Type</th>
+          <th>Statut</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (paiement of filteredPaiements; track paiement.id) {
+        <tr>
+          <td>
+            <div class="paiement-numero">{{ paiement.numero }}</div>
+            @if (paiement.reference) {
+            <div class="paiement-reference">{{ paiement.reference }}</div>
+            }
+          </td>
+          <td>
+            <div class="description-value">{{ getTransactionDescription(paiement.id) }}</div>
+          </td>
+          <td>
+            <div class="date-value">{{ paiement.date }}</div>
+          </td>
+          <td>
+            <div class="montant-value">{{ paiement.montant | number }} F</div>
+          </td>
+          <td>
+            <div class="methode-value">{{ paiement.methode }}</div>
+          </td>
+          <td>
+            <span class="status-badge" [class]="getStatutClass(getTransactionStatut(paiement.id))">
+              {{ getStatutLabel(getTransactionStatut(paiement.id)) }}
+            </span>
+          </td>
+          <td>
+            <div class="actions">
+              <button class="action-btn" (click)="viewPaiement(paiement)" title="Voir">
+                <span>👁️</span>
+              </button>
+              <button class="action-btn" (click)="downloadPaiement(paiement)" title="Télécharger">
+                <span>⬇️</span>
+              </button>
+            </div>
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+
+    @if (transactionsPage && transactionsPage.totalPages > 1) {
+    <div class="pagination">
+      <button
+        class="btn-pagination"
+        (click)="changePage(currentPage - 1)"
+        [disabled]="currentPage === 0">
+        Précédent
+      </button>
+      <span class="page-info">
+        Page {{ currentPage + 1 }} sur {{ transactionsPage.totalPages }} ({{ transactionsPage.totalElements }} total)
+      </span>
+      <button
+        class="btn-pagination"
+        (click)="changePage(currentPage + 1)"
+        [disabled]="currentPage >= transactionsPage.totalPages - 1">
+        Suivant
+      </button>
+    </div>
+    }
+    }
+  </div>
+  }
+
+  <!-- Contenu pour l'onglet Paiements Non Effectués -->
+  @if (activeTab === 'paiements-non-effectues') {
+  <div class="table-container">
+    <div class="search-container search-paiements">
+      <input
+        type="text"
+        class="search-input"
+        placeholder="Rechercher dans les paiements non effectués..."
+        [(ngModel)]="searchTermPaiements"
+        (input)="onSearchPaiementsChange()"
+      />
+      <span class="search-icon">🔍</span>
+    </div>
+
+    @if (isLoadingPaiements) {
+    <div class="loading-state">
+      <p>Chargement des paiements non effectués...</p>
+    </div>
+    } @else if (filteredPaiementsNonEffectues.length === 0) {
+    <div class="empty-state">
+      <div class="empty-icon">✅</div>
+      <h3>Aucun paiement en attente</h3>
+      <p>Tous les paiements ont été effectués.</p>
+    </div>
+    } @else {
+    <table class="paiements-table">
+      <thead>
+        <tr>
+          <th>Référence</th>
+          <th>Date</th>
+          <th>Montant</th>
+          <th>Notes</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (paiement of filteredPaiementsNonEffectues; track paiement.id) {
+        <tr>
+          <td>
+            <div class="paiement-numero">{{ paiement.reference || 'N/A' }}</div>
+          </td>
+          <td>
+            <div class="date-value">{{ paiement.date | date:'dd/MM/yyyy' }}</div>
+          </td>
+          <td>
+            <div class="montant-value">{{ paiement.montant | number }} F</div>
+          </td>
+          <td>
+            <div class="description-value">{{ paiement.notes || '-' }}</div>
+          </td>
+          <td>
+            <div class="actions">
+              <button class="action-btn" (click)="viewPaiementDetail(paiement)" title="Voir détails">
+                <span>👁️</span>
+              </button>
+              <button class="btn-faire-paiement" (click)="openPaiementModal(paiement)">
+                Faire le paiement
+              </button>
+            </div>
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+    }
+  </div>
+  }
+</div>
+
+@if (showAddModal) {
+<div class="modal-overlay" (click)="closeAddModal()">
+  <div class="modal-content paiement-modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Nouveau Paiement</h2>
+      <button class="modal-close" (click)="closeAddModal()" aria-label="Fermer">×</button>
+    </div>
+
+    <div class="modal-body">
+      <form (ngSubmit)="savePaiement()">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="montant-paiement">Montant (FCFA) *</label>
+            <input
+              type="number"
+              id="montant-paiement"
+              [(ngModel)]="newPaiement.montant"
+              name="montant"
+              required
+              min="0"
+              step="100"
+              placeholder="Ex: 500000"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="date-paiement">Date *</label>
+            <input
+              type="date"
+              id="date-paiement"
+              [(ngModel)]="newPaiement.date"
+              name="date"
+              required
+            />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="type-compte">Compte à débiter *</label>
+          <select
+            id="type-compte"
+            [(ngModel)]="compteType"
+            name="compteType"
+            (change)="onCompteTypeChange()"
+            required
+            class="type-select"
+          >
+            <option value="banque">Compte bancaire</option>
+            <option value="caisse">Caisse</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          @if (compteType === 'banque') {
+          <label for="compte-bancaire">Compte bancaire *</label>
+          <select
+            id="compte-bancaire"
+            [(ngModel)]="newPaiement.compteId"
+            name="compteId"
+            required
+          >
+            <option value="0">Sélectionner un compte</option>
+            @for (compte of comptesBancaires; track compte.id) {
+            <option [value]="compte.id">
+              {{ compte.banque }} - {{ compte.numero }} ({{ compte.solde | number }} FCFA)
+            </option>
+            }
+          </select>
+          } @else {
+          <label for="caisse">Caisse *</label>
+          <select
+            id="caisse"
+            [(ngModel)]="newPaiement.caisseId"
+            name="caisseId"
+            required
+          >
+            <option value="0">Sélectionner une caisse</option>
+            @for (caisse of caisses; track caisse.id) {
+            <option [value]="caisse.id">
+              {{ caisse.nom }} ({{ caisse.solde | number }} FCFA)
+            </option>
+            }
+          </select>
+          }
+        </div>
+
+        <div class="form-group">
+          <label for="description-paiement">Description *</label>
+          <textarea
+            id="description-paiement"
+            [(ngModel)]="newPaiement.description"
+            name="description"
+            required
+            rows="3"
+            placeholder="Décrivez le paiement..."
+          ></textarea>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" (click)="closeAddModal()">
+            Annuler
+          </button>
+          <button type="submit" class="btn-submit" [disabled]="isLoading">
+            @if (isLoading) {
+              Création...
+            } @else {
+              Créer le paiement
+            }
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+}
+
+@if (showDetailModal && selectedPaiement && selectedTransaction) {
+<div class="modal-overlay" (click)="closeDetailModal()">
+  <div class="modal-content detail-modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Détails du Paiement</h2>
+      <button class="modal-close" (click)="closeDetailModal()" aria-label="Fermer">×</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="detail-section">
+        <div class="detail-header">
+          <span class="detail-label">N° Paiement</span>
+          <span class="detail-value">{{ selectedPaiement.numero }}</span>
+        </div>
+        @if (selectedTransaction.reference) {
+        <div class="detail-header">
+          <span class="detail-label">Référence</span>
+          <span class="detail-value">{{ selectedTransaction.reference }}</span>
+        </div>
+        }
+      </div>
+
+      <div class="detail-section">
+        <h3 class="section-title">Informations du Paiement</h3>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">Montant</span>
+            <span class="detail-value amount">{{ selectedTransaction.montant | number }} FCFA</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Date</span>
+            <span class="detail-value">{{ formatDate(selectedTransaction.date) }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Type</span>
+            <span class="detail-value">{{ getTransactionTypeLabel(selectedTransaction.type || '') }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Statut</span>
+            <span class="detail-value">
+              <span class="status-badge" [class]="getStatutClass(selectedTransaction.statut || '')">
+                {{ getStatutLabel(selectedTransaction.statut || '') }}
+              </span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      @if (selectedTransaction.description) {
+      <div class="detail-section">
+        <h3 class="section-title">Description</h3>
+        <p class="description-text">{{ selectedTransaction.description }}</p>
+      </div>
+      }
+
+      <div class="detail-section">
+        <h3 class="section-title">Compte Débité</h3>
+        @if (selectedTransaction.compteId) {
+        @for (compte of comptesBancaires; track compte.id) {
+        @if (compte.id === selectedTransaction.compteId) {
+        <div class="account-info">
+          <div class="account-name">{{ compte.banque }}</div>
+          <div class="account-details">
+            <span>N°: {{ compte.numero }}</span>
+            <span>Solde: {{ compte.solde | number }} FCFA</span>
+          </div>
+        </div>
+        }
+        }
+        } @else if (selectedTransaction.caisseId) {
+        @for (caisse of caisses; track caisse.id) {
+        @if (caisse.id === selectedTransaction.caisseId) {
+        <div class="account-info">
+          <div class="account-name">{{ caisse.nom }}</div>
+          <div class="account-details">
+            <span>Solde: {{ caisse.solde | number }} FCFA</span>
+          </div>
+        </div>
+        }
+        }
+        } @else {
+        <p class="no-account">Aucun compte associé</p>
+        }
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" (click)="closeDetailModal()">
+          Fermer
+        </button>
+        <button type="button" class="btn-download" (click)="downloadPaiement(selectedPaiement)">
+          <span>⬇️</span>
+          Télécharger le reçu
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Modal pour voir les détails d'un paiement non effectué -->
+@if (showDetailPaiementModal && selectedPaiementDetail) {
+<div class="modal-overlay" (click)="closeDetailPaiementModal()">
+  <div class="modal-content detail-modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Détails du Paiement</h2>
+      <button class="modal-close" (click)="closeDetailPaiementModal()" aria-label="Fermer">×</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="detail-section">
+        <div class="detail-header">
+          <span class="detail-label">Référence</span>
+          <span class="detail-value">{{ selectedPaiementDetail.reference || 'N/A' }}</span>
+        </div>
+        <div class="detail-header">
+          <span class="detail-label">Date</span>
+          <span class="detail-value">{{ selectedPaiementDetail.date | date:'dd/MM/yyyy' }}</span>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <h3 class="section-title">Informations du Paiement</h3>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">Montant Total</span>
+            <span class="detail-value amount">{{ selectedPaiementDetail.montant | number }} FCFA</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Méthode</span>
+            <span class="detail-value">{{ selectedPaiementDetail.methode || 'Virement' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Statut</span>
+            <span class="detail-value">
+              <span class="status-badge badge-orange">En Attente</span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      @if (selectedPaiementDetail.notes) {
+      <div class="detail-section">
+        <h3 class="section-title">Notes</h3>
+        <p class="description-text">{{ selectedPaiementDetail.notes }}</p>
+      </div>
+      }
+
+      @if (selectedPaiementDetail.transactions && selectedPaiementDetail.transactions.length > 0) {
+      <div class="detail-section">
+        <h3 class="section-title">Transactions Associées</h3>
+        <div class="transactions-list">
+          @for (transaction of selectedPaiementDetail.transactions; track transaction.id) {
+          <div class="transaction-item">
+            <div class="transaction-header">
+              <span class="transaction-type">{{ transaction.type || 'Frais' }}</span>
+              <span class="transaction-amount">{{ transaction.montant | number }} FCFA</span>
+            </div>
+            @if (transaction.description) {
+            <div class="transaction-description">{{ transaction.description }}</div>
+            }
+          </div>
+          }
+        </div>
+      </div>
+      }
+
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" (click)="closeDetailPaiementModal()">
+          Fermer
+        </button>
+        <button type="button" class="btn-submit" (click)="openPaiementModal(selectedPaiementDetail)">
+          Faire le paiement
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Modal pour valider un paiement -->
+@if (showPaiementModal && selectedPaiementToPay) {
+<div class="modal-overlay" (click)="closePaiementModal()">
+  <div class="modal-content paiement-modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Valider le Paiement</h2>
+      <button class="modal-close" (click)="closePaiementModal()" aria-label="Fermer">×</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="paiement-summary">
+        <div class="summary-item">
+          <span class="summary-label">Montant à débiter:</span>
+          <span class="summary-value amount">{{ selectedPaiementToPay.montant | number }} FCFA</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">Référence:</span>
+          <span class="summary-value">{{ selectedPaiementToPay.reference || 'N/A' }}</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Type de compte à débiter *</label>
+        <div class="radio-group">
+          <label class="radio-label">
+            <input
+              type="radio"
+              name="compteType"
+              value="banque"
+              [(ngModel)]="compteTypePaiement"
+              (change)="selectedCompteId = undefined; selectedCaisseId = undefined"
+            />
+            <span>Compte Bancaire</span>
+          </label>
+          <label class="radio-label">
+            <input
+              type="radio"
+              name="compteType"
+              value="caisse"
+              [(ngModel)]="compteTypePaiement"
+              (change)="selectedCompteId = undefined; selectedCaisseId = undefined"
+            />
+            <span>Caisse</span>
+          </label>
+        </div>
+      </div>
+
+      @if (compteTypePaiement === 'banque') {
+      <div class="form-group">
+        <label for="compte-bancaire">Compte Bancaire *</label>
+        <select
+          id="compte-bancaire"
+          [(ngModel)]="selectedCompteId"
+          class="form-select"
+          required>
+          <option value="">Sélectionner un compte bancaire</option>
+          @for (compte of comptesBancaires; track compte.id) {
+          <option [value]="compte.id">
+            {{ compte.banque }} - {{ compte.numero }} (Solde: {{ compte.solde | number }} FCFA)
+          </option>
+          }
+        </select>
+        @if (selectedCompteId) {
+        @for (compte of comptesBancaires; track compte.id) {
+        @if (compte.id === selectedCompteId) {
+        <div class="account-info">
+          <div class="account-balance">
+            Solde disponible: <strong>{{ compte.solde | number }} FCFA</strong>
+          </div>
+          @if (compte.solde < selectedPaiementToPay.montant) {
+          <div class="warning-message">
+            ⚠️ Le solde est insuffisant pour effectuer ce paiement
+          </div>
+          }
+        </div>
+        }
+        }
+        }
+      </div>
+      }
+
+      @if (compteTypePaiement === 'caisse') {
+      <div class="form-group">
+        <label for="caisse">Caisse *</label>
+        <select
+          id="caisse"
+          [(ngModel)]="selectedCaisseId"
+          class="form-select"
+          required>
+          <option value="">Sélectionner une caisse</option>
+          @for (caisse of caisses; track caisse.id) {
+          <option [value]="caisse.id">
+            {{ caisse.nom }} (Solde: {{ caisse.solde | number }} FCFA)
+          </option>
+          }
+        </select>
+        @if (selectedCaisseId) {
+        @for (caisse of caisses; track caisse.id) {
+        @if (caisse.id === selectedCaisseId) {
+        <div class="account-info">
+          <div class="account-balance">
+            Solde disponible: <strong>{{ caisse.solde | number }} FCFA</strong>
+          </div>
+          @if (caisse.solde < selectedPaiementToPay.montant) {
+          <div class="warning-message">
+            ⚠️ Le solde est insuffisant pour effectuer ce paiement
+          </div>
+          }
+        </div>
+        }
+        }
+        }
+      </div>
+      }
+
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" (click)="closePaiementModal()" [disabled]="isLoading">
+          Annuler
+        </button>
+        <button type="button" class="btn-submit" (click)="validerPaiement()" [disabled]="isLoading">
+          @if (isLoading) {
+            Validation en cours...
+          } @else {
+            Valider le paiement
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+}

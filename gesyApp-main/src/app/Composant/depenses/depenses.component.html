@@ -1,0 +1,412 @@
+<div class="depenses-container">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <h1>💸 Gestion des Dépenses</h1>
+      <p>Suivez et gérez toutes vos dépenses</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn-primary" (click)="openAddDepenseModal()">
+        <span>+</span> Nouvelle Dépense
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon blue">📊</div>
+      <div class="stat-info">
+        <span class="stat-label">Total Dépenses</span>
+        <span class="stat-value">{{ totalElements }}</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon green">💰</div>
+      <div class="stat-info">
+        <span class="stat-label">Montant Page</span>
+        <span class="stat-value">{{ formatMontant(totalDepenses) }}</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon purple">📁</div>
+      <div class="stat-info">
+        <span class="stat-label">Catégories</span>
+        <span class="stat-value">{{ categories.length }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs-container">
+    <button 
+      class="tab-btn" 
+      [class.active]="activeTab === 'depenses'"
+      (click)="activeTab = 'depenses'">
+      📝 Dépenses
+    </button>
+    <button 
+      class="tab-btn" 
+      [class.active]="activeTab === 'categories'"
+      (click)="activeTab = 'categories'">
+      📁 Catégories
+    </button>
+  </div>
+
+  <!-- Depenses Tab -->
+  @if (activeTab === 'depenses') {
+    <!-- Filters -->
+    <div class="filters-section">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input 
+          type="text" 
+          [(ngModel)]="searchTerm" 
+          placeholder="Rechercher une dépense..."
+        />
+      </div>
+      
+      <div class="filter-group">
+        <select [(ngModel)]="selectedCategorieId" (change)="onFilterChange()">
+          <option [ngValue]="null">Toutes les catégories</option>
+          @for (cat of categories; track cat.id) {
+            <option [ngValue]="cat.id">{{ cat.nom }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <select [(ngModel)]="filterType" (change)="onFilterChange()">
+          <option value="none">Toutes les dates</option>
+          <option value="date">Date précise</option>
+          <option value="range">Intervalle</option>
+        </select>
+      </div>
+
+      @if (filterType === 'date') {
+        <div class="filter-group">
+          <input 
+            type="date" 
+            [(ngModel)]="filterDate" 
+            (change)="onFilterChange()"
+          />
+        </div>
+      }
+
+      @if (filterType === 'range') {
+        <div class="filter-group date-range">
+          <input 
+            type="date" 
+            [(ngModel)]="filterStartDate" 
+            (change)="onFilterChange()"
+            placeholder="Date début"
+          />
+          <span>à</span>
+          <input 
+            type="date" 
+            [(ngModel)]="filterEndDate" 
+            (change)="onFilterChange()"
+            placeholder="Date fin"
+          />
+        </div>
+      }
+
+      <button class="btn-clear" (click)="clearFilters()">
+        ✕ Réinitialiser
+      </button>
+    </div>
+
+    <!-- Table -->
+    <div class="table-container">
+      @if (isLoading) {
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>Chargement...</p>
+        </div>
+      } @else if (filteredDepenses.length === 0) {
+        <div class="empty-state">
+          <span class="empty-icon">📭</span>
+          <h3>Aucune dépense trouvée</h3>
+          <p>Ajoutez une nouvelle dépense pour commencer</p>
+        </div>
+      } @else {
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Libellé</th>
+              <th>Catégorie</th>
+              <th>Source</th>
+              <th>Référence</th>
+              <th>Montant</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (depense of filteredDepenses; track depense.id) {
+              <tr>
+                <td>{{ formatDate(depense.dateDepense) }}</td>
+                <td class="libelle-cell">
+                  <span class="libelle">{{ depense.libelle }}</span>
+                  @if (depense.description) {
+                    <span class="description">{{ depense.description }}</span>
+                  }
+                </td>
+                <td>
+                  <span class="badge-categorie" [style.background-color]="getCategorieColor(depense.categorieNom || '')">
+                    {{ depense.categorieNom }}
+                  </span>
+                </td>
+                <td>{{ getSourceLabel(depense) }}</td>
+                <td>{{ depense.reference || '-' }}</td>
+                <td class="montant-cell">{{ formatMontant(depense.montant) }}</td>
+                <td class="actions-cell">
+                  <button class="action-btn edit" (click)="openEditDepenseModal(depense)" title="Modifier">
+                    ✏️
+                  </button>
+                  <button class="action-btn delete" (click)="confirmDelete('depense', depense.id!)" title="Supprimer">
+                    🗑️
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+
+        <!-- Pagination -->
+        @if (totalPages > 1) {
+          <div class="pagination">
+            <button 
+              class="page-btn" 
+              [disabled]="currentPage === 0"
+              (click)="goToPage(0)">
+              ≪
+            </button>
+            <button 
+              class="page-btn" 
+              [disabled]="currentPage === 0"
+              (click)="goToPage(currentPage - 1)">
+              ‹
+            </button>
+            
+            @for (page of pages; track page) {
+              <button 
+                class="page-btn"
+                [class.active]="page === currentPage"
+                (click)="goToPage(page)">
+                {{ page + 1 }}
+              </button>
+            }
+            
+            <button 
+              class="page-btn" 
+              [disabled]="currentPage === totalPages - 1"
+              (click)="goToPage(currentPage + 1)">
+              ›
+            </button>
+            <button 
+              class="page-btn" 
+              [disabled]="currentPage === totalPages - 1"
+              (click)="goToPage(totalPages - 1)">
+              ≫
+            </button>
+            
+            <span class="page-info">
+              Page {{ currentPage + 1 }} sur {{ totalPages }} ({{ totalElements }} éléments)
+            </span>
+          </div>
+        }
+      }
+    </div>
+  }
+
+  <!-- Categories Tab -->
+  @if (activeTab === 'categories') {
+    <div class="categories-header">
+      <button class="btn-primary" (click)="openAddCategorieModal()">
+        <span>+</span> Nouvelle Catégorie
+      </button>
+    </div>
+
+    <div class="categories-grid">
+      @for (categorie of categories; track categorie.id) {
+        <div class="categorie-card">
+          <div class="categorie-header">
+            <span class="categorie-icon" [style.background-color]="getCategorieColor(categorie.nom)">
+              📁
+            </span>
+            <div class="categorie-info">
+              <h3>{{ categorie.nom }}</h3>
+              @if (categorie.description) {
+                <p>{{ categorie.description }}</p>
+              }
+            </div>
+          </div>
+          <div class="categorie-footer">
+            <span class="status-badge" [class.active]="categorie.statut === 'ACTIF'">
+              {{ categorie.statut }}
+            </span>
+            <div class="categorie-actions">
+              <button class="action-btn edit" (click)="openEditCategorieModal(categorie)">
+                ✏️
+              </button>
+              <button class="action-btn delete" (click)="confirmDelete('categorie', categorie.id!)">
+                🗑️
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+
+      @if (categories.length === 0) {
+        <div class="empty-state full-width">
+          <span class="empty-icon">📁</span>
+          <h3>Aucune catégorie</h3>
+          <p>Créez une catégorie pour organiser vos dépenses</p>
+        </div>
+      }
+    </div>
+  }
+</div>
+
+<!-- Modal Dépense -->
+@if (showDepenseModal) {
+  <div class="modal-overlay" (click)="closeDepenseModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>{{ isEditingDepense ? 'Modifier la dépense' : 'Nouvelle dépense' }}</h2>
+        <button class="close-btn" (click)="closeDepenseModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Libellé *</label>
+          <input type="text" [(ngModel)]="depenseForm.libelle" placeholder="Ex: Achat carburant" />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Montant *</label>
+            <input type="number" [(ngModel)]="depenseForm.montant" placeholder="0" min="0" />
+          </div>
+          <div class="form-group">
+            <label>Date *</label>
+            <input type="date" [(ngModel)]="depenseForm.dateDepense" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Catégorie *</label>
+          <select [(ngModel)]="depenseForm.categorieId">
+            <option [ngValue]="undefined">Sélectionner une catégorie</option>
+            @for (cat of categories; track cat.id) {
+              <option [ngValue]="cat.id">{{ cat.nom }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-group source-paiement">
+          <label>Source du paiement {{ isEditingDepense ? '' : '*' }}</label>
+          <div class="source-options">
+            <label class="radio-option">
+              <input type="radio" name="sourceType" [value]="'compte'" [(ngModel)]="sourceType" (change)="onSourceTypeChange()" />
+              <span>Compte bancaire</span>
+            </label>
+            <label class="radio-option">
+              <input type="radio" name="sourceType" [value]="'caisse'" [(ngModel)]="sourceType" (change)="onSourceTypeChange()" />
+              <span>Caisse</span>
+            </label>
+          </div>
+          @if (sourceType === 'compte') {
+            <select [(ngModel)]="depenseForm.compteId" class="source-select">
+              <option [ngValue]="undefined">Choisir un compte</option>
+              @for (c of comptes; track c.id) {
+                @if (c.statut === 'ACTIF') {
+                  <option [ngValue]="c.id">{{ c.banque }} - {{ c.numero }}</option>
+                }
+              }
+            </select>
+          }
+          @if (sourceType === 'caisse') {
+            <select [(ngModel)]="depenseForm.caisseId" class="source-select">
+              <option [ngValue]="undefined">Choisir une caisse</option>
+              @for (c of caisses; track c.id) {
+                @if (c.statut === 'ACTIF') {
+                  <option [ngValue]="c.id">{{ c.nom }}</option>
+                }
+              }
+            </select>
+          }
+        </div>
+        <div class="form-group">
+          <label>Référence</label>
+          <input type="text" [(ngModel)]="depenseForm.reference" placeholder="Ex: FAC-2024-001" />
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <textarea [(ngModel)]="depenseForm.description" placeholder="Description optionnelle..." rows="3"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" (click)="closeDepenseModal()">Annuler</button>
+        <button class="btn-primary" (click)="saveDepense()">
+          {{ isEditingDepense ? 'Modifier' : 'Enregistrer' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Modal Catégorie -->
+@if (showCategorieModal) {
+  <div class="modal-overlay" (click)="closeCategorieModal()">
+    <div class="modal-content modal-small" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>{{ isEditingCategorie ? 'Modifier la catégorie' : 'Nouvelle catégorie' }}</h2>
+        <button class="close-btn" (click)="closeCategorieModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Nom *</label>
+          <input type="text" [(ngModel)]="categorieForm.nom" placeholder="Ex: Carburant" />
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <textarea [(ngModel)]="categorieForm.description" placeholder="Description optionnelle..." rows="2"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Statut</label>
+          <select [(ngModel)]="categorieForm.statut">
+            <option value="ACTIF">Actif</option>
+            <option value="INACTIF">Inactif</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" (click)="closeCategorieModal()">Annuler</button>
+        <button class="btn-primary" (click)="saveCategorie()">
+          {{ isEditingCategorie ? 'Modifier' : 'Enregistrer' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Modal Confirmation Suppression -->
+@if (showDeleteConfirm) {
+  <div class="modal-overlay" (click)="cancelDelete()">
+    <div class="modal-content modal-small" (click)="$event.stopPropagation()">
+      <div class="modal-header warning">
+        <h2>⚠️ Confirmation</h2>
+        <button class="close-btn" (click)="cancelDelete()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="confirm-text">
+          Êtes-vous sûr de vouloir supprimer {{ itemToDelete?.type === 'depense' ? 'cette dépense' : 'cette catégorie' }} ?
+        </p>
+        <p class="confirm-warning">Cette action est irréversible.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" (click)="cancelDelete()">Annuler</button>
+        <button class="btn-danger" (click)="executeDelete()">Supprimer</button>
+      </div>
+    </div>
+  </div>
+}
+

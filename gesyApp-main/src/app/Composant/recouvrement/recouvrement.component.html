@@ -1,0 +1,228 @@
+<div class="recouvrement-container">
+  <div class="recouvrement-header">
+    <div>
+      <h1>Recouvrement</h1>
+      <p>Gestion du recouvrement des créances clients</p>
+    </div>
+  </div>
+
+  <div class="stats-cards">
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon blue">
+          <span>💰</span>
+        </div>
+      </div>
+      <div class="stat-value">{{ stats.totalCreances.montant | number }} F</div>
+      <div class="stat-label">Total Créances</div>
+      <div class="stat-details">
+        <span>{{ stats.totalCreances.nombre }} créances</span>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon red">
+          <span>⚠</span>
+        </div>
+        <span class="stat-badge red urgent">Urgent</span>
+      </div>
+      <div class="stat-value">{{ stats.enRetard.montant | number }} F</div>
+      <div class="stat-label">En Retard</div>
+      <div class="stat-details">
+        <span>{{ stats.enRetard.nombre }} créances</span>
+        <span>{{ stats.enRetard.joursMoyen }} jours moyen</span>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon green">
+          <span>✓</span>
+        </div>
+        <span class="stat-badge green">{{ stats.recouvre.pourcentage }}</span>
+      </div>
+      <div class="stat-value">{{ stats.recouvre.montant | number }} F</div>
+      <div class="stat-label">Recouvré</div>
+      <div class="stat-details">
+        <span>{{ stats.recouvre.nombre }} créances</span>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon orange">
+          <span>🚫</span>
+        </div>
+        <span class="stat-badge orange">Critique</span>
+      </div>
+      <div class="stat-value">{{ stats.impaye.montant | number }} F</div>
+      <div class="stat-label">Impayé</div>
+      <div class="stat-details">
+        <span>{{ stats.impaye.nombre }} créances</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="actions-bar">
+    <div class="filters">
+      <button
+        class="filter-btn"
+        [class.active]="activeFilter === 'tous'"
+        (click)="setFilter('tous')">
+        Tous
+      </button>
+      <button
+        class="filter-btn"
+        [class.active]="activeFilter === 'en-retard'"
+        (click)="setFilter('en-retard')">
+        En Retard
+      </button>
+      <button
+        class="filter-btn"
+        [class.active]="activeFilter === 'recouvre'"
+        (click)="setFilter('recouvre')">
+        Recouvré
+      </button>
+      <button
+        class="filter-btn"
+        [class.active]="activeFilter === 'impaye'"
+        (click)="setFilter('impaye')">
+        Impayé
+      </button>
+      <button
+        class="filter-btn"
+        [class.active]="activeFilter === 'haute-priorite'"
+        (click)="setFilter('haute-priorite')">
+        Haute Priorité
+      </button>
+    </div>
+
+    <div class="search-container">
+      <label for="search-creances" class="sr-only">Rechercher des créances</label>
+      <input
+        type="text"
+        id="search-creances"
+        class="search-input"
+        placeholder="Rechercher..."
+        [(ngModel)]="searchTerm"
+        aria-label="Rechercher des créances"
+      />
+      <span class="search-icon">🔍</span>
+    </div>
+  </div>
+
+  <div class="table-container">
+    @if (isLoading) {
+    <div class="loading-state">
+      <p>Chargement des créances...</p>
+    </div>
+    } @else if (filteredCreances.length === 0) {
+    <div class="empty-state">
+      <div class="empty-icon">💳</div>
+      <h3>Aucune créance trouvée</h3>
+      <p>Aucune créance ne correspond à vos critères de recherche.</p>
+    </div>
+    } @else {
+    <table class="creances-table">
+      <thead>
+        <tr>
+          <th>Facture</th>
+          <th>Client</th>
+          <th>Montant</th>
+          <th>Échéance</th>
+          <th>Jours Retard</th>
+          <th>Priorité</th>
+          <!-- <th>Relances</th> -->
+          <th>Dernier Contact</th>
+          <th>Statut</th>
+          <!-- <th>Actions</th> -->
+        </tr>
+      </thead>
+      <tbody>
+        @for (creance of filteredCreances; track creance.id) {
+        <tr>
+          <td>
+            <div class="facture-numero">{{ creance.facture }}</div>
+            <div class="facture-date">Émis: {{ creance.dateEmission }}</div>
+          </td>
+          <td>
+            <div class="client-info">
+              <div class="client-avatar" [class]="'avatar-' + creance.client.couleur">
+                {{ creance.client.initiales }}
+              </div>
+              <div class="client-details">
+                <div class="client-nom">{{ creance.client.nom }}</div>
+                <div class="client-contact">{{ creance.client.email }}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <div class="montant-value">{{ creance.montant | number }} F</div>
+          </td>
+          <td>
+            <div class="date-value">{{ creance.dateEcheance }}</div>
+          </td>
+          <td>
+            @if (creance.joursRetard > 0) {
+            <div class="retard-badge" [class]="creance.joursRetard > 20 ? 'retard-critique' : creance.joursRetard > 10 ? 'retard-eleve' : 'retard-moyen'">
+              {{ creance.joursRetard }} jours
+            </div>
+            } @else {
+            <div class="retard-badge retard-zero">À jour</div>
+            }
+          </td>
+          <td>
+            @if (creance.priorite === 'haute') {
+            <span class="priorite-badge badge-high">Haute</span>
+            }
+            @if (creance.priorite === 'moyenne') {
+            <span class="priorite-badge badge-medium">Moyenne</span>
+            }
+            @if (creance.priorite === 'basse') {
+            <span class="priorite-badge badge-low">Basse</span>
+            }
+          </td>
+          <!-- <td>
+            <div class="relances-count">{{ creance.relances }}</div>
+          </td> -->
+          <td>
+            <div class="date-value">{{ creance.dernierContact }}</div>
+          </td>
+          <td>
+            @if (creance.statut === 'en-retard') {
+            <span class="status-badge badge-orange">En Retard</span>
+            }
+            @if (creance.statut === 'recouvre') {
+            <span class="status-badge badge-green">Recouvré</span>
+            }
+            @if (creance.statut === 'impaye') {
+            <span class="status-badge badge-red">Impayé</span>
+            }
+            @if (creance.statut === 'en-cours') {
+            <span class="status-badge badge-blue">En Cours</span>
+            }
+          </td>
+          <!-- <td>
+            <div class="actions">
+              <button class="action-btn" (click)="viewCreance(creance)" title="Voir">
+                <span>👁️</span>
+              </button>
+              <button class="action-btn" (click)="contacter(creance)" title="Contacter">
+                <span>📞</span>
+              </button>
+              <button class="action-btn" (click)="relancer(creance)" title="Relancer">
+                <span>📧</span>
+              </button>
+              <button class="action-btn success" (click)="marquerRecouvre(creance)" title="Marquer recouvré">
+                <span>✓</span>
+              </button>
+            </div>
+          </td> -->
+        </tr>
+        }
+      </tbody>
+    </table>
+    }
+  </div>
+</div>

@@ -1,0 +1,123 @@
+# =============================================================================
+# GesY - Déploiement complet (ApiGesy + gesyApp)
+# =============================================================================
+# Reverse proxy: Traefik (HTTPS, Let's Encrypt)
+# Frontend: https://sfb-petroleum.net/
+# API:      https://api.sfb-petroleum.net/
+# =============================================================================
+# Usage: docker compose up -d
+# Prérequis: cp .env.example .env && éditer .env
+# =============================================================================
+
+# Définitions réutilisables (doivent être avant services pour les ancres)
+x-common-env: &common-env
+  TZ: ${TZ:-UTC}
+
+x-api-common: &api-common
+  environment:
+    <<: *common-env
+    SPRING_PROFILES_ACTIVE: prod
+    DATABASE_HOST: ${DATABASE_HOST:-172.17.0.1}
+    DATABASE_PORT: ${DATABASE_PORT:-5432}
+    DATABASE_NAME: ${DATABASE_NAME:-gesy}
+    DATABASE_USER: ${DATABASE_USER:-gesy}
+    DATABASE_PASSWORD: ${DATABASE_PASSWORD:?DATABASE_PASSWORD requis}
+    FILE_UPLOAD_DIR: /app/uploads/email-attachments
+    MAIL_HOST: ${MAIL_HOST:-}
+    MAIL_PORT: ${MAIL_PORT:-465}
+    MAIL_USERNAME: ${MAIL_USERNAME:-}
+    MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+    MAIL_PROTOCOL: ${MAIL_PROTOCOL:-smtps}
+    MAIL_IMAP_HOST: ${MAIL_IMAP_HOST:-}
+    MAIL_IMAP_PORT: ${MAIL_IMAP_PORT:-993}
+    MAIL_DEBUG: ${MAIL_DEBUG:-false}
+  volumes:
+    - gesy-uploads:/app/uploads
+  networks:
+    - gesy-network
+
+x-app-common: &app-common
+  networks:
+    - gesy-network
+
+services:
+  # ---------------------------------------------------------------------------
+  # TRAEFIK - Reverse proxy (HTTPS, routage)
+  # ---------------------------------------------------------------------------
+  traefik:
+    image: traefik:v3.6
+    container_name: gesy-traefik
+    restart: unless-stopped
+    command:
+      - "--api.dashboard=false"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--entrypoints.web.http.redirections.entrypoint.permanent=true"
+      - "--certificatesresolvers.le.acme.httpchallenge=true"
+      - "--certificatesresolvers.le.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.le.acme.email=${ACME_EMAIL:-admin@sfb-petroleum.net}"
+      - "--certificatesresolvers.le.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-letsencrypt:/letsencrypt
+      - traefik-logs:/var/log/traefik
+    networks:
+      - gesy-network
+
+  # ---------------------------------------------------------------------------
+  # API Backend Spring Boot
+  # ---------------------------------------------------------------------------
+  api:
+    build:
+      context: ./ApiGesy-main
+      dockerfile: Dockerfile
+    container_name: gesy-api
+    restart: unless-stopped
+    <<: *api-common
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.gesy-api.rule=Host(`api.${DOMAIN:-sfb-petroleum.net}`)"
+      - "traefik.http.routers.gesy-api.entrypoints=websecure"
+      - "traefik.http.routers.gesy-api.tls.certresolver=le"
+      - "traefik.http.services.gesy-api.loadbalancer.server.port=8080"
+
+  # ---------------------------------------------------------------------------
+  # Frontend Angular/Ionic (Nginx)
+  # ---------------------------------------------------------------------------
+  app:
+    build:
+      context: ./gesyApp-main
+      dockerfile: Dockerfile
+      args:
+        API_URL: ${API_URL:-https://api.sfb-petroleum.net/api}
+    container_name: gesy-app
+    restart: unless-stopped
+    <<: *app-common
+    depends_on:
+      api:
+        condition: service_started
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.gesy-app.rule=Host(`${DOMAIN:-sfb-petroleum.net}`)"
+      - "traefik.http.routers.gesy-app.entrypoints=websecure"
+      - "traefik.http.routers.gesy-app.tls.certresolver=le"
+      - "traefik.http.services.gesy-app.loadbalancer.server.port=80"
+
+# =============================================================================
+# Volumes & Réseaux
+# =============================================================================
+volumes:
+  traefik-letsencrypt:
+  traefik-logs:
+  gesy-uploads:
+
+networks:
+  gesy-network:
+    driver: bridge

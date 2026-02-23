@@ -1,0 +1,344 @@
+<div class="settings-container">
+  <div class="settings-header">
+    <h1>Paramètres</h1>
+    <p>Gestion des employés et paramètres du compte</p>
+  </div>
+
+  <div class="settings-grid">
+    <div class="card">
+      <div class="card-header">
+        <div class="header-content">
+          <div>
+            <h2>Employés</h2>
+            <p>Ajouter et gérer les comptes employés</p>
+          </div>
+          <button class="btn-add" (click)="ouvrirModalAjout()">
+            <span>➕</span>
+            Ajouter un employé
+          </button>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table class="employes-table">
+          <thead>
+            <tr>
+              <th>Nom</th>
+              <th>Identifiant</th>
+              <th>Mot de passe</th>
+              <th>Email</th>
+              <th>Téléphone</th>
+              <th>Rôles</th>
+              <th>Statut</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @if (isLoading) {
+              <tr>
+                <td colspan="8" class="empty-state">
+                  <div class="empty-message">Chargement...</div>
+                </td>
+              </tr>
+            } @else if (employes.length === 0) {
+              <tr>
+                <td colspan="8" class="empty-state">
+                  <div class="empty-message">Aucun employé trouvé</div>
+                </td>
+              </tr>
+            } @else {
+              @for (employe of employes; track employe.id) {
+                <tr>
+                  <td>
+                    <div class="employe-nom">{{ employe.nom }}</div>
+                  </td>
+                  <td>
+                    <div class="employe-identifiant">{{ employe.identifiant || '-' }}</div>
+                  </td>
+                  <td>
+                    <div class="employe-password">
+                      @if (showPasswords[employe.id!]) {
+                        <span class="password-value">{{ employe.defaultPass || 'N/A' }}</span>
+                        <button class="btn-toggle-password" (click)="togglePassword(employe.id!)" title="Masquer">
+                          👁️
+                        </button>
+                      } @else {
+                        <span class="password-hidden">••••••••</span>
+                        <button class="btn-toggle-password" (click)="togglePassword(employe.id!)" title="Afficher">
+                          👁️‍🗨️
+                        </button>
+                      }
+                    </div>
+                  </td>
+                  <td>
+                    <div class="employe-email">{{ employe.email }}</div>
+                  </td>
+                  <td>
+                    <div class="employe-telephone">{{ employe.telephone }}</div>
+                  </td>
+                  <td>
+                    <div class="roles-container">
+                      @for (role of employe.roles; track role.id) {
+                        <span class="badge-role">{{ role.nom }}</span>
+                      }
+                    </div>
+                  </td>
+                  <td>
+                    <label class="switch" [attr.aria-label]="'Activer ou désactiver ' + employe.nom">
+                      <input type="checkbox" [checked]="employe.actif" (change)="toggleActif(employe)" />
+                      <span class="slider"></span>
+                    </label>
+                  </td>
+                  <td>
+                    <button class="action-btn edit-btn" (click)="editerEmploye(employe)" title="Éditer">
+                      <span>✏️</span>
+                    </button>
+                    <button class="action-btn delete-btn" (click)="supprimerEmploye(employe)" title="Supprimer">
+                      <span>🗑️</span>
+                    </button>
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card douane-card">
+      <div class="card-header">
+        <h2>Frais Douane</h2>
+        <p>Gérer les frais de douane</p>
+      </div>
+
+      @if (isLoadingDouane) {
+        <div class="loading-message">Chargement...</div>
+      } @else {
+        <div class="douane-content">
+          @if (!isEditingDouane) {
+            <div class="douane-display">
+              <div class="douane-item">
+                <span class="douane-label">Frais par litre (Essence):</span>
+                <span class="douane-value">{{ douane?.fraisParLitre | number }} FCFA</span>
+              </div>
+              <div class="douane-item">
+                <span class="douane-label">Frais par litre (Gasoil):</span>
+                <span class="douane-value">{{ douane?.fraisParLitreGasoil | number }} FCFA</span>
+              </div>
+              <div class="douane-item">
+                <span class="douane-label">Frais T1:</span>
+                <span class="douane-value">{{ douane?.fraisT1 | number }} FCFA</span>
+              </div>
+              <button class="btn-edit" (click)="editDouane()">Modifier</button>
+            </div>
+          } @else {
+            <div class="douane-form">
+              <div class="form-group">
+                <label for="frais-par-litre">Frais par litre Essence (FCFA) *</label>
+                <input
+                  id="frais-par-litre"
+                  type="number"
+                  [(ngModel)]="douaneForm.fraisParLitre"
+                  min="0"
+                  step="0.01"
+                  required
+                />
+              </div>
+              <div class="form-group">
+                <label for="frais-par-litre-gasoil">Frais par litre Gasoil (FCFA) *</label>
+                <input
+                  id="frais-par-litre-gasoil"
+                  type="number"
+                  [(ngModel)]="douaneForm.fraisParLitreGasoil"
+                  min="0"
+                  step="0.01"
+                  required
+                />
+              </div>
+              <div class="form-group">
+                <label for="frais-t1">Frais T1 (FCFA) *</label>
+                <input
+                  id="frais-t1"
+                  type="number"
+                  [(ngModel)]="douaneForm.fraisT1"
+                  min="0"
+                  step="0.01"
+                  required
+                />
+              </div>
+              <div class="form-actions">
+                <button class="btn-cancel" (click)="cancelEditDouane()">Annuler</button>
+                <button class="btn-submit" (click)="saveDouane()">Enregistrer</button>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="card password-card">
+      <div class="card-header">
+        <h2>Sécurité du compte</h2>
+        <p>Changer le mot de passe administrateur</p>
+      </div>
+
+      <div class="form-group">
+        <label for="current-password">Mot de passe actuel</label>
+        <input id="current-password" type="password" [(ngModel)]="currentPassword" placeholder="Entrez votre mot de passe actuel" />
+      </div>
+      <div class="form-group">
+        <label for="new-password">Nouveau mot de passe</label>
+        <input id="new-password" type="password" [(ngModel)]="newPassword" placeholder="Entrez le nouveau mot de passe" />
+      </div>
+      <div class="form-group">
+        <label for="confirm-password">Confirmer le mot de passe</label>
+        <input id="confirm-password" type="password" [(ngModel)]="confirmPassword" placeholder="Confirmez le nouveau mot de passe" />
+      </div>
+      <button class="btn-primary" (click)="changerMotDePasse()">Changer le mot de passe</button>
+
+      <div class="card-header card-header-preferences">
+        <h2>Préférences</h2>
+        <p>Paramètres généraux de l'application</p>
+      </div>
+
+      <div class="preferences-list">
+        <div class="preference-item">
+          <span>Activer les notifications email</span>
+          <label class="switch">
+            <input type="checkbox" checked title="Notifications email" />
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="preference-item">
+          <span>Mode affichage: Détail</span>
+          <label class="switch">
+            <input type="checkbox" checked title="Mode affichage détail" />
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal d'ajout/édition d'employé -->
+@if (showModal) {
+  <div class="modal-overlay" (click)="fermerModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>{{ isEditing ? 'Modifier l\'employé' : 'Ajouter un employé' }}</h2>
+        <button class="modal-close" (click)="fermerModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <form (ngSubmit)="sauvegarderEmploye()">
+          <div class="form-group">
+            <label for="nom-employe">Nom complet <span class="required">*</span></label>
+            <input
+              id="nom-employe"
+              type="text"
+              [(ngModel)]="newEmploye.nom"
+              name="nom"
+              placeholder="Nom de l'employé"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="telephone-employe">Numéro de téléphone <span class="required">*</span></label>
+            <input
+              id="telephone-employe"
+              type="tel"
+              [(ngModel)]="newEmploye.telephone"
+              name="telephone"
+              placeholder="+223 XX XX XX XX"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="email-employe">Email <span class="required">*</span></label>
+            <input
+              id="email-employe"
+              type="email"
+              [(ngModel)]="newEmploye.email"
+              name="email"
+              placeholder="email@exemple.com"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label>Rôles <span class="required">*</span></label>
+            <div class="roles-selection">
+              @if (isLoadingRoles) {
+                <div class="loading-roles">Chargement des rôles...</div>
+              } @else {
+                @for (role of rolesDisponibles; track role.id) {
+                  @if (role.nom !== 'Transitaire') {
+                    <label class="role-checkbox">
+                      <input
+                        type="checkbox"
+                        [checked]="isRoleSelected(role.id)"
+                        (change)="toggleRole(role.id)"
+                      />
+                      <span class="checkbox-label">
+                        <span class="role-name">{{ role.nom }}</span>
+                        <span class="role-description">{{ role.description }}</span>
+                      </span>
+                    </label>
+                  }
+                }
+              }
+            </div>
+            @if (newEmploye.rolesIds && newEmploye.rolesIds.length === 0) {
+              <div class="error-message">Veuillez sélectionner au moins un rôle</div>
+            }
+          </div>
+
+          @if (hasChargerDepotRole()) {
+            <div class="form-group">
+              <label for="depot-employe">Dépôt <span class="required">*</span></label>
+              @if (isLoadingDepots) {
+                <div class="loading-message">Chargement des dépôts...</div>
+              } @else {
+                <select
+                  id="depot-employe"
+                  [(ngModel)]="newEmploye.depotId"
+                  name="depotId"
+                  class="form-select"
+                  required
+                >
+                  <option value="">Sélectionner un dépôt</option>
+                  @for (depot of depots; track depot.id) {
+                    <option [value]="depot.id">{{ depot.nom }} - {{ depot.ville || depot.adresse }}</option>
+                  }
+                </select>
+              }
+              @if (hasChargerDepotRole() && !newEmploye.depotId) {
+                <div class="error-message">Veuillez sélectionner un dépôt pour le rôle "charger depot"</div>
+              }
+            </div>
+          }
+
+          <div class="form-group">
+            <label class="switch-label">
+              <input
+                type="checkbox"
+                [(ngModel)]="newEmploye.actif"
+                name="actif"
+              />
+              <span>Compte actif</span>
+            </label>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" (click)="fermerModal()">Annuler</button>
+            <button type="submit" class="btn-submit" [disabled]="!isFormValid()">
+              {{ isEditing ? 'Modifier' : 'Ajouter' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+}

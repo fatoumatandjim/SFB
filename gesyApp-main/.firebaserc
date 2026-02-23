@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "default": "ges-sbf",
+    "ges-flow": "ges-flow"
+  },
+  "targets": {},
+  "etags": {}
+}

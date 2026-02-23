@@ -1,0 +1,902 @@
+<div class="facturation-container">
+  <div class="facturation-header">
+    <div>
+      <h1>Facturation</h1>
+      <p>Gestion des factures clients et fournisseurs</p>
+    </div>
+  </div>
+
+  <div class="stats-cards">
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon blue">
+          <span>📄</span>
+          <span class="arrow-up">↑</span>
+        </div>
+        <span class="stat-badge blue">{{ stats.facturesEmises.evolution }}</span>
+      </div>
+      <div class="stat-value">{{ stats.facturesEmises.total }}</div>
+      <div class="stat-label">Factures Émises</div>
+      <div class="stat-details">
+        <span>{{ stats.facturesEmises.periode }}</span>
+        <span class="amount positive">{{ stats.facturesEmises.montant | number }} F</span>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon green">
+          <span>✓</span>
+        </div>
+        <span class="stat-badge green">{{ stats.facturesPayees.pourcentage }}</span>
+      </div>
+      <div class="stat-value">{{ stats.facturesPayees.total }}</div>
+      <div class="stat-label">Factures Payées</div>
+      <div class="stat-details">
+        <span>Montant</span>
+        <span class="amount positive">{{ stats.facturesPayees.montant | number }} F</span>
+      </div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon red">
+          <span>⚠</span>
+        </div>
+        <span class="stat-badge red urgent">Urgent</span>
+      </div>
+      <div class="stat-value">{{ stats.facturesImpayees.total }}</div>
+      <div class="stat-label">Factures Impayées</div>
+      <div class="stat-details">
+        <span>En retard: {{ stats.facturesImpayees.enRetard }}</span>
+        <span class="amount negative">{{ stats.facturesImpayees.montant | number }} F</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="actions-bar">
+    <button class="btn-new-invoice" (click)="nouvelleFacture()">
+      <span>+</span>
+      Nouvelle Facture
+    </button>
+
+    <div class="filters">
+      <button
+        class="filter-btn"
+        [class.active]="activeFilter === 'toutes'"
+        (click)="setFilter('toutes')">
+        Toutes
+      </button>
+      <button
+        class="filter-btn"
+        [class.active]="activeFilter === 'payees'"
+        (click)="setFilter('payees')">
+        Payées
+      </button>
+      <button
+        class="filter-btn"
+        [class.active]="activeFilter === 'impayees'"
+        (click)="setFilter('impayees')">
+        Impayées
+      </button>
+      <button
+        class="filter-btn"
+        [class.active]="activeFilter === 'en-retard'"
+        (click)="setFilter('en-retard')">
+        En retard
+      </button>
+    </div>
+
+    <div class="search-container">
+      <label for="search-factures" class="sr-only">Rechercher des factures</label>
+      <input
+        type="text"
+        id="search-factures"
+        class="search-input"
+        placeholder="Rechercher..."
+        [(ngModel)]="searchTerm"
+        aria-label="Rechercher des factures"
+      />
+      <span class="search-icon">🔍</span>
+      <span class="filter-icon">▼</span>
+    </div>
+  </div>
+
+  <div class="table-container">
+    <table class="factures-table">
+      <thead>
+        <tr>
+          <th>
+            <label for="select-all" class="sr-only">Sélectionner tout</label>
+            <input type="checkbox" id="select-all" aria-label="Sélectionner tout" />
+          </th>
+          <th>N° Facture</th>
+          <th>Client</th>
+          <th>Date</th>
+          <th>Échéance</th>
+          <th>Montant</th>
+          <th>Statut</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (isLoading) {
+          <tr>
+            <td colspan="8" class="empty-state">
+              <div class="empty-message">Chargement...</div>
+            </td>
+          </tr>
+        } @else if (filteredFactures.length === 0) {
+          <tr>
+            <td colspan="8" class="empty-state">
+              <div class="empty-message">Aucune facture trouvée</div>
+            </td>
+          </tr>
+        } @else {
+          @for (facture of filteredFactures; track facture.id) {
+          <tr>
+            <td>
+              <label [for]="'checkbox-' + facture.id" class="sr-only">Sélectionner {{ facture.numero }}</label>
+              <input
+                type="checkbox"
+                [id]="'checkbox-' + facture.id"
+                [attr.aria-label]="'Sélectionner ' + facture.numero" />
+            </td>
+            <td>
+              <div class="facture-numero">{{ facture.numero }}</div>
+            </td>
+            <td>
+              <div class="client-info">
+                <div class="client-avatar" [class]="'avatar-' + getClientColor(facture.clientNom)">
+                  {{ getClientInitiales(facture.clientNom) }}
+                </div>
+                <div class="client-details">
+                  <div class="client-nom">{{ facture.clientNom || 'N/A' }}</div>
+                  <div class="client-email">{{ facture.clientEmail || '' }}</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <div class="date-value">{{ formatDate(facture.date) }}</div>
+            </td>
+            <td>
+              <div class="date-value">{{ formatDate(facture.dateEcheance) }}</div>
+            </td>
+            <td>
+              <div class="montant-value">{{ facture.montantTTC || facture.montant | number }} F</div>
+            </td>
+            <td>
+              @if (facture.statut === 'PAYEE') {
+              <span class="status-badge badge-green">Payée</span>
+              }
+              @if (facture.statut === 'EMISE' || facture.statut === 'BROUILLON') {
+              <span class="status-badge badge-orange">En attente</span>
+              }
+              @if (facture.statut === 'EN_RETARD') {
+              <span class="status-badge badge-red">En retard</span>
+              }
+              @if (facture.statut === 'PARTIELLEMENT_PAYEE') {
+              <span class="status-badge badge-yellow">Partiellement payée</span>
+              }
+              @if (facture.statut === 'ANNULEE') {
+              <span class="status-badge badge-gray">Annulée</span>
+              }
+            </td>
+            <td>
+              <div class="actions">
+                <button class="action-btn" (click)="viewFacture(facture)" title="Voir">
+                  <span>👁️</span>
+                </button>
+                <button class="action-btn" (click)="downloadFacture(facture)" title="Télécharger">
+                  <span>⬇️</span>
+                </button>
+                <!-- <button class="action-btn" (click)="moreOptions(facture)" title="Plus d'options">
+                  <span>⋮</span>
+                </button> -->
+              </div>
+            </td>
+          </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (totalPages > 1) {
+    <div class="pagination-container">
+      <div class="pagination-info">
+        Page {{ currentPage + 1 }} sur {{ totalPages }}
+        ({{ totalElements }} facture{{ totalElements > 1 ? 's' : '' }})
+      </div>
+      <div class="pagination-controls">
+        <button
+          class="pagination-btn"
+          (click)="changePage(currentPage - 1)"
+          [disabled]="currentPage === 0 || isLoading"
+          title="Page précédente">
+          ‹ Précédent
+        </button>
+        <div class="pagination-numbers">
+          @for (page of getPageNumbers(); track page) {
+            <button
+              class="pagination-number"
+              [class.active]="page === currentPage"
+              (click)="changePage(page)"
+              [disabled]="isLoading">
+              {{ page + 1 }}
+            </button>
+          }
+        </div>
+        <button
+          class="pagination-btn"
+          (click)="changePage(currentPage + 1)"
+          [disabled]="currentPage >= totalPages - 1 || isLoading"
+          title="Page suivante">
+          Suivant ›
+        </button>
+      </div>
+    </div>
+  }
+
+  @if (showAddModal) {
+  <div class="modal-overlay" (click)="closeAddModal()">
+    <div class="modal-content add-facture-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Nouvelle Facture</h2>
+        <button class="modal-close" (click)="closeAddModal()" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="modal-body">
+        <form (ngSubmit)="saveFacture()">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="client">Client *</label>
+              <select
+                id="client"
+                [(ngModel)]="newFacture.clientId"
+                name="client"
+                required
+                aria-label="Sélectionner un client"
+              >
+                <option [ngValue]="undefined">Sélectionner un client</option>
+                @for (client of clients; track client.id) {
+                  <option [ngValue]="client.id">{{ client.nom }} - {{ client.email }}</option>
+                }
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="statut">Statut *</label>
+              <select
+                id="statut"
+                [(ngModel)]="newFacture.statut"
+                name="statut"
+                required
+                aria-label="Sélectionner un statut"
+              >
+                <option value="BROUILLON">Brouillon</option>
+                <option value="EMISE">Émise</option>
+                <option value="PAYEE">Payée</option>
+                <option value="PARTIELLEMENT_PAYEE">Partiellement payée</option>
+                <option value="ANNULEE">Annulée</option>
+                <option value="EN_RETARD">En retard</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="date">Date de facture *</label>
+              <input
+                type="date"
+                id="date"
+                [(ngModel)]="newFacture.date"
+                name="date"
+                required
+                (change)="calculateDateEcheance()"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="dateEcheance">Date d'échéance *</label>
+              <input
+                type="date"
+                id="dateEcheance"
+                [(ngModel)]="newFacture.dateEcheance"
+                name="dateEcheance"
+                required
+                [min]="newFacture.date"
+              />
+            </div>
+          </div>
+
+          <div class="produits-section">
+            <div class="section-header">
+              <h3>Produits</h3>
+              <button type="button" class="btn-add-produit" (click)="addLigneFacture()">
+                <span>+</span>
+                Ajouter un produit
+              </button>
+            </div>
+
+            @if (!newFacture.lignes || newFacture.lignes.length === 0) {
+              <div class="empty-lignes">
+                <p>Aucun produit ajouté. Cliquez sur "Ajouter un produit" pour commencer.</p>
+              </div>
+            } @else {
+              <div class="lignes-facture">
+                <table class="lignes-table">
+                  <thead>
+                    <tr>
+                      <th>Produit</th>
+                      <th>Quantité</th>
+                      <th>Prix unitaire</th>
+                      <th>Total</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (ligne of newFacture.lignes; track $index) {
+                      <tr>
+                        <td>
+                          <select
+                            [(ngModel)]="ligne.produitId"
+                            [name]="'produit-' + $index"
+                            (change)="onProduitChange($index)"
+                            required
+                            aria-label="Sélectionner un produit"
+                          >
+                            <option [ngValue]="undefined">Sélectionner un produit</option>
+                            @for (produit of produits; track produit.id) {
+                              <option [ngValue]="produit.id">{{ produit.nom }} ({{ produit.typeProduit }})</option>
+                            }
+                          </select>
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            [(ngModel)]="ligne.quantite"
+                            [name]="'quantite-' + $index"
+                            (input)="calculateLigneTotal($index)"
+                            min="0.01"
+                            step="0.01"
+                            placeholder="0"
+                            required
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            [(ngModel)]="ligne.prixUnitaire"
+                            [name]="'prix-' + $index"
+                            (input)="calculateLigneTotal($index)"
+                            min="0.01"
+                            step="0.01"
+                            placeholder="0.00"
+                            required
+                          />
+                        </td>
+                        <td>
+                          <span class="ligne-total">{{ ligne.total | number }} FCFA</span>
+                        </td>
+                        <td>
+                          <button
+                            type="button"
+                            class="btn-remove-ligne"
+                            (click)="removeLigneFacture($index)"
+                            title="Supprimer"
+                          >
+                            <span>🗑️</span>
+                          </button>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colspan="3" class="total-label">Total HT:</td>
+                      <td class="total-value">{{ getTotalHT() | number }} FCFA</td>
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            }
+          </div>
+
+          <div class="tva-section">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="tauxTVA">Taux de TVA (%)</label>
+                <input
+                  type="number"
+                  id="tauxTVA"
+                  [(ngModel)]="newFacture.tauxTVA"
+                  name="tauxTVA"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  placeholder="18"
+                />
+              </div>
+            </div>
+
+            <div class="totaux-box">
+              <div class="total-item">
+                <span class="total-label">Total HT:</span>
+                <span class="total-amount">{{ getTotalHT() | number }} FCFA</span>
+              </div>
+              <div class="total-item">
+                <span class="total-label">Total TVA ({{ newFacture.tauxTVA }}%):</span>
+                <span class="total-amount">{{ getTotalTVA() | number }} FCFA</span>
+              </div>
+              <div class="total-item total-ttc">
+                <span class="total-label">Total TTC:</span>
+                <span class="total-amount">{{ getTotalTTC() | number }} FCFA</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="montantPaye">Montant payé (FCFA)</label>
+              <input
+                type="number"
+                id="montantPaye"
+                [(ngModel)]="newFacture.montantPaye"
+                name="montantPaye"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                [max]="getTotalTTC()"
+              />
+              <p class="form-hint">Maximum: {{ getTotalTTC() | number }} FCFA</p>
+            </div>
+
+            <div class="form-group">
+              <label>Reste à payer</label>
+              <div class="montant-restant" [class.negative]="getResteAPayer() < 0">
+                {{ getResteAPayer() | number }} FCFA
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="description">Description</label>
+            <textarea
+              id="description"
+              [(ngModel)]="newFacture.description"
+              name="description"
+              rows="3"
+              placeholder="Description de la facture..."
+            ></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="notes">Notes</label>
+            <textarea
+              id="notes"
+              [(ngModel)]="newFacture.notes"
+              name="notes"
+              rows="2"
+              placeholder="Notes internes..."
+            ></textarea>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" (click)="closeAddModal()">
+              Annuler
+            </button>
+            <button type="submit" class="btn-submit" [disabled]="isLoading">
+              @if (isLoading) {
+                Enregistrement...
+              } @else {
+                Créer la facture
+              }
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  }
+
+  @if (showDetailModal && selectedFacture) {
+  <div class="modal-overlay" (click)="closeDetailModal()">
+    <div class="modal-content detail-facture-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Facture {{ selectedFacture.numero }}</h2>
+        <button class="modal-close" (click)="closeDetailModal()" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="modal-tabs">
+        <button
+          class="tab-btn"
+          [class.active]="activeTab === 'details'"
+          (click)="setTab('details')"
+        >
+          Détails
+        </button>
+        <button
+          class="tab-btn"
+          [class.active]="activeTab === 'transactions'"
+          (click)="setTab('transactions')"
+        >
+          Transactions
+        </button>
+        <button
+          class="tab-btn"
+          [class.active]="activeTab === 'telecharger'"
+          (click)="setTab('telecharger')"
+        >
+          Télécharger
+        </button>
+      </div>
+
+      <div class="modal-body">
+        @if (activeTab === 'details') {
+          <div class="facture-details">
+            <div class="detail-section">
+              <h3>Informations générales</h3>
+              <div class="detail-grid">
+                <div class="detail-item">
+                  <span class="detail-label">Numéro de facture:</span>
+                  <span class="detail-value">{{ selectedFacture.numero }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Date:</span>
+                  <span class="detail-value">{{ selectedFacture.date }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Échéance:</span>
+                  <span class="detail-value">{{ formatDate(selectedFacture.dateEcheance) }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Statut:</span>
+                  <div class="statut-control">
+                    @if (selectedFacture.statut === 'PAYEE') {
+                      <span class="status-badge badge-green">Payée</span>
+                      <span class="statut-locked">🔒 Verrouillé</span>
+                    } @else {
+                      <select
+                        [(ngModel)]="selectedFacture.statut"
+                        (change)="updateStatutFacture()"
+                        class="statut-select"
+                        aria-label="Modifier le statut"
+                      >
+                        <option value="BROUILLON">Brouillon</option>
+                        <option value="EMISE">Émise</option>
+                        <option value="PARTIELLEMENT_PAYEE">Partiellement payée</option>
+                        <option value="EN_RETARD">En retard</option>
+                        <option value="ANNULEE">Annulée</option>
+                      </select>
+                      <span class="status-badge"
+                        [class.badge-orange]="selectedFacture.statut === 'EMISE' || selectedFacture.statut === 'BROUILLON' || selectedFacture.statut === 'PARTIELLEMENT_PAYEE'"
+                        [class.badge-red]="selectedFacture.statut === 'EN_RETARD' || selectedFacture.statut === 'ANNULEE'">
+                        @if (selectedFacture.statut === 'BROUILLON') {
+                          Brouillon
+                        } @else if (selectedFacture.statut === 'EMISE') {
+                          Émise
+                        } @else if (selectedFacture.statut === 'PARTIELLEMENT_PAYEE') {
+                          Partiellement payée
+                        } @else if (selectedFacture.statut === 'EN_RETARD') {
+                          En retard
+                        } @else if (selectedFacture.statut === 'ANNULEE') {
+                          Annulée
+                        }
+                      </span>
+                    }
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="detail-section">
+              <h3>Client</h3>
+              <div class="client-card">
+                <div class="client-avatar" [class]="'avatar-' + getClientColor(selectedFacture.clientNom)">
+                  {{ getClientInitiales(selectedFacture.clientNom) }}
+                </div>
+                <div class="client-info">
+                  <div class="client-nom">{{ selectedFacture.clientNom || 'N/A' }}</div>
+                  <div class="client-email">{{ selectedFacture.clientEmail || '' }}</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="detail-section">
+              <h3>Produits</h3>
+              @if (selectedFacture.lignes && selectedFacture.lignes.length > 0) {
+                <div class="produits-detail">
+                  <table class="produits-table">
+                    <thead>
+                      <tr>
+                        <th>Produit</th>
+                        <th>Quantité</th>
+                        <th>Prix unitaire</th>
+                        <th>Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (ligne of selectedFacture.lignes; track ligne.id || $index) {
+                        <tr>
+                          <td>{{ ligne.produitNom || getProduitNom(ligne.produitId) }}</td>
+                          <td>{{ ligne.quantite | number }}</td>
+                          <td>{{ ligne.prixUnitaire | number }} FCFA</td>
+                          <td>{{ ligne.total | number }} FCFA</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              } @else {
+                <div class="empty-lignes">
+                  <p>Aucun produit associé à cette facture.</p>
+                </div>
+              }
+            </div>
+
+            <div class="detail-section">
+              <h3>Totaux</h3>
+              <div class="totaux-detail">
+                <div class="total-row">
+                  <span class="total-label">Total HT:</span>
+                  <span class="total-amount">{{ selectedFacture.montantHT | number }} FCFA</span>
+                </div>
+                <div class="total-row">
+                  <span class="total-label">Total TVA ({{ selectedFacture.tauxTVA || 0 }}%):</span>
+                  <span class="total-amount">{{ ((selectedFacture.montantTTC || 0) - (selectedFacture.montantHT || 0)) | number }} FCFA</span>
+                </div>
+                <div class="total-row total-ttc">
+                  <span class="total-label">Total TTC:</span>
+                  <span class="total-amount">{{ selectedFacture.montantTTC | number }} FCFA</span>
+                </div>
+                <div class="total-row">
+                  <span class="total-label">Montant payé:</span>
+                  <span class="total-amount">{{ selectedFacture.montantPaye || 0 | number }} FCFA</span>
+                </div>
+                <div class="total-row reste">
+                  <span class="total-label">Reste à payer:</span>
+                  <span class="total-amount">{{ ((selectedFacture.montantTTC || 0) - (selectedFacture.montantPaye || 0)) | number }} FCFA</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+
+        @if (activeTab === 'transactions') {
+          <div class="transactions-section">
+            <div class="section-header">
+              <h3>Transactions de la facture</h3>
+              @if (!showAddTransactionForm) {
+                <button class="btn-add-transaction" (click)="toggleAddTransactionForm()">
+                  <span>+</span>
+                  Ajouter une transaction
+                </button>
+              }
+            </div>
+
+            @if (showAddTransactionForm) {
+              <div class="add-transaction-form">
+                <h4>Nouvelle Transaction</h4>
+                <form (ngSubmit)="addTransaction()">
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label for="transaction-type">Type *</label>
+                      <select
+                        id="transaction-type"
+                        [(ngModel)]="newTransaction.type"
+                        name="transactionType"
+                        required
+                        class="form-select"
+                      >
+                        <option value="VIREMENT_ENTRANT">Virement entrant</option>
+                        <option value="DEPOT">Dépôt</option>
+                        <option value="RETRAIT">Retrait</option>
+                        <option value="VIREMENT_SORTANT">Virement sortant</option>
+                        <option value="FRAIS">Frais</option>
+                        <option value="INTERET">Intérêt</option>
+                        <option value="FRAIS_LOCATION">Frais de location</option>
+                        <option value="FRAIS_FRONTIERE">Frais frontière</option>
+                        <option value="TS_FRAIS_PRESTATIONS">TS Frais de prestations</option>
+                        <option value="FRAIS_REPERTOIRE">Frais répertoire</option>
+                        <option value="FRAIS_CHAMBRE_COMMERCE">Frais chambre de commerce</option>
+                        <option value="SALAIRE">Salaire</option>
+                      </select>
+                    </div>
+
+                    <div class="form-group">
+                      <label for="transaction-montant">Montant (FCFA) *</label>
+                      <input
+                        type="number"
+                        id="transaction-montant"
+                        [(ngModel)]="newTransaction.montant"
+                        name="transactionMontant"
+                        required
+                        min="0"
+                        step="0.01"
+                        placeholder="0"
+                        class="form-input"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label for="transaction-date">Date *</label>
+                      <input
+                        type="date"
+                        id="transaction-date"
+                        [(ngModel)]="newTransaction.date"
+                        name="transactionDate"
+                        required
+                        class="form-input"
+                      />
+                    </div>
+
+                    <div class="form-group">
+                      <label for="transaction-statut">Statut *</label>
+                      <select
+                        id="transaction-statut"
+                        [(ngModel)]="newTransaction.statut"
+                        name="transactionStatut"
+                        required
+                        class="form-select"
+                      >
+                        <option value="EN_ATTENTE">En attente</option>
+                        <option value="VALIDE">Validée</option>
+                        <option value="REJETE">Rejetée</option>
+                        <option value="ANNULE">Annulée</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="transaction-compte">Compte bancaire *</label>
+                    <select
+                      id="transaction-compte"
+                      [(ngModel)]="newTransaction.compteId"
+                      name="transactionCompte"
+                      required
+                      class="form-select"
+                    >
+                      <option [value]="undefined">Sélectionner un compte</option>
+                      @for (compte of comptesBancaires; track compte.id) {
+                        <option [value]="compte.id">
+                          {{ compte.banque }} - {{ compte.numero }} ({{ compte.type }})
+                        </option>
+                      }
+                    </select>
+                  </div>
+
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label for="transaction-reference">Référence</label>
+                      <input
+                        type="text"
+                        id="transaction-reference"
+                        [(ngModel)]="newTransaction.reference"
+                        name="transactionReference"
+                        placeholder="Ex: VIR-2024-0456"
+                        class="form-input"
+                      />
+                    </div>
+
+                    <div class="form-group">
+                      <label for="transaction-beneficiaire">Bénéficiaire</label>
+                      <input
+                        type="text"
+                        id="transaction-beneficiaire"
+                        [(ngModel)]="newTransaction.beneficiaire"
+                        name="transactionBeneficiaire"
+                        placeholder="Nom du bénéficiaire"
+                        class="form-input"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="transaction-description">Description *</label>
+                    <textarea
+                      id="transaction-description"
+                      [(ngModel)]="newTransaction.description"
+                      name="transactionDescription"
+                      rows="3"
+                      placeholder="Description de la transaction..."
+                      required
+                      class="form-textarea"
+                    ></textarea>
+                  </div>
+
+                  <div class="form-actions">
+                    <button type="button" class="btn-cancel" (click)="toggleAddTransactionForm()">
+                      Annuler
+                    </button>
+                    <button type="submit" class="btn-submit" [disabled]="isLoading">
+                      @if (isLoading) {
+                        Ajout...
+                      } @else {
+                        Ajouter la transaction
+                      }
+                    </button>
+                  </div>
+                </form>
+              </div>
+            }
+
+            @if (transactions.length === 0 && !showAddTransactionForm) {
+              <div class="empty-state">
+                <p>Aucune transaction associée à cette facture.</p>
+              </div>
+            } @else if (transactions.length > 0) {
+              <div class="transactions-table-container">
+                <table class="transactions-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Type</th>
+                      <th>Montant</th>
+                      <th>Statut</th>
+                      <th>Description</th>
+                      <th>Référence</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (transaction of transactions; track transaction.id) {
+                      <tr>
+                        <td>{{ formatDateTime(transaction.date) }}</td>
+                        <td>
+                          <span class="transaction-type-badge">{{ getTransactionTypeLabel(transaction.type) }}</span>
+                        </td>
+                        <td>
+                          <span class="transaction-montant" [class.positive]="transaction.type === 'VIREMENT_ENTRANT' || transaction.type === 'DEPOT'">
+                            {{ transaction.montant | number }} FCFA
+                          </span>
+                        </td>
+                        <td>
+                          <span class="status-badge"
+                            [class.badge-green]="transaction.statut === 'VALIDE'"
+                            [class.badge-orange]="transaction.statut === 'EN_ATTENTE'"
+                            [class.badge-red]="transaction.statut === 'REJETE' || transaction.statut === 'ANNULE'">
+                            {{ getTransactionStatutLabel(transaction.statut) }}
+                          </span>
+                        </td>
+                        <td>{{ transaction.description || '-' }}</td>
+                        <td>{{ transaction.reference || '-' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                  <tfoot>
+                    <tr class="total-row">
+                      <td colspan="2"><strong>Total payé:</strong></td>
+                      <td colspan="4">
+                        <strong class="total-montant">{{ getTotalTransactions() | number }} FCFA</strong>
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            }
+          </div>
+        }
+
+        @if (activeTab === 'telecharger') {
+          <div class="download-section">
+            <div class="download-info">
+              <div class="download-icon">📄</div>
+              <h3>Télécharger la facture</h3>
+              <p>Téléchargez la facture {{ selectedFacture.numero }} au format PDF</p>
+            </div>
+            <div class="download-actions">
+              <button class="btn-download" (click)="downloadFacture()">
+                <span>⬇️</span>
+                Télécharger en PDF
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+  }
+</div>

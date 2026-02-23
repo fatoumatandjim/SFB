@@ -1,0 +1,26 @@
+# Dependencies
+node_modules
+npm-debug.log*
+
+# Build output (sera régénéré)
+www
+
+# IDE & OS
+.idea
+.vscode
+*.swp
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Tests & coverage
+coverage
+.nyc_output
+*.spec.ts
+
+# Documentation
+*.md
+!README.md

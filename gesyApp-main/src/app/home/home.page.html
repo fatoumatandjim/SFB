@@ -1,0 +1,65 @@
+<div class="home-container">
+  <app-navbar></app-navbar>
+  <div class="main-content">
+    <app-header (menuToggle)="onMenuToggle()"></app-header>
+    <div class="content-area">
+      @if (currentSection === 'dashbord') {
+        <app-dashbord></app-dashbord>
+      }
+      @if (currentSection === 'camion') {
+        <app-camion></app-camion>
+      }
+      @if (currentSection === 'facturation') {
+        <app-facturation></app-facturation>
+      }
+      @if (currentSection === 'paiement') {
+        <app-paiement></app-paiement>
+      }
+      @if (currentSection === 'banque-caisse') {
+        <app-banque-caisse></app-banque-caisse>
+      }
+      @if (currentSection === 'stock') {
+        <app-stock></app-stock>
+      }
+      @if (currentSection === 'client-fournisseur') {
+        <app-client-fournisseur></app-client-fournisseur>
+      }
+      @if (currentSection === 'suivi-transport') {
+        <app-suivi-transport></app-suivi-transport>
+      }
+      @if (currentSection === 'transitaire') {
+        <app-transitaire></app-transitaire>
+      }
+      @if (currentSection === 'depot') {
+        <app-depot></app-depot>
+      }
+      @if (currentSection === 'recouvrement') {
+        <app-recouvrement></app-recouvrement>
+      }
+      @if (currentSection === 'rapport') {
+        <app-rapport></app-rapport>
+      }
+      @if (currentSection === 'analyse') {
+        <app-analyse></app-analyse>
+      }
+      @if (currentSection === 'settings') {
+        <app-settings></app-settings>
+      }
+      @if (currentSection === 'achats') {
+        <app-gestion-achat></app-gestion-achat>
+      }
+      @if (currentSection === 'cout') {
+        <app-cout></app-cout>
+      }
+      @if (currentSection === 'email') {
+        <app-email></app-email>
+      }
+      @if (currentSection === 'depenses') {
+        <app-depenses></app-depenses>
+      }
+      @if (currentSection === 'capital') {
+        <app-capital></app-capital>
+      }
+    </div>
+  </div>
+</div>

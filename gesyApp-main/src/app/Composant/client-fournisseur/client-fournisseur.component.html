@@ -1,0 +1,1119 @@
+<div class="client-fournisseur-container">
+  <div class="client-fournisseur-header">
+    <div>
+      <h1>Clients & Fournisseurs</h1>
+      <p>Gestion de votre base de clients et fournisseurs</p>
+    </div>
+  </div>
+
+  <div class="stats-cards">
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon blue">
+          <span>👥</span>
+        </div>
+        <span class="stat-badge">Total</span>
+      </div>
+      <div class="stat-value">{{ stats.clients.total }}</div>
+      <div class="stat-label">Clients</div>
+      <div class="stat-details">
+        <span>Actifs: {{ stats.clients.actifs }}</span>
+        <!-- <span>Premium: {{ stats.clients.premium }}</span> -->
+      </div>
+    </div>
+
+    <!-- <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon purple">
+          <span>⭐</span>
+        </div>
+        <span class="stat-badge purple">VIP</span>
+      </div>
+      <div class="stat-value">{{ stats.clients.vip }}</div>
+      <div class="stat-label">Clients VIP</div>
+      <div class="stat-details">
+        <span>Clients prioritaires</span>
+      </div>
+    </div> -->
+
+    <div class="stat-card">
+      <div class="stat-header">
+        <div class="stat-icon green">
+          <span>🏭</span>
+        </div>
+        <span class="stat-badge">Total</span>
+      </div>
+      <div class="stat-value">{{ stats.fournisseurs.total }}</div>
+      <div class="stat-label">Fournisseurs</div>
+      <div class="stat-details">
+        <span>Actifs: {{ stats.fournisseurs.actifs }}</span>
+        <!-- <span>Principaux: {{ stats.fournisseurs.principaux }}</span> -->
+      </div>
+    </div>
+  </div>
+
+  <div class="tabs-container">
+    <div class="tabs">
+      <button
+        class="tab-btn"
+        [class.active]="activeTab === 'clients'"
+        (click)="setTab('clients')">
+        <span>👥</span>
+        Clients
+      </button>
+      <button
+        class="tab-btn"
+        [class.active]="activeTab === 'fournisseurs'"
+        (click)="setTab('fournisseurs')">
+        <span>🏭</span>
+        Fournisseurs
+      </button>
+    </div>
+
+    <div class="actions-bar">
+      <!-- <div class="filters">
+        <button
+          class="filter-btn"
+          [class.active]="activeFilter === 'tous'"
+          (click)="setFilter('tous')">
+          Tous
+        </button>
+        @if (activeTab === 'clients') {
+        <button
+          class="filter-btn"
+          [class.active]="activeFilter === 'actifs'"
+          (click)="setFilter('actifs')">
+          Actifs
+        </button>
+        <button
+          class="filter-btn"
+          [class.active]="activeFilter === 'premium'"
+          (click)="setFilter('premium')">
+          Premium
+        </button>
+        <button
+          class="filter-btn"
+          [class.active]="activeFilter === 'vip'"
+          (click)="setFilter('vip')">
+          VIP
+        </button>
+        }
+        @if (activeTab === 'fournisseurs') {
+        <button
+          class="filter-btn"
+          [class.active]="activeFilter === 'actifs'"
+          (click)="setFilter('actifs')">
+          Actifs
+        </button>
+        }
+      </div> -->
+
+      <button class="btn-new-contact" (click)="nouveauContact()">
+        <span>+</span>
+        Nouveau {{ activeTab === 'clients' ? 'Client' : 'Fournisseur' }}
+      </button>
+
+      <div class="search-container">
+        <label for="search-contacts" class="sr-only">Rechercher des contacts</label>
+        <input
+          type="text"
+          id="search-contacts"
+          class="search-input"
+          placeholder="Rechercher..."
+          [(ngModel)]="searchTerm"
+          aria-label="Rechercher des contacts"
+        />
+        <span class="search-icon">🔍</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-container">
+    <table class="contacts-table">
+      <thead>
+        <tr>
+          <th>Contact</th>
+          <th>Coordonnées</th>
+          <th>Statut</th>
+          @if (activeTab === 'clients') {
+          <th>Solde</th>
+          }
+          <th>Factures</th>
+          <th>Dernière Activité</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (isLoading) {
+          <tr>
+            <td [attr.colspan]="activeTab === 'clients' ? 7 : 6" class="empty-state">
+              <div class="empty-message">Chargement...</div>
+            </td>
+          </tr>
+        } @else if (filteredContacts.length === 0) {
+          <tr>
+            <td [attr.colspan]="activeTab === 'clients' ? 7 : 6" class="empty-state">
+              <div class="empty-message">Aucun {{ activeTab === 'clients' ? 'client' : 'fournisseur' }} trouvé</div>
+            </td>
+          </tr>
+        } @else {
+          @for (contact of filteredContacts; track contact.id) {
+          <tr>
+            <td>
+              <div class="contact-info">
+                <div class="contact-avatar" [class]="'avatar-' + contact.couleur">
+                  {{ contact.initiales }}
+                </div>
+                <div class="contact-details">
+                  <div class="contact-nom">{{ contact.nom }}</div>
+                  <div class="contact-email">{{ contact.email }}</div>
+                  @if (contact.codeClient || contact.codeFournisseur) {
+                    <div class="contact-code">{{ contact.codeClient || contact.codeFournisseur }}</div>
+                  }
+                </div>
+              </div>
+            </td>
+            <td>
+              <div class="coordonnees">
+                <div class="coordonnee-item">
+                  <span class="coordonnee-icon">📞</span>
+                  <span>{{ contact.telephone }}</span>
+                </div>
+                <div class="coordonnee-item">
+                  <span class="coordonnee-icon">📍</span>
+                  <span>{{ contact.adresse }}</span>
+                </div>
+              </div>
+            </td>
+            <td>
+              <span class="status-badge badge-green">Actif</span>
+            </td>
+            @if (activeTab === 'clients') {
+            <td>
+              <div class="solde-value positive">-</div>
+            </td>
+            }
+            <td>
+              <div class="factures-count">-</div>
+            </td>
+            <td>
+              <div class="date-value">-</div>
+            </td>
+            <td>
+              <div class="actions">
+                <button class="action-btn" (click)="viewContact(contact)" title="Voir">
+                  <span>👁️</span>
+                </button>
+                <button class="action-btn" (click)="editContact(contact)" title="Éditer">
+                  <span>✏️</span>
+                </button>
+                <button class="action-btn" (click)="deleteContact(contact)" title="Supprimer">
+                  <span>🗑️</span>
+                </button>
+              </div>
+            </td>
+          </tr>
+          }
+        }
+      </tbody>
+    </table>
+  </div>
+
+  @if (showAddModal) {
+    @if (activeTab === 'clients') {
+      <div class="modal-overlay" (click)="closeAddModal()">
+        <div class="modal-content add-contact-modal" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <h2>Nouveau Client</h2>
+            <button class="modal-close" (click)="closeAddModal()" aria-label="Fermer">×</button>
+          </div>
+
+          <div class="modal-body">
+            <form (ngSubmit)="saveClient()">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="client-nom">Nom *</label>
+                  <input
+                    type="text"
+                    id="client-nom"
+                    [(ngModel)]="newClient.nom"
+                    name="client-nom"
+                    placeholder="Nom du client"
+                    required
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="client-email">Email *</label>
+                  <input
+                    type="email"
+                    id="client-email"
+                    [(ngModel)]="newClient.email"
+                    name="client-email"
+                    placeholder="email@example.com"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="client-telephone">Téléphone *</label>
+                  <input
+                    type="tel"
+                    id="client-telephone"
+                    [(ngModel)]="newClient.telephone"
+                    name="client-telephone"
+                    placeholder="+223 XX XX XX XX"
+                    required
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="client-type">Type *</label>
+                  <select
+                    id="client-type"
+                    [(ngModel)]="newClient.type"
+                    name="client-type"
+                    required
+                    aria-label="Type de client"
+                  >
+                    <option value="ENTREPRISE">Entreprise</option>
+                    <option value="PARTICULIER">Particulier</option>
+                    <option value="GOUVERNEMENT">Gouvernement</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="client-adresse">Adresse *</label>
+                <input
+                  type="text"
+                  id="client-adresse"
+                  [(ngModel)]="newClient.adresse"
+                  name="client-adresse"
+                  placeholder="Adresse complète"
+                  required
+                />
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="client-ville">Ville</label>
+                  <input
+                    type="text"
+                    id="client-ville"
+                    [(ngModel)]="newClient.ville"
+                    name="client-ville"
+                    placeholder="Ville"
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="client-pays">Pays</label>
+                  <input
+                    type="text"
+                    id="client-pays"
+                    [(ngModel)]="newClient.pays"
+                    name="client-pays"
+                    placeholder="Pays"
+                  />
+                </div>
+              </div>
+
+              <div class="modal-actions">
+                <button type="button" class="btn-cancel" (click)="closeAddModal()">
+                  Annuler
+                </button>
+                <button type="submit" class="btn-submit" [disabled]="isLoading">
+                  @if (isLoading) {
+                    Enregistrement...
+                  } @else {
+                    Enregistrer
+                  }
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    } @else {
+      <div class="modal-overlay" (click)="closeAddModal()">
+        <div class="modal-content add-contact-modal" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <h2>Nouveau Fournisseur</h2>
+            <button class="modal-close" (click)="closeAddModal()" aria-label="Fermer">×</button>
+          </div>
+
+          <div class="modal-body">
+            <form (ngSubmit)="saveFournisseur()">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="fournisseur-nom">Nom *</label>
+                  <input
+                    type="text"
+                    id="fournisseur-nom"
+                    [(ngModel)]="newFournisseur.nom"
+                    name="fournisseur-nom"
+                    placeholder="Nom du fournisseur"
+                    required
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="fournisseur-email">Email *</label>
+                  <input
+                    type="email"
+                    id="fournisseur-email"
+                    [(ngModel)]="newFournisseur.email"
+                    name="fournisseur-email"
+                    placeholder="email@example.com"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="fournisseur-telephone">Téléphone *</label>
+                  <input
+                    type="tel"
+                    id="fournisseur-telephone"
+                    [(ngModel)]="newFournisseur.telephone"
+                    name="fournisseur-telephone"
+                    placeholder="+223 XX XX XX XX"
+                    required
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="fournisseur-contact">Personne de contact</label>
+                  <input
+                    type="text"
+                    id="fournisseur-contact"
+                    [(ngModel)]="newFournisseur.contactPersonne"
+                    name="fournisseur-contact"
+                    placeholder="Nom du contact"
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="fournisseur-type">Type de fournisseur *</label>
+                  <select
+                    id="fournisseur-type"
+                    [(ngModel)]="newFournisseur.typeFournisseur"
+                    name="fournisseur-type"
+                    required
+                  >
+                    <option value="ACHAT">Fournisseur d'achat</option>
+                    <option value="TRANSPORT">Fournisseur transport</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="fournisseur-adresse">Adresse *</label>
+                <input
+                  type="text"
+                  id="fournisseur-adresse"
+                  [(ngModel)]="newFournisseur.adresse"
+                  name="fournisseur-adresse"
+                  placeholder="Adresse complète"
+                  required
+                />
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="fournisseur-ville">Ville</label>
+                  <input
+                    type="text"
+                    id="fournisseur-ville"
+                    [(ngModel)]="newFournisseur.ville"
+                    name="fournisseur-ville"
+                    placeholder="Ville"
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="fournisseur-pays">Pays</label>
+                  <input
+                    type="text"
+                    id="fournisseur-pays"
+                    [(ngModel)]="newFournisseur.pays"
+                    name="fournisseur-pays"
+                    placeholder="Pays"
+                  />
+                </div>
+              </div>
+
+              <div class="modal-actions">
+                <button type="button" class="btn-cancel" (click)="closeAddModal()">
+                  Annuler
+                </button>
+                <button type="submit" class="btn-submit" [disabled]="isLoading">
+                  @if (isLoading) {
+                    Enregistrement...
+                  } @else {
+                    Enregistrer
+                  }
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    }
+  }
+
+  @if (showDetailModal && (selectedClient || selectedFournisseur || selectedContact)) {
+    <div class="modal-overlay" (click)="closeDetailModal()">
+      <div class="modal-content detail-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2>Détails du {{ selectedContact?.type === 'client' ? 'Client' : 'Fournisseur' }}</h2>
+          <button class="modal-close" (click)="closeDetailModal()" aria-label="Fermer">×</button>
+        </div>
+
+        <div class="modal-body">
+          @if (selectedContact?.type === 'client' && selectedClient) {
+            <div class="detail-section">
+              <div class="detail-header">
+                <div class="contact-avatar-large" [class]="'avatar-' + (selectedContact?.couleur || 'blue')">
+                  {{ selectedContact?.initiales || '' }}
+                </div>
+                <div>
+                  <h3 class="contact-name-large">{{ selectedClient.nom }}</h3>
+                  @if (selectedClient.codeClient) {
+                    <div class="contact-code-large">{{ selectedClient.codeClient }}</div>
+                  }
+                </div>
+              </div>
+            </div>
+
+            <div class="detail-section">
+              <h3 class="section-title">Informations Personnelles</h3>
+              <div class="detail-grid">
+                <div class="detail-item">
+                  <span class="detail-label">Email</span>
+                  <span class="detail-value">{{ selectedClient.email }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Téléphone</span>
+                  <span class="detail-value">{{ selectedClient.telephone }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Type</span>
+                  <span class="detail-value">{{ selectedClient.type }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Adresse</span>
+                  <span class="detail-value">{{ selectedClient.adresse }}</span>
+                </div>
+                @if (selectedClient.ville) {
+                <div class="detail-item">
+                  <span class="detail-label">Ville</span>
+                  <span class="detail-value">{{ selectedClient.ville }}</span>
+                </div>
+                }
+                @if (selectedClient.pays) {
+                <div class="detail-item">
+                  <span class="detail-label">Pays</span>
+                  <span class="detail-value">{{ selectedClient.pays }}</span>
+                </div>
+                }
+              </div>
+            </div>
+
+            <!-- Section Voyages -->
+            <div class="detail-section voyages-section">
+              <h3 class="section-title">Voyages</h3>
+              @if (isLoadingVoyagesClient) {
+                <div class="loading-voyages">
+                  <p>Chargement des voyages...</p>
+                </div>
+              } @else if (clientVoyages.length === 0) {
+                <div class="empty-voyages">
+                  <p>Aucun voyage trouvé pour ce client</p>
+                </div>
+              } @else {
+                <div class="voyages-table-container">
+                  <table class="voyages-table">
+                    <thead>
+                      <tr>
+                        <th>N° Voyage</th>
+                        <th>Date Départ</th>
+                        <th>Destination</th>
+                        <th>Camion</th>
+                        <th>Quantité</th>
+                        <th>Statut Voyage</th>
+                        <th>Statut Facture</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (voyage of clientVoyages; track voyage.id) {
+                        <tr>
+                          <td>
+                            <div class="voyage-numero">{{ voyage.numeroVoyage || 'N/A' }}</div>
+                          </td>
+                          <td>
+                            <div class="voyage-date">{{ voyage.dateDepart ? formatDate(voyage.dateDepart) : 'N/A' }}</div>
+                          </td>
+                          <td>
+                            <div class="voyage-destination">{{ voyage.destination || 'N/A' }}</div>
+                          </td>
+                          <td>
+                            <div class="voyage-camion">{{ voyage.camionImmatriculation || 'N/A' }}</div>
+                          </td>
+                          <td>
+                            <div class="voyage-quantite">{{ voyage.quantite || 0 }}L</div>
+                          </td>
+                          <td>
+                            <span class="status-badge" [class]="'badge-' + (voyage.statut?.toLowerCase() || 'default')">
+                              {{ voyage.statut || 'N/A' }}
+                            </span>
+                          </td>
+                          <td>
+                            <span class="status-badge" [class]="getFactureStatutClass(voyage)">
+                              {{ getFactureStatutPaiement(voyage) }}
+                            </span>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                    <tfoot>
+                      <tr class="voyages-total-row">
+                        <td colspan="4" class="total-label">
+                          <strong>Total</strong>
+                        </td>
+                        <td class="total-quantite">
+                          <strong>{{ getTotalQuantiteVoyages() }}L</strong>
+                        </td>
+                        <td colspan="2"></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              }
+            </div>
+
+            <!-- Section Factures -->
+            <div class="detail-section factures-section">
+              <div class="section-header-with-action">
+                <h3 class="section-title">Factures</h3>
+                @if (clientFactures.length > 0) {
+                  <button class="btn-export-factures" (click)="exportFacturesPdf()" [disabled]="isExportingFactures">
+                    <span>📥</span>
+                    @if (isExportingFactures) {
+                      Export en cours...
+                    } @else {
+                      Exporter les données des factures
+                    }
+                  </button>
+                }
+              </div>
+              @if (isLoadingFactures) {
+                <div class="loading-factures">
+                  <p>Chargement des factures...</p>
+                </div>
+              } @else if (clientFactures.length === 0) {
+                <div class="empty-factures">
+                  <p>Aucune facture trouvée pour ce client</p>
+                </div>
+              } @else {
+                <div class="factures-table-container">
+                  <table class="factures-table">
+                    <thead>
+                      <tr>
+                        <th>N° Facture</th>
+                        <th>Date</th>
+                        <th>Échéance</th>
+                        <th>Montant</th>
+                        <th>Payé</th>
+                        <th>Reste</th>
+                        <th>Statut</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (facture of clientFactures; track facture.id) {
+                        <tr>
+                          <td>
+                            <div class="facture-numero">{{ facture.numero || 'N/A' }}</div>
+                          </td>
+                          <td>
+                            <div class="facture-date">{{ formatDate(facture.date) }}</div>
+                          </td>
+                          <td>
+                            <div class="facture-date">{{ formatDate(facture.dateEcheance) }}</div>
+                          </td>
+                          <td>
+                            <div class="facture-montant">{{ facture.montantTTC || facture.montant || 0 | number }} F</div>
+                          </td>
+                          <td>
+                            <div class="facture-montant-paye">{{ facture.montantPaye || 0 | number }} F</div>
+                          </td>
+                          <td>
+                            @if (facture.montantTTC && facture.montantPaye) {
+                              <div class="facture-reste" [class.negative]="(facture.montantTTC - facture.montantPaye) > 0">
+                                {{ (facture.montantTTC - facture.montantPaye) | number }} F
+                              </div>
+                            } @else {
+                              <div class="facture-reste">{{ facture.montantTTC || facture.montant || 0 | number }} F</div>
+                            }
+                          </td>
+                          <td>
+                            <span class="status-badge" [class]="getStatutClass(facture.statut)">
+                              {{ getStatutLabel(facture.statut) }}
+                            </span>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              }
+            </div>
+          } @else if (selectedContact?.type === 'fournisseur' && selectedFournisseur) {
+            <div class="detail-section">
+              <div class="detail-header">
+                <div class="contact-avatar-large" [class]="'avatar-' + (selectedContact?.couleur || 'blue')">
+                  {{ selectedContact?.initiales || '' }}
+                </div>
+                <div>
+                  <h3 class="contact-name-large">{{ selectedFournisseur.nom }}</h3>
+                  @if (selectedFournisseur.codeFournisseur) {
+                    <div class="contact-code-large">{{ selectedFournisseur.codeFournisseur }}</div>
+                  }
+                </div>
+              </div>
+            </div>
+
+            <div class="detail-section">
+              <h3 class="section-title">Informations</h3>
+              <div class="detail-grid">
+                <div class="detail-item">
+                  <span class="detail-label">Email</span>
+                  <span class="detail-value">{{ selectedFournisseur.email }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Téléphone</span>
+                  <span class="detail-value">{{ selectedFournisseur.telephone }}</span>
+                </div>
+                @if (selectedFournisseur.contactPersonne) {
+                <div class="detail-item">
+                  <span class="detail-label">Personne de contact</span>
+                  <span class="detail-value">{{ selectedFournisseur.contactPersonne }}</span>
+                </div>
+                }
+                <div class="detail-item">
+                  <span class="detail-label">Adresse</span>
+                  <span class="detail-value">{{ selectedFournisseur.adresse }}</span>
+                </div>
+                @if (selectedFournisseur.ville) {
+                <div class="detail-item">
+                  <span class="detail-label">Ville</span>
+                  <span class="detail-value">{{ selectedFournisseur.ville }}</span>
+                </div>
+                }
+                @if (selectedFournisseur.pays) {
+                <div class="detail-item">
+                  <span class="detail-label">Pays</span>
+                  <span class="detail-value">{{ selectedFournisseur.pays }}</span>
+                </div>
+                }
+              </div>
+            </div>
+
+            <!-- Section Camions -->
+            <div class="detail-section camions-section">
+              <h3 class="section-title">Camions</h3>
+              @if (isLoadingCamions) {
+                <div class="loading-camions">
+                  <p>Chargement des camions...</p>
+                </div>
+              } @else if (fournisseurCamions.length === 0) {
+                <div class="empty-camions">
+                  <p>Aucun camion lié à ce fournisseur</p>
+                </div>
+              } @else {
+                <div class="camions-list">
+                  @for (camion of fournisseurCamions; track camion.id) {
+                    <div class="camion-item" (click)="viewCamionVoyages(camion)">
+                      <div class="camion-info">
+                        <div class="camion-header">
+                          <span class="camion-immatriculation">{{ camion.immatriculation }}</span>
+                          <span class="camion-type">{{ camion.type }}</span>
+                        </div>
+                        <div class="camion-details">
+                          <span>{{ camion.marque }} {{ camion.modele }} ({{ camion.annee }})</span>
+                          <span class="camion-capacite">Capacité: {{ camion.capacite }}L</span>
+                        </div>
+                      </div>
+                      <div class="camion-voyages-count">
+                        <span class="voyages-badge">{{ camion.nombreVoyages }}</span>
+                        <span class="voyages-label">voyage{{ camion.nombreVoyages > 1 ? 's' : '' }}</span>
+      </div>
+    </div>
+  }
+
+  <!-- Modal Voyages du Camion -->
+  @if (showCamionVoyagesModal && selectedCamion) {
+    <div class="modal-overlay" (click)="closeCamionVoyagesModal()">
+      <div class="modal-content detail-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h2>Voyages du Camion {{ selectedCamion.immatriculation }}</h2>
+          <button class="modal-close" (click)="closeCamionVoyagesModal()" aria-label="Fermer">×</button>
+        </div>
+
+        <div class="modal-body">
+          <div class="camion-info-header">
+            <div class="camion-detail-info">
+              <span class="camion-detail-label">Marque/Modèle:</span>
+              <span>{{ selectedCamion.marque }} {{ selectedCamion.modele }} ({{ selectedCamion.annee }})</span>
+            </div>
+            <div class="camion-detail-info">
+              <span class="camion-detail-label">Type:</span>
+              <span>{{ selectedCamion.type }}</span>
+            </div>
+            <div class="camion-detail-info">
+              <span class="camion-detail-label">Capacité:</span>
+              <span>{{ selectedCamion.capacite }}L</span>
+            </div>
+          </div>
+
+          <div class="detail-section voyages-section">
+            <h3 class="section-title">Liste des Voyages ({{ camionVoyages.length }})</h3>
+            @if (isLoadingVoyages) {
+              <div class="loading-voyages">
+                <p>Chargement des voyages...</p>
+              </div>
+            } @else if (camionVoyages.length === 0) {
+              <div class="empty-voyages">
+                <p>Aucun voyage trouvé pour ce camion</p>
+              </div>
+            } @else {
+              <div class="voyages-table-container">
+                <table class="voyages-table">
+                  <thead>
+                    <tr>
+                      <th>N° Voyage</th>
+                      <th>Date Départ</th>
+                      <th>Destination</th>
+                      <th>Client</th>
+                      <th>Statut</th>
+                      <th>Quantité</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (voyage of camionVoyages; track voyage.id) {
+                      <tr>
+                        <td>{{ voyage.numeroVoyage }}</td>
+                        <td>{{ voyage.dateDepart | date:'dd/MM/yyyy' }}</td>
+                        <td>{{ voyage.destination }}</td>
+                        <td>{{ voyage.clientNom || 'N/A' }}</td>
+                        <td>
+                          <span class="status-badge" [class]="'badge-' + (voyage.statut?.toLowerCase() || 'default')">
+                            {{ voyage.statut }}
+                          </span>
+                        </td>
+                        <td>{{ voyage.quantite }}L</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" (click)="closeCamionVoyagesModal()">
+            Fermer
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>
+              }
+            </div>
+          } @else if (selectedContact) {
+            <div class="detail-section">
+              <div class="detail-header">
+                <div class="contact-avatar-large" [class]="'avatar-' + (selectedContact.couleur || 'blue')">
+                  {{ selectedContact.initiales || '' }}
+                </div>
+                <div>
+                  <h3 class="contact-name-large">{{ selectedContact.nom }}</h3>
+                  @if (selectedContact.codeClient || selectedContact.codeFournisseur) {
+                    <div class="contact-code-large">{{ selectedContact.codeClient || selectedContact.codeFournisseur }}</div>
+                  }
+                </div>
+              </div>
+            </div>
+
+            <div class="detail-section">
+              <h3 class="section-title">Informations</h3>
+              <div class="detail-grid">
+                <div class="detail-item">
+                  <span class="detail-label">Email</span>
+                  <span class="detail-value">{{ selectedContact.email }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Téléphone</span>
+                  <span class="detail-value">{{ selectedContact.telephone }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">Adresse</span>
+                  <span class="detail-value">{{ selectedContact.adresse }}</span>
+                </div>
+              </div>
+            </div>
+          }
+
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" (click)="closeDetailModal()">
+              Fermer
+            </button>
+            <button type="button" class="btn-edit" (click)="editContact(selectedContact!)">
+              <span>✏️</span>
+              Modifier
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (showEditModal && selectedContact) {
+    @if (selectedContact.type === 'client' && selectedClient) {
+      <div class="modal-overlay" (click)="closeEditModal()">
+        <div class="modal-content add-contact-modal" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <h2>Modifier le Client</h2>
+            <button class="modal-close" (click)="closeEditModal()" aria-label="Fermer">×</button>
+          </div>
+
+          <div class="modal-body">
+            <form (ngSubmit)="updateClient()">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="edit-client-nom">Nom *</label>
+                  <input
+                    type="text"
+                    id="edit-client-nom"
+                    [(ngModel)]="editClient.nom"
+                    name="edit-client-nom"
+                    placeholder="Nom du client"
+                    required
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="edit-client-email">Email *</label>
+                  <input
+                    type="email"
+                    id="edit-client-email"
+                    [(ngModel)]="editClient.email"
+                    name="edit-client-email"
+                    placeholder="email@example.com"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="edit-client-telephone">Téléphone *</label>
+                  <input
+                    type="tel"
+                    id="edit-client-telephone"
+                    [(ngModel)]="editClient.telephone"
+                    name="edit-client-telephone"
+                    placeholder="+223 XX XX XX XX"
+                    required
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="edit-client-type">Type *</label>
+                  <select
+                    id="edit-client-type"
+                    [(ngModel)]="editClient.type"
+                    name="edit-client-type"
+                    required
+                  >
+                    <option value="ENTREPRISE">Entreprise</option>
+                    <option value="PARTICULIER">Particulier</option>
+                    <option value="GOUVERNEMENT">Gouvernement</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="edit-client-adresse">Adresse *</label>
+                <input
+                  type="text"
+                  id="edit-client-adresse"
+                  [(ngModel)]="editClient.adresse"
+                  name="edit-client-adresse"
+                  placeholder="Adresse complète"
+                  required
+                />
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="edit-client-ville">Ville</label>
+                  <input
+                    type="text"
+                    id="edit-client-ville"
+                    [(ngModel)]="editClient.ville"
+                    name="edit-client-ville"
+                    placeholder="Ville"
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="edit-client-pays">Pays</label>
+                  <input
+                    type="text"
+                    id="edit-client-pays"
+                    [(ngModel)]="editClient.pays"
+                    name="edit-client-pays"
+                    placeholder="Pays"
+                  />
+                </div>
+              </div>
+
+              <div class="modal-actions">
+                <button type="button" class="btn-cancel" (click)="closeEditModal()">
+                  Annuler
+                </button>
+                <button type="submit" class="btn-submit" [disabled]="isLoading">
+                  @if (isLoading) {
+                    Mise à jour...
+                  } @else {
+                    Mettre à jour
+                  }
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    } @else if (selectedContact.type === 'fournisseur' && selectedFournisseur) {
+      <div class="modal-overlay" (click)="closeEditModal()">
+        <div class="modal-content add-contact-modal" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <h2>Modifier le Fournisseur</h2>
+            <button class="modal-close" (click)="closeEditModal()" aria-label="Fermer">×</button>
+          </div>
+
+          <div class="modal-body">
+            <form (ngSubmit)="updateFournisseur()">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="edit-fournisseur-nom">Nom *</label>
+                  <input
+                    type="text"
+                    id="edit-fournisseur-nom"
+                    [(ngModel)]="editFournisseur.nom"
+                    name="edit-fournisseur-nom"
+                    placeholder="Nom du fournisseur"
+                    required
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="edit-fournisseur-email">Email *</label>
+                  <input
+                    type="email"
+                    id="edit-fournisseur-email"
+                    [(ngModel)]="editFournisseur.email"
+                    name="edit-fournisseur-email"
+                    placeholder="email@example.com"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="edit-fournisseur-telephone">Téléphone *</label>
+                  <input
+                    type="tel"
+                    id="edit-fournisseur-telephone"
+                    [(ngModel)]="editFournisseur.telephone"
+                    name="edit-fournisseur-telephone"
+                    placeholder="+223 XX XX XX XX"
+                    required
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="edit-fournisseur-contact">Personne de contact</label>
+                  <input
+                    type="text"
+                    id="edit-fournisseur-contact"
+                    [(ngModel)]="editFournisseur.contactPersonne"
+                    name="edit-fournisseur-contact"
+                    placeholder="Nom du contact"
+                  />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="edit-fournisseur-adresse">Adresse *</label>
+                <input
+                  type="text"
+                  id="edit-fournisseur-adresse"
+                  [(ngModel)]="editFournisseur.adresse"
+                  name="edit-fournisseur-adresse"
+                  placeholder="Adresse complète"
+                  required
+                />
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="edit-fournisseur-ville">Ville</label>
+                  <input
+                    type="text"
+                    id="edit-fournisseur-ville"
+                    [(ngModel)]="editFournisseur.ville"
+                    name="edit-fournisseur-ville"
+                    placeholder="Ville"
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="edit-fournisseur-pays">Pays</label>
+                  <input
+                    type="text"
+                    id="edit-fournisseur-pays"
+                    [(ngModel)]="editFournisseur.pays"
+                    name="edit-fournisseur-pays"
+                    placeholder="Pays"
+                  />
+                </div>
+              </div>
+
+              <div class="modal-actions">
+                <button type="button" class="btn-cancel" (click)="closeEditModal()">
+                  Annuler
+                </button>
+                <button type="submit" class="btn-submit" [disabled]="isLoading">
+                  @if (isLoading) {
+                    Mise à jour...
+                  } @else {
+                    Mettre à jour
+                  }
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    }
+  }
+</div>

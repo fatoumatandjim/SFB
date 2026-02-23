@@ -1,0 +1,196 @@
+<div class="email-container">
+  <!-- Header -->
+  <div class="email-header">
+    <div class="header-left">
+      <h1>📧 Messagerie</h1>
+      <span class="email-count">{{ emails.length }} message(s) envoyé(s)</span>
+    </div>
+    <div class="header-actions">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input
+          type="text"
+          placeholder="Rechercher..."
+          [(ngModel)]="searchQuery">
+      </div>
+      <button class="compose-btn" (click)="openCompose()">
+        <span>✏️</span> Nouveau message
+      </button>
+    </div>
+  </div>
+
+  <!-- Liste des messages envoyés -->
+  <div class="email-content">
+    <div class="email-list-container">
+      @if (isLoading) {
+        <div class="loading-state">
+          <span class="loading-icon">⏳</span>
+          <p>Chargement des messages...</p>
+        </div>
+      } @else if (filteredEmails.length === 0) {
+        <div class="empty-state">
+          <span class="empty-icon">📭</span>
+          <p>Aucun message envoyé</p>
+          <button class="btn-compose-empty" (click)="openCompose()">
+            Envoyer votre premier message
+          </button>
+        </div>
+      } @else {
+        <div class="email-table">
+          <div class="table-header">
+            <div class="col-dest">Destinataire</div>
+            <div class="col-subject">Objet</div>
+            <div class="col-date">Date</div>
+            <div class="col-attachments">Pièces jointes</div>
+            <div class="col-actions">Actions</div>
+          </div>
+          <div class="table-body">
+            @for (email of filteredEmails; track email.id) {
+              <div class="table-row" [class.selected]="selectedEmail?.id === email.id" (click)="selectEmail(email)">
+                <div class="col-dest">
+                  <div class="dest-info">
+                    <div class="dest-avatar">{{ getInitials(email.toEmail) }}</div>
+                    <span class="dest-email">{{ email.toEmail }}</span>
+                  </div>
+                </div>
+                <div class="col-subject">
+                  <span class="subject-text">{{ email.subject }}</span>
+                  <span class="preview-text">{{ email.preview }}</span>
+                </div>
+                <div class="col-date">{{ formatDate(email.date) }}</div>
+                <div class="col-attachments">
+                  @if (email.attachments && email.attachments.length > 0) {
+                    <span class="attachment-badge">📎 {{ email.attachments.length }}</span>
+                  } @else {
+                    <span class="no-attachment">-</span>
+                  }
+                </div>
+                <div class="col-actions">
+                  <button class="action-btn view" (click)="selectEmail(email); $event.stopPropagation()" title="Voir">👁️</button>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+
+    <!-- Détail du message sélectionné -->
+    @if (selectedEmail) {
+      <div class="email-detail-panel">
+        <div class="detail-header">
+          <h3>Détail du message</h3>
+          <button class="close-detail-btn" (click)="selectedEmail = null">✕</button>
+        </div>
+        <div class="detail-body">
+          <div class="detail-row">
+            <span class="label">À:</span>
+            <span class="value">{{ selectedEmail.toEmail }}</span>
+          </div>
+          @if (selectedEmail.cc) {
+            <div class="detail-row">
+              <span class="label">CC:</span>
+              <span class="value">{{ selectedEmail.cc }}</span>
+            </div>
+          }
+          @if (selectedEmail.bcc) {
+            <div class="detail-row">
+              <span class="label">BCC:</span>
+              <span class="value">{{ selectedEmail.bcc }}</span>
+            </div>
+          }
+          <div class="detail-row">
+            <span class="label">Objet:</span>
+            <span class="value subject">{{ selectedEmail.subject }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="label">Date:</span>
+            <span class="value">{{ selectedEmail.date | date:'dd/MM/yyyy à HH:mm' }}</span>
+          </div>
+          @if (selectedEmail.attachments && selectedEmail.attachments.length > 0) {
+            <div class="detail-row">
+              <span class="label">Pièces jointes:</span>
+              <div class="attachments-list">
+                @for (attachment of selectedEmail.attachments; track attachment) {
+                  <button class="attachment-link" (click)="downloadFile(attachment)" type="button">
+                    📄 {{ getOriginalFileName(attachment) }}
+                  </button>
+                }
+              </div>
+            </div>
+          }
+          <div class="detail-content">
+            <span class="label">Message:</span>
+            <div class="message-content">{{ selectedEmail.content }}</div>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+</div>
+
+<!-- Modal Nouveau Message -->
+@if (showCompose) {
+  <div class="compose-overlay" (click)="closeCompose()">
+    <div class="compose-modal" (click)="$event.stopPropagation()">
+      <div class="compose-header">
+        <h3>✉️ Nouveau message</h3>
+        <button class="close-btn" (click)="closeCompose()">✕</button>
+      </div>
+
+      <div class="compose-form">
+        <div class="form-group">
+          <label>Destinataire *</label>
+          <input type="email" [(ngModel)]="newEmail.to" placeholder="email@exemple.com">
+        </div>
+        <div class="form-group">
+          <label>Copie (CC)</label>
+          <input type="text" [(ngModel)]="newEmail.cc" placeholder="cc1@exemple.com, cc2@exemple.com">
+          <small class="form-hint">Plusieurs adresses séparées par une virgule</small>
+        </div>
+        <div class="form-group">
+          <label>Copie cachée (BCC)</label>
+          <input type="text" [(ngModel)]="newEmail.bcc" placeholder="bcc@exemple.com">
+          <small class="form-hint">Les destinataires ne verront pas cette liste</small>
+        </div>
+        <div class="form-group">
+          <label>Objet *</label>
+          <input type="text" [(ngModel)]="newEmail.subject" placeholder="Objet du message">
+        </div>
+        <div class="form-group">
+          <label>Message</label>
+          <textarea [(ngModel)]="newEmail.content" rows="8" placeholder="Écrivez votre message..."></textarea>
+        </div>
+
+        <!-- Pièces jointes -->
+        <div class="form-group">
+          <label>Pièces jointes</label>
+          <div class="attachment-zone">
+            <input type="file" #fileInput (change)="onFileSelected($event)" multiple hidden>
+            <button type="button" class="attach-btn" (click)="fileInput.click()" [disabled]="isUploading">
+              📎 {{ isUploading ? 'Upload en cours...' : 'Ajouter des fichiers' }}
+            </button>
+          </div>
+          @if (uploadedFiles.length > 0) {
+            <div class="uploaded-files">
+              @for (file of uploadedFiles; track file.fileName; let i = $index) {
+                <div class="file-chip">
+                  <span>📄 {{ file.originalName }}</span>
+                  <span class="file-size">({{ formatFileSize(file.size) }})</span>
+                  <button type="button" class="remove-btn" (click)="removeAttachment(i)">✕</button>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="compose-footer">
+        <button class="cancel-btn" (click)="closeCompose()" [disabled]="isSending">Annuler</button>
+        <button class="send-btn" (click)="sendEmail()" [disabled]="isSending || !newEmail.to || !newEmail.subject">
+          {{ isSending ? '⏳ Envoi...' : '📤 Envoyer' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

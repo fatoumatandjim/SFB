@@ -1,0 +1,195 @@
+<div class="cout-container">
+  <div class="cout-header">
+    <div>
+      <h1>Calcul des Coûts de Transport</h1>
+      <p>Gestion et suivi des coûts de transport par fournisseur</p>
+    </div>
+  </div>
+
+  <!-- Filtres -->
+  <div class="filters-section">
+    <div class="filter-group">
+      <label for="fournisseur-select">Fournisseur</label>
+      <select
+        id="fournisseur-select"
+        class="filter-select"
+        [(ngModel)]="selectedFournisseurId"
+        (change)="onFournisseurChange()">
+        <option [value]="null">Sélectionner un fournisseur</option>
+        @for (fournisseur of fournisseurs; track fournisseur.id) {
+          <option [value]="fournisseur.id">{{ fournisseur.nom }}</option>
+        }
+      </select>
+    </div>
+
+      <div class="filter-group">
+        <label>Option</label>
+        <div class="radio-group">
+          <label class="radio-label">
+            <input
+              type="radio"
+              name="filterOption"
+              value="tous"
+              [(ngModel)]="filterOption"
+              (change)="onFilterOptionChange()"
+            />
+            <span>Tous</span>
+          </label>
+          <label class="radio-label">
+            <input
+              type="radio"
+              name="filterOption"
+              value="nonPaye"
+              [(ngModel)]="filterOption"
+              (change)="onFilterOptionChange()"
+            />
+            <span>Coûts non payés</span>
+          </label>
+          <label class="radio-label">
+            <input
+              type="radio"
+              name="filterOption"
+              value="paye"
+              [(ngModel)]="filterOption"
+              (change)="onFilterOptionChange()"
+            />
+            <span>Coûts payés</span>
+          </label>
+          <label class="radio-label">
+            <input
+              type="radio"
+              name="filterOption"
+              value="intervalle"
+              [(ngModel)]="filterOption"
+              (change)="onFilterOptionChange()"
+            />
+            <span>Sur intervalle</span>
+          </label>
+        </div>
+      </div>
+
+    @if (filterOption === 'intervalle') {
+      <div class="filter-group date-range-group">
+        <label>Intervalle de dates</label>
+        <div class="date-inputs">
+          <div class="date-input-wrapper">
+            <label for="start-date">Du:</label>
+            <input
+              type="date"
+              id="start-date"
+              class="date-input"
+              [(ngModel)]="filterStartDate"
+              (change)="onDateRangeChange()"
+            />
+          </div>
+          <div class="date-input-wrapper">
+            <label for="end-date">Au:</label>
+            <input
+              type="date"
+              id="end-date"
+              class="date-input"
+              [(ngModel)]="filterEndDate"
+              (change)="onDateRangeChange()"
+            />
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Statistiques -->
+  @if (selectedFournisseurId && couts.length > 0) {
+    <div class="stats-cards">
+      <div class="stat-card">
+        <div class="stat-header">
+          <div class="stat-icon blue">
+            <span>💰</span>
+          </div>
+        </div>
+        <div class="stat-value">{{ formatMontant(totalCout) }}</div>
+        <div class="stat-label">Coût Total</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <div class="stat-icon orange">
+            <span>⏳</span>
+          </div>
+        </div>
+        <div class="stat-value">{{ formatMontant(totalNonPaye) }}</div>
+        <div class="stat-label">Non Payé</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-header">
+          <div class="stat-icon green">
+            <span>✓</span>
+          </div>
+        </div>
+        <div class="stat-value">{{ formatMontant(totalPaye) }}</div>
+        <div class="stat-label">Payé</div>
+      </div>
+    </div>
+  }
+
+  <!-- Liste des coûts -->
+  @if (isLoading) {
+    <div class="loading-state">
+      <p>Chargement des coûts...</p>
+    </div>
+  } @else if (selectedFournisseurId && couts.length === 0) {
+    <div class="empty-state">
+      <p>Aucun coût trouvé pour les critères sélectionnés</p>
+    </div>
+  } @else if (selectedFournisseurId && couts.length > 0) {
+    <div class="couts-table-container">
+      <table class="couts-table">
+        <thead>
+          <tr>
+            <th>N° Voyage</th>
+            <th>Camion</th>
+            <th>Date Départ</th>
+            <th>Destination</th>
+            <th>Quantité (L)</th>
+            <th>Coût Voyage</th>
+            <th>Frais Totaux</th>
+            <th>Coût Total</th>
+            <th>Statut Paiement</th>
+            <th>Date Paiement</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (cout of couts; track cout.id) {
+            <tr>
+              <td>{{ cout.numeroVoyage || 'N/A' }}</td>
+              <td>{{ cout.camionImmatriculation || 'N/A' }}</td>
+              <td>{{ formatDate(cout.dateDepart) }}</td>
+              <td>{{ cout.destination || 'N/A' }}</td>
+              <td>{{ cout.quantite | number }}</td>
+              <td>{{ formatMontant(cout.coutVoyage) }}</td>
+              <td>{{ formatMontant(cout.fraisTotaux) }}</td>
+              <td class="cout-total">{{ formatMontant(cout.coutTotal) }}</td>
+              <td>
+                <span [class]="getStatutPaiementClass(cout.statutPaiement)">
+                  {{ getStatutPaiementLabel(cout.statutPaiement) }}
+                </span>
+              </td>
+              <td>{{ formatDate(cout.datePaiement) }}</td>
+            </tr>
+          }
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="7" class="total-label">Total</td>
+            <td class="total-value">{{ formatMontant(totalCout) }}</td>
+            <td colspan="2"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  } @else {
+    <div class="empty-state">
+      <p>Veuillez sélectionner un fournisseur pour afficher les coûts</p>
+    </div>
+  }
+</div>

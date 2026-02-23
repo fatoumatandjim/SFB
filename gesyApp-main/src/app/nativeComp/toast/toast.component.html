@@ -1,0 +1,10 @@
+<div class="toast-container" [class]="'toast-' + position">
+  <div class="toast toast-{{ type }}">
+    <div class="toast-content">
+      <div class="toast-icon">{{ getIcon() }}</div>
+      <div class="toast-message">{{ message }}</div>
+      <button class="toast-close" (click)="close()" aria-label="Fermer">×</button>
+    </div>
+  </div>
+</div>
+

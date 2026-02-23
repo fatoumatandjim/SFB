@@ -1,0 +1,174 @@
+<div class="capital-container">
+  <div class="capital-header">
+    <div>
+      <h1>Capital</h1>
+      <p>Vue d'ensemble de votre capital et de vos actifs</p>
+    </div>
+  </div>
+
+  <!-- Filtres -->
+  <!-- <div class="filters-section">
+    <div class="filter-group">
+      <label>
+        <input type="radio" name="filter" value="all" [(ngModel)]="filterType" (change)="onFilterChange()" />
+        <span>Tout</span>
+      </label>
+      <label>
+        <input type="radio" name="filter" value="month" [(ngModel)]="filterType" (change)="onFilterChange()" />
+        <span>Par mois</span>
+      </label>
+      <label>
+        <input type="radio" name="filter" value="range" [(ngModel)]="filterType" (change)="onFilterChange()" />
+        <span>Intervalle</span>
+      </label>
+    </div>
+
+    @if (filterType === 'month') {
+      <div class="filter-inputs">
+        <select [(ngModel)]="selectedYear" (change)="onFilterChange()">
+          @for (year of getYears(); track year) {
+            <option [value]="year">{{ year }}</option>
+          }
+        </select>
+        <select [(ngModel)]="selectedMonth" (change)="onFilterChange()">
+          @for (month of getMonths(); track month.value) {
+            <option [value]="month.value">{{ month.label }}</option>
+          }
+        </select>
+      </div>
+    }
+
+    @if (filterType === 'range') {
+      <div class="filter-inputs">
+        <input type="date" [(ngModel)]="startDate" (change)="onFilterChange()" />
+        <span>à</span>
+        <input type="date" [(ngModel)]="endDate" (change)="onFilterChange()" />
+      </div>
+    }
+  </div> -->
+
+  @if (isLoading) {
+    <div class="loading-state">
+      <p>Chargement du capital...</p>
+    </div>
+  } @else if (error) {
+    <div class="error-state">
+      <p>{{ error }}</p>
+      <button (click)="loadCapitale()">Réessayer</button>
+    </div>
+  } @else if (capitale) {
+    <!-- Total Capital -->
+    <div class="total-capital-card">
+      <div class="total-capital-icon">💎</div>
+      <div class="total-capital-value">{{ totalCapital }}</div>
+      <div class="total-capital-label">Capital Total</div>
+    </div>
+
+    <!-- Fonds -->
+    <div class="section">
+      <h2 class="section-title">💰 Fonds Disponibles</h2>
+      <div class="cards-grid">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-icon blue">🏦</div>
+            <span class="card-label">Banques</span>
+          </div>
+          <div class="card-value">{{ fondsData.totalBanques }}</div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-icon green">💵</div>
+            <span class="card-label">Caisses</span>
+          </div>
+          <div class="card-value">{{ fondsData.totalCaisses }}</div>
+        </div>
+        <div class="card highlight">
+          <div class="card-header">
+            <div class="card-icon purple">💼</div>
+            <span class="card-label">Total Général</span>
+          </div>
+          <div class="card-value">{{ fondsData.totalGeneral }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stocks -->
+    <div class="section">
+      <h2 class="section-title">📦 Valeur des Stocks</h2>
+
+      <!-- Stocks en Dépôt -->
+      <div class="stocks-subsection">
+        <h3 class="subsection-title">Stocks en Dépôt</h3>
+        @if (stocksData.stocksDepot && stocksData.stocksDepot.length > 0) {
+          <div class="stocks-list">
+            @for (stock of stocksData.stocksDepot; track stock.produitId) {
+              <div class="stock-item">
+                <div class="stock-info">
+                  <div class="stock-name">{{ stock.produitNom }}</div>
+                  @if (stock.typeProduit) {
+                    <div class="stock-type">{{ stock.typeProduit }}</div>
+                  }
+                </div>
+                <div class="stock-details">
+                  <div class="stock-quantity">{{ stock.quantite | number:'1.0-0' }} L</div>
+                  <div class="stock-value">{{ stock.valeur }}</div>
+                </div>
+              </div>
+            }
+          </div>
+          <div class="stock-total">
+            <span class="total-label">Total Stocks Dépôt:</span>
+            <span class="total-value">{{ stocksData.totalStocksDepot }}</span>
+          </div>
+        } @else {
+          <p class="empty-message">Aucun stock en dépôt</p>
+        }
+      </div>
+
+      <!-- Stocks en Camion -->
+      <div class="stocks-subsection">
+        <h3 class="subsection-title">Stocks en Camion (Voyages non livrés)</h3>
+        @if (stocksData.stocksCamion && stocksData.stocksCamion.length > 0) {
+          <div class="stocks-list">
+            @for (stock of stocksData.stocksCamion; track stock.produitId) {
+              <div class="stock-item">
+                <div class="stock-info">
+                  <div class="stock-name">{{ stock.produitNom }}</div>
+                  @if (stock.typeProduit) {
+                    <div class="stock-type">{{ stock.typeProduit }}</div>
+                  }
+                </div>
+                <div class="stock-details">
+                  <div class="stock-quantity">{{ stock.quantite | number:'1.0-0' }} L</div>
+                  <div class="stock-value">{{ stock.valeur }}</div>
+                </div>
+              </div>
+            }
+          </div>
+          <div class="stock-total">
+            <span class="total-label">Total Stocks Camion:</span>
+            <span class="total-value">{{ stocksData.totalStocksCamion }}</span>
+          </div>
+        } @else {
+          <p class="empty-message">Aucun stock en camion</p>
+        }
+      </div>
+
+      <!-- Total Stocks -->
+      <div class="stock-total highlight">
+        <span class="total-label">Total Stocks:</span>
+        <span class="total-value">{{ stocksData.totalStocks }}</span>
+      </div>
+    </div>
+
+    <!-- Dépenses Investissement -->
+    <div class="section">
+      <h2 class="section-title">💸 Dépenses Investissement</h2>
+      <div class="depenses-card">
+        <div class="depenses-icon">📊</div>
+        <div class="depenses-value">{{ depensesData.total }}</div>
+        <div class="depenses-label">Total des dépenses de catégorie "Investissement"</div>
+      </div>
+    </div>
+  }
+</div>

@@ -1,0 +1,304 @@
+<div class="rapport-container">
+  <div class="rapport-header">
+    <div>
+      <h1>Rapport Financier</h1>
+      <p>Analyse financière et rapports détaillés</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn-export" (click)="exporterRapport()">
+        <span>📥</span>
+        Exporter
+      </button>
+      <button class="btn-generate" (click)="genererRapport()">
+        <span>📊</span>
+        Générer Rapport
+      </button>
+    </div>
+  </div>
+
+  <div class="filters-bar">
+    <div class="filter-group">
+      <label for="period-select">Période:</label>
+      <select id="period-select" class="filter-select" [(ngModel)]="selectedPeriod" (change)="onPeriodChange()" aria-label="Sélectionner une période">
+        <option value="mois">Ce mois</option>
+        <option value="trimestre">Ce trimestre</option>
+        <option value="annee">Cette année</option>
+        <option value="personnalise">Personnalisé</option>
+      </select>
+    </div>
+    @if (selectedPeriod === 'annee') {
+    <div class="filter-group">
+      <label for="year-select">Année:</label>
+      <select id="year-select" class="filter-select" [(ngModel)]="selectedYear" (change)="onYearChange()" aria-label="Sélectionner une année">
+        <option value="2024">2024</option>
+        <option value="2023">2023</option>
+        <option value="2022">2022</option>
+        <option value="2021">2021</option>
+      </select>
+    </div>
+    }
+    @if (selectedPeriod === 'personnalise') {
+    <div class="filter-group">
+      <label for="start-date">Date début:</label>
+      <input type="date" id="start-date" class="filter-select" [(ngModel)]="customStartDate" (change)="onCustomDateChange()" />
+    </div>
+    <div class="filter-group">
+      <label for="end-date">Date fin:</label>
+      <input type="date" id="end-date" class="filter-select" [(ngModel)]="customEndDate" (change)="onCustomDateChange()" />
+    </div>
+    }
+  </div>
+
+  @if (isLoading) {
+  <div class="loading-state">
+    <p>Chargement du rapport financier...</p>
+  </div>
+  } @else {
+  <div class="stats-cards">
+    <div class="stat-card revenue">
+      <div class="stat-header">
+        <div class="stat-icon green">
+          <span>💰</span>
+        </div>
+        <span class="stat-badge green positive">{{ stats.chiffreAffaires.evolution }}</span>
+      </div>
+      <div class="stat-value">{{ stats.chiffreAffaires.total | number }} F</div>
+      <div class="stat-label">Chiffre d'Affaires</div>
+      <div class="stat-details">
+        <span>{{ stats.chiffreAffaires.periode }}</span>
+      </div>
+    </div>
+
+    <div class="stat-card expenses">
+      <div class="stat-header">
+        <div class="stat-icon red">
+          <span>📉</span>
+        </div>
+        <span class="stat-badge red">{{ stats.depenses.evolution }}</span>
+      </div>
+      <div class="stat-value">{{ stats.depenses.total | number }} F</div>
+      <div class="stat-label">Dépenses</div>
+      <div class="stat-details">
+        <span>{{ stats.depenses.periode }}</span>
+      </div>
+    </div>
+
+    <div class="stat-card profit">
+      <div class="stat-header">
+        <div class="stat-icon blue">
+          <span>📈</span>
+        </div>
+        <span class="stat-badge blue positive">{{ stats.benefice.evolution }}</span>
+      </div>
+      <div class="stat-value">{{ stats.benefice.total | number }} F</div>
+      <div class="stat-label">Bénéfice Net</div>
+      <div class="stat-details">
+        <span>{{ stats.benefice.periode }}</span>
+      </div>
+    </div>
+
+    <div class="stat-card margin">
+      <div class="stat-header">
+        <div class="stat-icon purple">
+          <span>📊</span>
+        </div>
+        <span class="stat-badge purple positive">{{ stats.marge.evolution }}</span>
+      </div>
+      <div class="stat-value">{{ stats.marge.pourcentage }}%</div>
+      <div class="stat-label">Marge Bénéficiaire</div>
+      <div class="stat-details">
+        <span>Marge nette</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="charts-section">
+    <div class="chart-card">
+      <div class="chart-header">
+        <h2>Évolution Mensuelle</h2>
+        <p>Chiffre d'affaires et dépenses sur 6 mois</p>
+      </div>
+      <div class="chart-container">
+        <div class="chart-bars">
+          @for (donnee of donneesMensuelles; track donnee.mois) {
+          <div class="bar-group">
+            <div class="bar-label">{{ donnee.mois }}</div>
+            <div class="bars-container">
+              <div class="bar revenue-bar" [style.height.%]="getBarHeight(donnee.chiffreAffaires, maxChiffreAffaires)">
+                <span class="bar-value">{{ donnee.chiffreAffaires / 1000 | number:'1.0-0' }}k</span>
+              </div>
+              <div class="bar expense-bar" [style.height.%]="getBarHeight(donnee.depenses, maxDepenses)">
+                <span class="bar-value">{{ donnee.depenses / 1000 | number:'1.0-0' }}k</span>
+              </div>
+            </div>
+          </div>
+          }
+        </div>
+        <div class="chart-legend">
+          <div class="legend-item">
+            <span class="legend-color revenue"></span>
+            <span>Chiffre d'Affaires</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-color expense"></span>
+            <span>Dépenses</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <h2>Répartition des Dépenses</h2>
+        <p>Par catégorie</p>
+      </div>
+      <div class="expenses-breakdown">
+        @for (categorie of categoriesDepenses; track categorie.nom) {
+        <div class="expense-item">
+          <div class="expense-header">
+            <div class="expense-info">
+              <div class="expense-color" [class]="'color-' + categorie.couleur"></div>
+              <span class="expense-name">{{ categorie.nom }}</span>
+            </div>
+            <div class="expense-amount">{{ categorie.montant | number }} F</div>
+          </div>
+          <div class="expense-bar-container">
+            <div
+              class="expense-bar"
+              [class]="'bar-' + categorie.couleur"
+              [style.width.%]="categorie.pourcentage">
+            </div>
+          </div>
+          <div class="expense-footer">
+            <span class="expense-percentage">{{ categorie.pourcentage }}%</span>
+          </div>
+        </div>
+        }
+      </div>
+    </div>
+  </div>
+
+  @if (fraisDouaniers) {
+  <div class="expenses-section">
+    <div class="section-header">
+      <div>
+        <h2>Frais Douaniers</h2>
+        <p>Détail des frais de douane et T1</p>
+      </div>
+    </div>
+    <div class="expenses-breakdown">
+      <div class="expense-item">
+        <div class="expense-header">
+          <div class="expense-info">
+            <div class="expense-color color-orange"></div>
+            <span class="expense-name">Frais de Douane</span>
+          </div>
+          <div class="expense-amount">{{ fraisDouaniers.fraisDouane | number }} F</div>
+        </div>
+      </div>
+      <div class="expense-item">
+        <div class="expense-header">
+          <div class="expense-info">
+            <div class="expense-color color-red"></div>
+            <span class="expense-name">Frais T1</span>
+          </div>
+          <div class="expense-amount">{{ fraisDouaniers.fraisT1 | number }} F</div>
+        </div>
+      </div>
+      <div class="expense-item total-item">
+        <div class="expense-header">
+          <div class="expense-info">
+            <span class="expense-name" style="font-weight: 600;">Total Frais Douaniers</span>
+            <span class="stat-badge" [class]="fraisDouaniers.evolution?.startsWith('+') ? 'green positive' : 'red'">
+              {{ fraisDouaniers.evolution }}
+            </span>
+          </div>
+          <div class="expense-amount" style="font-weight: 600; font-size: 18px;">{{ fraisDouaniers.total | number }} F</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  }
+
+  @if (pertes) {
+  <div class="expenses-section">
+    <div class="section-header">
+      <div>
+        <h2>Pertes (Manquants)</h2>
+        <p>Quantités manquantes constatées</p>
+      </div>
+    </div>
+    <div class="expenses-breakdown">
+      <div class="expense-item">
+        <div class="expense-header">
+          <div class="expense-info">
+            <div class="expense-color color-red"></div>
+            <span class="expense-name">Quantité Totale Manquante</span>
+          </div>
+          <div class="expense-amount">{{ pertes.quantiteTotale | number:'1.2-2' }} L</div>
+        </div>
+        <div class="expense-footer">
+          <span class="stat-badge" [class]="pertes.evolution?.startsWith('+') ? 'green positive' : 'red'">
+            {{ pertes.evolution }}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+  }
+
+  <div class="table-section">
+    <div class="table-header">
+      <h2>Détails Mensuels</h2>
+    </div>
+    <div class="table-container">
+      <table class="rapport-table">
+        <thead>
+          <tr>
+            <th>Mois</th>
+            <th>Chiffre d'Affaires</th>
+            <th>Dépenses</th>
+            <th>Bénéfice</th>
+            <th>Marge</th>
+            <!-- <th>Actions</th> -->
+          </tr>
+        </thead>
+        <tbody>
+          @for (donnee of donneesMensuelles; track donnee.mois) {
+          <tr>
+            <td>
+              <div class="month-value">{{ donnee.mois }}</div>
+            </td>
+            <td>
+              <div class="amount-value positive">{{ donnee.chiffreAffaires | number }} F</div>
+            </td>
+            <td>
+              <div class="amount-value negative">{{ donnee.depenses | number }} F</div>
+            </td>
+            <td>
+              <div class="amount-value" [class]="donnee.benefice >= 0 ? 'positive' : 'negative'">
+                {{ donnee.benefice | number }} F
+              </div>
+            </td>
+            <td>
+              <div class="margin-value">
+                @if (donnee.chiffreAffaires > 0) {
+                {{ ((donnee.benefice / donnee.chiffreAffaires) * 100) | number:'1.1-1' }}%
+                } @else {
+                0%
+                }
+              </div>
+            </td>
+              <!-- <td>
+                <button class="action-btn" title="Voir détails">
+                  <span>👁️</span>
+                </button>
+              </td> -->
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+  }
+</div>

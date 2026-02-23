@@ -1,0 +1,795 @@
+<div class="gestion-achat-container">
+  <div class="gestion-achat-header">
+    <div>
+      <h1>Gestion des Achats</h1>
+      <p>Liste des achats d'approvisionnement des dépôts</p>
+    </div>
+    <div class="header-actions">
+      @if (activeTab === 'cession') {
+      <button class="btn-new-achat" (click)="openNewCessionModal()">
+        <span>+</span>
+        Nouvelle cession
+      </button>
+      } @else {
+      <button class="btn-new-achat" (click)="nouveauAchat()">
+        <span>+</span>
+        Nouvelle Achat
+      </button>
+      }
+    </div>
+  </div>
+
+  <div class="tabs-container">
+    <div class="tabs">
+      <button
+        class="tab-btn"
+        [class.active]="activeTab === 'tous'"
+        (click)="setTab('tous')">
+        Tous
+      </button>
+      <button
+        class="tab-btn"
+        [class.active]="activeTab === 'payes'"
+        (click)="setTab('payes')">
+        Payés
+      </button>
+      <button
+        class="tab-btn"
+        [class.active]="activeTab === 'impayes'"
+        (click)="setTab('impayes')">
+        Impayés
+      </button>
+      <button
+        class="tab-btn"
+        [class.active]="activeTab === 'cession'"
+        (click)="setTab('cession')">
+        Achat de cession
+      </button>
+    </div>
+  </div>
+
+  <div class="actions-bar">
+    <div class="search-container">
+      <input
+        type="text"
+        class="search-input"
+        placeholder="Rechercher par dépôt, produit, description..."
+        [(ngModel)]="searchTerm"
+        (input)="onSearchChange()"
+      />
+      <span class="search-icon">🔍</span>
+    </div>
+
+    <div class="date-filters">
+      <div class="filter-toggle">
+        <label class="toggle-label">
+          <input
+            type="checkbox"
+            [(ngModel)]="useDateRange"
+            (change)="onDateFilterChange()"
+          />
+          <span>Intervalle de dates</span>
+        </label>
+      </div>
+
+      @if (!useDateRange) {
+        <div class="date-input-group">
+          <label>Date:</label>
+          <input
+            type="date"
+            [(ngModel)]="filterDate"
+            (change)="onDateFilterChange()"
+            class="date-input"
+          />
+        </div>
+      } @else {
+        <div class="date-input-group">
+          <label>Du:</label>
+          <input
+            type="date"
+            [(ngModel)]="filterStartDate"
+            (change)="onDateFilterChange()"
+            class="date-input"
+          />
+        </div>
+        <div class="date-input-group">
+          <label>Au:</label>
+          <input
+            type="date"
+            [(ngModel)]="filterEndDate"
+            (change)="onDateFilterChange()"
+            class="date-input"
+          />
+        </div>
+      }
+
+      @if (filterDate || filterStartDate || filterEndDate) {
+        <button class="btn-clear-filters" (click)="clearDateFilters()">
+          Effacer
+        </button>
+      }
+    </div>
+  </div>
+
+  <div class="table-container">
+    <table class="voyages-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          @if (activeTab === 'cession') {
+          <th>Client</th>
+          }
+          <th>Dépôt</th>
+          <th>Produit</th>
+          <th>Type</th>
+          <th>Quantité</th>
+          @if (activeTab !== 'cession') {
+          <th>Prix Unitaire</th>
+          <th>Montant Total</th>
+          <th>Facture</th>
+          <th>Statut</th>
+          }
+          @if (activeTab === 'cession') {
+          <th>Statut</th>
+          }
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @if (isLoading) {
+          <tr>
+            <td [attr.colspan]="activeTab === 'cession' ? 8 : 10" class="empty-state">
+              <div class="empty-message">Chargement...</div>
+            </td>
+          </tr>
+        } @else if (achats.length === 0) {
+          <tr>
+            <td [attr.colspan]="activeTab === 'cession' ? 8 : 10" class="empty-state">
+              <div class="empty-message">Aucun achat trouvé</div>
+            </td>
+          </tr>
+        } @else {
+          @for (achat of achats; track achat.id) {
+            <tr>
+              <td>
+                <div class="date-value">{{ formatDate(achat.dateAchat) }}</div>
+              </td>
+              @if (activeTab === 'cession') {
+              <td>
+                <div class="client-nom">{{ achat.clientNom || '—' }}</div>
+              </td>
+              }
+              <td>
+                @if (achat.depotNom) {
+                  <div class="client-info">
+                    <div class="client-avatar" [class]="'avatar-' + getDepotColor(achat.depotNom)">
+                      {{ getDepotInitiales(achat.depotNom) }}
+                    </div>
+                    <div class="client-details">
+                      <div class="client-nom">{{ achat.depotNom }}</div>
+                    </div>
+                  </div>
+                } @else {
+                  <div class="no-client">-</div>
+                }
+              </td>
+              <td>
+                <div class="produit-nom">{{ achat.produitNom || 'N/A' }}</div>
+              </td>
+              <td>
+                <div class="produit-type">
+                  <span class="produit-icon">{{ getTypeProduitIcon(achat.typeProduit) }}</span>
+                  {{ achat.typeProduit || 'N/A' }}
+                </div>
+              </td>
+              <td>
+                <div class="quantite">{{ achat.quantite | number }} {{ achat.unite || 'L' }}</div>
+              </td>
+              @if (activeTab !== 'cession') {
+              <td>
+                <div class="prix-value">{{ formatMontant(achat.prixUnitaire) }}</div>
+              </td>
+              <td>
+                <div class="cout-value">{{ formatMontant(achat.montantTotal) }}</div>
+              </td>
+              <td>
+                @if (achat.transactionReference) {
+                  <div class="facture-numero">{{ achat.transactionReference }}</div>
+                } @else if (achat.factureNumero) {
+                  <div class="facture-numero">{{ achat.factureNumero }}</div>
+                } @else {
+                  <div class="no-facture">-</div>
+                }
+              </td>
+              <td>
+                @if (getStatutPaiement(achat)) {
+                  <span class="status-badge" [class]="getStatutFactureClass(getStatutPaiement(achat))">
+                    {{ getStatutFactureLabel(getStatutPaiement(achat)) }}
+                  </span>
+                } @else {
+                  <span class="status-badge badge-grey">-</span>
+                }
+              </td>
+              }
+              @if (activeTab === 'cession') {
+              <td>
+                <span class="status-badge badge-cession">Cession</span>
+              </td>
+              }
+              <td>
+                <div class="actions">
+                  <button class="btn-details" (click)="viewAchatDetails(achat)" title="Voir détails">
+                    👁️
+                  </button>
+                  @if (activeTab === 'impayes' && !achat.cession && (getStatutPaiement(achat) === 'EN_ATTENTE' || getStatutPaiement(achat) === 'EMISE') && isAdmin) {
+                    <button class="btn-payer" (click)="payerAchat(achat)" title="Payer">
+                      💳
+                    </button>
+                  }
+                </div>
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+
+    @if (totalPages > 1) {
+      <div class="pagination">
+        <button
+          class="pagination-btn"
+          [disabled]="currentPage === 0"
+          (click)="previousPage()">
+          Précédent
+        </button>
+        <div class="pagination-info">
+          Page {{ currentPage + 1 }} sur {{ totalPages }} ({{ totalElements }} éléments)
+        </div>
+        <button
+          class="pagination-btn"
+          [disabled]="currentPage >= totalPages - 1"
+          (click)="nextPage()">
+          Suivant
+        </button>
+      </div>
+    }
+  </div>
+</div>
+
+<!-- Modal de détails de l'achat -->
+@if (showDetailModal && selectedAchat) {
+  <div class="modal-overlay" (click)="closeDetailModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Détails de l'Achat</h2>
+        <button class="modal-close" (click)="closeDetailModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="detail-content">
+          <div class="detail-section">
+            <h3>Informations de l'Achat</h3>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <span class="detail-label">Date d'achat:</span>
+                <span class="detail-value">{{ formatDate(selectedAchat.dateAchat) }}</span>
+              </div>
+              @if (selectedAchat.cession && selectedAchat.clientNom) {
+              <div class="detail-item">
+                <span class="detail-label">Client:</span>
+                <span class="detail-value">{{ selectedAchat.clientNom }}</span>
+              </div>
+              }
+              <div class="detail-item">
+                <span class="detail-label">Dépôt:</span>
+                <span class="detail-value">{{ selectedAchat.depotNom || 'N/A' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Produit:</span>
+                <span class="detail-value">{{ selectedAchat.produitNom || 'N/A' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Type de produit:</span>
+                <span class="detail-value">
+                  <span class="produit-icon">{{ getTypeProduitIcon(selectedAchat.typeProduit) }}</span>
+                  {{ selectedAchat.typeProduit || 'N/A' }}
+                </span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Quantité:</span>
+                <span class="detail-value">{{ selectedAchat.quantite | number }} {{ selectedAchat.unite || 'L' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Prix unitaire:</span>
+                <span class="detail-value">{{ formatMontant(selectedAchat.prixUnitaire) }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="detail-label">Montant total:</span>
+                <span class="detail-value">{{ formatMontant(selectedAchat.montantTotal) }}</span>
+              </div>
+              @if (selectedAchat.description) {
+                <div class="detail-item full-width">
+                  <span class="detail-label">Description:</span>
+                  <span class="detail-value">{{ selectedAchat.description }}</span>
+                </div>
+              }
+              @if (selectedAchat.notes) {
+                <div class="detail-item full-width">
+                  <span class="detail-label">Notes:</span>
+                  <span class="detail-value">{{ selectedAchat.notes }}</span>
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Section Marge (masquée pour achats de cession) -->
+          @if (!selectedAchat.cession) {
+          <div class="detail-section marge-section">
+            <h3>Analyse de la Marge</h3>
+            @if (isLoadingMarge) {
+              <div class="loading-marge">Calcul de la marge en cours...</div>
+            } @else if (achatMarge) {
+              <div class="marge-content">
+                <!-- Tableau des coûts -->
+                <div class="marge-table-container">
+                  <h4>Coûts</h4>
+                  <table class="marge-table">
+                    <tbody>
+                      <tr>
+                        <td>Prix d'achat unitaire:</td>
+                        <td class="value">{{ formatMontant(achatMarge.prixUnitaireAchat) }}</td>
+                      </tr>
+                      <tr>
+                        <td>Frais totaux (produit):</td>
+                        <td class="value">{{ formatMontant(achatMarge.fraisTotaux) }}</td>
+                      </tr>
+                      <tr>
+                        <td>Frais proportionnels (cet achat):</td>
+                        <td class="value">{{ formatMontant(achatMarge.fraisProportionnels) }}</td>
+                      </tr>
+                      <tr class="highlight">
+                        <td><strong>Coût réel par litre:</strong></td>
+                        <td class="value"><strong>{{ formatMontant(achatMarge.coutReelParLitre) }}</strong></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- Tableau des ventes et marges -->
+                <div class="marge-table-container">
+                  <h4>Ventes et Marges</h4>
+                  <table class="marge-table">
+                    <tbody>
+                      <tr>
+                        <td>Quantité vendue:</td>
+                        <td class="value">{{ achatMarge.quantiteVendue | number }} {{ selectedAchat.unite || 'L' }}</td>
+                      </tr>
+                      <tr>
+                        <td>Prix de vente moyen:</td>
+                        <td class="value">{{ formatMontant(achatMarge.prixVenteMoyen) }}</td>
+                      </tr>
+                      <tr>
+                        <td>Montant vente total:</td>
+                        <td class="value">{{ formatMontant(achatMarge.montantVenteTotal) }}</td>
+                      </tr>
+                      <tr>
+                        <td>Marge brute:</td>
+                        <td class="value">{{ formatMontant(achatMarge.margeBrute) }}</td>
+                      </tr>
+                      <tr class="highlight positive">
+                        <td><strong>Marge nette:</strong></td>
+                        <td class="value"><strong>{{ formatMontant(achatMarge.margeNet) }}</strong></td>
+                      </tr>
+                      <tr>
+                        <td>Pourcentage de marge:</td>
+                        <td class="value">{{ achatMarge.margePourcentage | number:'1.2-2' }}%</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- Tableau du stock restant -->
+                <div class="marge-table-container">
+                  <h4>Stock Restant</h4>
+                  <table class="marge-table">
+                    <tbody>
+                      <tr>
+                        <td>Quantité achetée:</td>
+                        <td class="value">{{ achatMarge.quantiteAchetee | number }} {{ selectedAchat.unite || 'L' }}</td>
+                      </tr>
+                      <tr>
+                        <td>Quantité vendue:</td>
+                        <td class="value">{{ achatMarge.quantiteVendue | number }} {{ selectedAchat.unite || 'L' }}</td>
+                      </tr>
+                      <tr class="highlight">
+                        <td><strong>Stock restant:</strong></td>
+                        <td class="value"><strong>{{ achatMarge.stockRestant | number }} {{ selectedAchat.unite || 'L' }}</strong></td>
+                      </tr>
+                      <tr>
+                        <td>Valeur stock restant:</td>
+                        <td class="value">{{ formatMontant(achatMarge.valeurStockRestant) }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            } @else {
+              <div class="no-marge">Aucune donnée de marge disponible</div>
+            }
+          </div>
+          } @else {
+          <div class="detail-section">
+            <p class="cession-badge-detail">Achat de cession — pas de paiement ni de marge. La quantité est enregistrée en stock en cession.</p>
+          </div>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Modal Nouvelle Achat -->
+@if (showNewAchatModal) {
+  <div class="modal-overlay" (click)="closeNewAchatModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Nouvelle Achat</h2>
+        <button class="modal-close" (click)="closeNewAchatModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <form (ngSubmit)="saveNewAchat()">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="depot-select">Dépôt *</label>
+              <select
+                id="depot-select"
+                [(ngModel)]="newAchat.depotId"
+                name="depotId"
+                required
+                class="form-select"
+              >
+                <option [value]="undefined">Sélectionner un dépôt</option>
+                @for (depot of depots; track depot.id) {
+                  <option [value]="depot.id">{{ depot.nom }}</option>
+                }
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="fournisseur-select">Fournisseur *</label>
+              <select
+                id="fournisseur-select"
+                [(ngModel)]="newAchat.fournisseurId"
+                name="fournisseurId"
+                required
+                class="form-select"
+              >
+                <option [value]="undefined">Sélectionner un fournisseur</option>
+                @for (fournisseur of fournisseurs; track fournisseur.id) {
+                  <option [value]="fournisseur.id">{{ fournisseur.nom }}</option>
+                }
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="produit-select">Produit *</label>
+              <select
+                id="produit-select"
+                [(ngModel)]="newAchat.produitId"
+                name="produitId"
+                required
+                (change)="onProduitChange()"
+                class="form-select"
+              >
+                <option [value]="undefined">Sélectionner un produit</option>
+                @for (produit of produits; track produit.id) {
+                  <option [value]="produit.id">{{ produit.nom }} ({{ produit.typeProduit }})</option>
+                }
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="unite-input">Unité</label>
+              <input
+                type="text"
+                id="unite-input"
+                [(ngModel)]="newAchat.unite"
+                name="unite"
+                class="form-input"
+                [value]="getProduitUnite(newAchat.produitId)"
+                readonly
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="quantite-input">Quantité *</label>
+              <input
+                type="number"
+                id="quantite-input"
+                [(ngModel)]="newAchat.quantite"
+                name="quantite"
+                required
+                min="0"
+                step="0.01"
+                class="form-input"
+                placeholder="0"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="prix-unitaire-input">Prix Unitaire (FCFA) *</label>
+              <input
+                type="number"
+                id="prix-unitaire-input"
+                [(ngModel)]="newAchat.prixUnitaire"
+                name="prixUnitaire"
+                required
+                min="0"
+                step="0.01"
+                class="form-input"
+                placeholder="0"
+              />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="description-input">Description</label>
+            <textarea
+              id="description-input"
+              [(ngModel)]="newAchat.description"
+              name="description"
+              class="form-textarea"
+              rows="3"
+              placeholder="Description de l'achat..."
+            ></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="notes-input">Notes</label>
+            <textarea
+              id="notes-input"
+              [(ngModel)]="newAchat.notes"
+              name="notes"
+              class="form-textarea"
+              rows="2"
+              placeholder="Notes supplémentaires..."
+            ></textarea>
+          </div>
+
+          <div class="form-info">
+            <div class="info-box">
+              <span class="info-icon">ℹ️</span>
+              <div class="info-content">
+                <p class="info-title">Information</p>
+                <p class="info-text">Une facture impayée sera créée automatiquement. Le dépôt ne sera pas approvisionné jusqu'au paiement de la facture.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" (click)="closeNewAchatModal()">
+              Annuler
+            </button>
+            <button type="submit" class="btn-submit" [disabled]="isLoading">
+              @if (isLoading) {
+                Enregistrement...
+              } @else {
+                Créer l'achat
+              }
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Modal Nouvelle cession -->
+@if (showNewCessionModal) {
+  <div class="modal-overlay" (click)="closeNewCessionModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Nouvelle cession</h2>
+        <button class="modal-close" (click)="closeNewCessionModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="cession-info">Enregistrer un achat de cession : pas de transaction ni paiement. La quantité est ajoutée au stock en cession (quantityCession) du dépôt/produit.</p>
+        <form (ngSubmit)="saveNewCession()">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="cession-client-select">Client *</label>
+              <select
+                id="cession-client-select"
+                [(ngModel)]="newCession.clientId"
+                name="clientId"
+                required
+                class="form-select"
+              >
+                <option [value]="undefined">Sélectionner un client</option>
+                @for (client of clients; track client.id) {
+                  <option [value]="client.id">{{ client.nom }} ({{ client.email }})</option>
+                }
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="cession-depot-select">Dépôt *</label>
+              <select
+                id="cession-depot-select"
+                [(ngModel)]="newCession.depotId"
+                name="depotId"
+                required
+                class="form-select"
+              >
+                <option [value]="undefined">Sélectionner un dépôt</option>
+                @for (depot of depots; track depot.id) {
+                  <option [value]="depot.id">{{ depot.nom }}</option>
+                }
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="cession-produit-select">Produit *</label>
+              <select
+                id="cession-produit-select"
+                [(ngModel)]="newCession.produitId"
+                name="produitId"
+                required
+                class="form-select"
+              >
+                <option [value]="undefined">Sélectionner un produit</option>
+                @for (produit of produits; track produit.id) {
+                  <option [value]="produit.id">{{ produit.nom }} ({{ produit.typeProduit }})</option>
+                }
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="cession-quantite-input">Quantité *</label>
+              <input
+                type="number"
+                id="cession-quantite-input"
+                [(ngModel)]="newCession.quantite"
+                name="quantite"
+                required
+                min="0.01"
+                step="0.01"
+                class="form-input"
+                placeholder="0"
+              />
+            </div>
+            <div class="form-group">
+              <label for="cession-unite-input">Unité</label>
+              <input
+                type="text"
+                id="cession-unite-input"
+                [(ngModel)]="newCession.unite"
+                name="unite"
+                class="form-input"
+                placeholder="L"
+              />
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="cession-description-input">Description</label>
+            <textarea
+              id="cession-description-input"
+              [(ngModel)]="newCession.description"
+              name="description"
+              class="form-textarea"
+              rows="2"
+              placeholder="Description..."
+            ></textarea>
+          </div>
+          <div class="form-group">
+            <label for="cession-notes-input">Notes</label>
+            <textarea
+              id="cession-notes-input"
+              [(ngModel)]="newCession.notes"
+              name="notes"
+              class="form-textarea"
+              rows="2"
+              placeholder="Notes..."
+            ></textarea>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" (click)="closeNewCessionModal()">Annuler</button>
+            <button type="submit" class="btn-submit">Enregistrer la cession</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Modal Paiement -->
+@if (showPaiementModal && achatToPay) {
+  <div class="modal-overlay" (click)="closePaiementModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Payer l'Achat</h2>
+        <button class="modal-close" (click)="closePaiementModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="paiement-info">
+          <div class="info-section">
+            <h3>Informations de l'achat</h3>
+            <div class="info-grid">
+              <div class="info-item">
+                <span class="info-label">Dépôt:</span>
+                <span class="info-value">{{ achatToPay.depotNom || 'N/A' }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Produit:</span>
+                <span class="info-value">{{ achatToPay.produitNom || 'N/A' }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Quantité:</span>
+                <span class="info-value">{{ achatToPay.quantite | number }} {{ achatToPay.unite || 'L' }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Prix unitaire:</span>
+                <span class="info-value">{{ formatMontant(achatToPay.prixUnitaire) }}</span>
+              </div>
+              <div class="info-item highlight">
+                <span class="info-label"><strong>Montant à payer:</strong></span>
+                <span class="info-value"><strong>{{ formatMontant(getMontantAPayer()) }}</strong></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h3>Sélectionner le compte bancaire</h3>
+            <div class="form-group">
+              <label for="compte-select">Compte bancaire *</label>
+              <select
+                id="compte-select"
+                [(ngModel)]="paiementData.compteBancaireId"
+                name="compteBancaireId"
+                (change)="onCompteChange()"
+                required
+                class="form-select"
+              >
+                <option [value]="undefined">Sélectionner un compte</option>
+                @for (compte of comptesBancaires; track compte.id) {
+                  <option [value]="compte.id?.toString()">
+                    {{ compte.banque || compte.numero }} - Solde: {{ formatMontant(compte.solde) }}
+                  </option>
+                }
+              </select>
+            </div>
+
+            @if (selectedCompte) {
+              @if (isSoldeInsuffisant()) {
+                <div class="alert-warning">
+                  ⚠️ Le solde du compte est insuffisant pour effectuer ce paiement.
+                </div>
+              } @else {
+                <div class="alert-success">
+                  ✓ Solde disponible: {{ formatMontant(selectedCompte.solde) }}
+                </div>
+              }
+            }
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" (click)="closePaiementModal()">
+            Annuler
+          </button>
+          <button type="button" class="btn-submit" (click)="confirmPaiement()" [disabled]="isLoading || !paiementData.compteBancaireId">
+            @if (isLoading) {
+              Paiement en cours...
+            } @else {
+              Confirmer le paiement
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}
