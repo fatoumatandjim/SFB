@@ -283,7 +283,7 @@ docker compose ps
 
 Les 3 services doivent être `running`. Accès : https://sfb-petroleum.net et https://api.sfb-petroleum.net/api
 
-**Commandes utiles :** `docker compose logs -f --tail=200` | `docker compose build --no-cache && docker compose up -d --remove-orphans` (rebuild) | `docker compose down`
+**Commandes utiles :** `docker compose logs -f --tail=200` | `git pull && docker compose build --no-cache && docker compose up -d --remove-orphans` (rebuild) | `docker compose down`
 
 ---
 
