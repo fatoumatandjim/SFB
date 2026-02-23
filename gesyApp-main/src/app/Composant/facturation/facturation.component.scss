@@ -430,6 +430,28 @@
   .form-hint { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
 }
 
+.form-group-readonly {
+  margin-bottom: 16px;
+
+  label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+  }
+
+  .readonly-value {
+    padding: 10px 12px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+}
+
 .montant-info-box {
   background: var(--bg-tertiary);
   border-radius: var(--radius-md);

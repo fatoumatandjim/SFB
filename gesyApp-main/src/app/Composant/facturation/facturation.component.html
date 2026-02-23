@@ -681,28 +681,9 @@
                 <h4>Nouvelle Transaction</h4>
                 <form (ngSubmit)="addTransaction()">
                   <div class="form-row">
-                    <div class="form-group">
-                      <label for="transaction-type">Type *</label>
-                      <select
-                        id="transaction-type"
-                        [(ngModel)]="newTransaction.type"
-                        name="transactionType"
-                        required
-                        class="form-select"
-                      >
-                        <option value="VIREMENT_ENTRANT">Virement entrant</option>
-                        <option value="DEPOT">Dépôt</option>
-                        <option value="RETRAIT">Retrait</option>
-                        <option value="VIREMENT_SORTANT">Virement sortant</option>
-                        <option value="FRAIS">Frais</option>
-                        <option value="INTERET">Intérêt</option>
-                        <option value="FRAIS_LOCATION">Frais de location</option>
-                        <option value="FRAIS_FRONTIERE">Frais frontière</option>
-                        <option value="TS_FRAIS_PRESTATIONS">TS Frais de prestations</option>
-                        <option value="FRAIS_REPERTOIRE">Frais répertoire</option>
-                        <option value="FRAIS_CHAMBRE_COMMERCE">Frais chambre de commerce</option>
-                        <option value="SALAIRE">Salaire</option>
-                      </select>
+                    <div class="form-group form-group-readonly">
+                      <label>Type de transaction</label>
+                      <div class="readonly-value">Virement entrant</div>
                     </div>
 
                     <div class="form-group">

@@ -33,7 +33,8 @@ export class FacturationComponent implements OnInit {
   factures: Facture[] = [];
   transactions: Transaction[] = [];
   comptesBancaires: CompteBancaire[] = [];
-  
+
+  private readonly FACTURE_TRANSACTION_TYPE: string = 'VIREMENT_ENTRANT';
   // Pagination
   currentPage: number = 0;
   pageSize: number = 10;
@@ -54,7 +55,7 @@ export class FacturationComponent implements OnInit {
   };
 
   newTransaction: Partial<Transaction> = {
-    type: 'VIREMENT_ENTRANT',
+    type: this.FACTURE_TRANSACTION_TYPE,
     montant: 0,
     date: new Date().toISOString().split('T')[0],
     statut: 'EN_ATTENTE',
@@ -277,10 +278,42 @@ export class FacturationComponent implements OnInit {
     this.transactionsService.getTransactionsByFacture(factureId).subscribe({
       next: (data) => {
         this.transactions = data;
+        this.checkAndUpdateFactureStatutAuto();
       },
       error: (error) => {
         console.error('Erreur lors du chargement des transactions:', error);
         this.transactions = [];
+      }
+    });
+  }
+
+  private checkAndUpdateFactureStatutAuto(): void {
+    if (!this.selectedFacture || !this.selectedFacture.id) {
+      return;
+    }
+
+    const montantFacture = this.selectedFacture.montantTTC ?? this.selectedFacture.montant;
+    if (!montantFacture || montantFacture <= 0) {
+      return;
+    }
+
+    const totalPaye = this.transactions
+      .filter(t => t.type === this.FACTURE_TRANSACTION_TYPE && t.statut === 'VALIDE')
+      .reduce((sum, t) => sum + (t.montant || 0), 0);
+
+    if (totalPaye < montantFacture || this.selectedFacture.statut === 'PAYEE') {
+      return;
+    }
+
+    this.facturesService.updateStatut(this.selectedFacture.id, 'PAYEE').subscribe({
+      next: (updatedFacture) => {
+        this.selectedFacture = updatedFacture;
+        this.toastService.success('Facture marquée comme payée automatiquement');
+        this.loadFactures();
+        this.loadStats();
+      },
+      error: (error) => {
+        console.error('Erreur lors de la mise à jour automatique du statut de la facture:', error);
       }
     });
   }
@@ -624,7 +657,7 @@ export class FacturationComponent implements OnInit {
 
   resetNewTransaction() {
     this.newTransaction = {
-      type: 'VIREMENT_ENTRANT',
+      type: this.FACTURE_TRANSACTION_TYPE,
       montant: 0,
       date: new Date().toISOString().split('T')[0],
       statut: 'EN_ATTENTE',
@@ -648,7 +681,7 @@ export class FacturationComponent implements OnInit {
 
     this.isLoading = true;
     const transactionToSave: Transaction = {
-      type: this.newTransaction.type!,
+      type: this.FACTURE_TRANSACTION_TYPE,
       montant: this.newTransaction.montant!,
       date: new Date(this.newTransaction.date!).toISOString(),
       statut: this.newTransaction.statut!,
@@ -677,10 +710,6 @@ export class FacturationComponent implements OnInit {
   }
 
   validateTransaction(): boolean {
-    if (!this.newTransaction.type) {
-      this.toastService.warning('Veuillez sélectionner un type de transaction');
-      return false;
-    }
     if (!this.newTransaction.montant || this.newTransaction.montant <= 0) {
       this.toastService.warning('Veuillez saisir un montant valide');
       return false;
