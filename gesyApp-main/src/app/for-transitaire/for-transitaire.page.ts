@@ -380,10 +380,10 @@ export class ForTransitairePage implements OnInit {
     return statut === 'LIVRE' || statut === 'RECEPTIONNER';
   }
 
-  /** Libellé du statut. En espace transitaire, "DOUANE" non déclaré s'affiche "À déclarer" jusqu'à déclaration. */
-  getStatusLabel(statut: string | undefined, declarer?: boolean): string {
+  /** Libellé du statut. En espace transitaire, "DOUANE" non déclaré (ou passé non déclaré) s'affiche "À déclarer" jusqu'à déclaration. */
+  getStatusLabel(statut: string | undefined, declarer?: boolean, passager?: string): string {
     if (!statut) return 'N/A';
-    if (statut === 'DOUANE' && !declarer) return 'À déclarer';
+    if ((statut === 'DOUANE' && !declarer) || (passager === 'passer_non_declarer' && !declarer)) return 'À déclarer';
     const labels: { [key: string]: string } = {
       'CHARGEMENT': 'Chargement',
       'CHARGE': 'Chargé',

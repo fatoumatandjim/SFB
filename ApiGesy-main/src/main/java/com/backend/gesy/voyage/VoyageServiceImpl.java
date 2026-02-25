@@ -2335,10 +2335,9 @@ public class VoyageServiceImpl implements VoyageService {
         Voyage voyage = voyageRepository.findById(voyageId)
                 .orElseThrow(() -> new RuntimeException("Voyage non trouvé avec l'id: " + voyageId));
 
+        // Marquer comme "passé non déclaré" sans changer le statut : reste DOUANE / À déclarer jusqu'à déclaration réelle
         voyage.setPassager("passer_non_declarer");
-        voyage.setStatut(Voyage.StatutVoyage.RECEPTIONNER);
         Voyage savedVoyage = voyageRepository.save(voyage);
-//        validerEtat(voyage, "RECEPTIONNER");
         return voyageMapper.toDTO(savedVoyage);
     }
 
