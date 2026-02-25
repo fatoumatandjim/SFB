@@ -681,9 +681,19 @@
                 <h4>Nouvelle Transaction</h4>
                 <form (ngSubmit)="addTransaction()">
                   <div class="form-row">
-                    <div class="form-group form-group-readonly">
-                      <label>Type de transaction</label>
-                      <div class="readonly-value">Virement entrant</div>
+                    <div class="form-group">
+                      <label for="transaction-type">Type de transaction *</label>
+                      <select
+                        id="transaction-type"
+                        [(ngModel)]="newTransaction.type"
+                        name="transactionType"
+                        required
+                        class="form-input"
+                      >
+                        @for (t of transactionTypes; track t.value) {
+                          <option [value]="t.value">{{ t.label }}</option>
+                        }
+                      </select>
                     </div>
 
                     <div class="form-group">

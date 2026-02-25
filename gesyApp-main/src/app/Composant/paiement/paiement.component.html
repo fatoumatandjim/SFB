@@ -401,9 +401,21 @@
 
     <div class="modal-body">
       <form (ngSubmit)="savePaiement()">
-        <div class="form-group form-group-readonly">
-          <label>Type de transaction</label>
-          <div class="readonly-value">Virement entrant</div>
+        <div class="form-group">
+          <label for="type-paiement">Type de transaction *</label>
+          <select
+            id="type-paiement"
+            [(ngModel)]="newPaiement.type"
+            name="typePaiement"
+            required
+            class="type-select"
+          >
+            @for (t of transactionTypes; track t.value) {
+              @if (t.value) {
+                <option [value]="t.value">{{ t.label }}</option>
+              }
+            }
+          </select>
         </div>
 
         <div class="form-row">

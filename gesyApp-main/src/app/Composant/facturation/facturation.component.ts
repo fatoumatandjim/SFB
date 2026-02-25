@@ -35,6 +35,25 @@ export class FacturationComponent implements OnInit {
   comptesBancaires: CompteBancaire[] = [];
 
   private readonly FACTURE_TRANSACTION_TYPE: string = 'VIREMENT_ENTRANT';
+
+  readonly transactionTypes: { value: string; label: string }[] = [
+    { value: 'DEPOT', label: 'Dépôt' },
+    { value: 'RETRAIT', label: 'Retrait' },
+    { value: 'VIREMENT_ENTRANT', label: 'Virement entrant' },
+    { value: 'VIREMENT_SORTANT', label: 'Virement sortant' },
+    { value: 'VIREMENT_SIMPLE', label: 'Virement simple' },
+    { value: 'FRAIS', label: 'Frais' },
+    { value: 'INTERET', label: 'Intérêt' },
+    { value: 'FRAIS_LOCATION', label: 'Frais de location' },
+    { value: 'FRAIS_FRONTIERE', label: 'Frais frontière' },
+    { value: 'TS_FRAIS_PRESTATIONS', label: 'Frais prestations' },
+    { value: 'FRAIS_REPERTOIRE', label: 'Frais répertoire' },
+    { value: 'FRAIS_CHAMBRE_COMMERCE', label: 'Frais chambre de commerce' },
+    { value: 'SALAIRE', label: 'Salaire' },
+    { value: 'FRAIS_DOUANE', label: 'Frais douane' },
+    { value: 'FRAIS_T1', label: 'Frais T1' }
+  ];
+
   // Pagination
   currentPage: number = 0;
   pageSize: number = 10;
@@ -681,7 +700,7 @@ export class FacturationComponent implements OnInit {
 
     this.isLoading = true;
     const transactionToSave: Transaction = {
-      type: this.FACTURE_TRANSACTION_TYPE,
+      type: this.newTransaction.type || this.FACTURE_TRANSACTION_TYPE,
       montant: this.newTransaction.montant!,
       date: new Date(this.newTransaction.date!).toISOString(),
       statut: this.newTransaction.statut!,

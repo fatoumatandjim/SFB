@@ -34,8 +34,6 @@ import com.backend.gesy.stock.Stock;
 import com.backend.gesy.mouvement.MouvementService;
 import com.backend.gesy.mouvement.dto.MouvementDTO;
 import com.backend.gesy.douane.DouaneService;
-import com.backend.gesy.douane.FraisDouaneAxeService;
-import com.backend.gesy.douane.dto.FraisDouaneAxeDTO;
 import com.backend.gesy.facture.Facture;
 import com.backend.gesy.facture.FactureRepository;
 import com.backend.gesy.facture.FactureService;
@@ -91,8 +89,6 @@ public class VoyageServiceImpl implements VoyageService {
     private MouvementService mouvementService;
     @Autowired
     private DouaneService douaneService;
-    @Autowired
-    private FraisDouaneAxeService fraisDouaneAxeService;
     @Autowired
     private TransactionRepository transactionRepository;
     @Autowired
@@ -2206,38 +2202,21 @@ public class VoyageServiceImpl implements VoyageService {
             throw new RuntimeException("Le voyage n'a pas de camion associé");
         }
 
-        // Calcul des frais uniquement lors de la déclaration : utiliser les frais par axe si le voyage a un axe avec des frais définis, sinon douane globale
+        // Calcul des frais : si l'axe du voyage a un pays avec des frais définis, on les utilise ; sinon, douane globale
         BigDecimal fraisParLitre;
         BigDecimal fraisT1;
-        if (voyage.getAxe() != null && voyage.getAxe().getId() != null) {
-            java.util.Optional<FraisDouaneAxeDTO> fraisAxeOpt = fraisDouaneAxeService.findByAxeId(voyage.getAxe().getId());
-            if (fraisAxeOpt.isPresent()) {
-                FraisDouaneAxeDTO fraisAxe = fraisAxeOpt.get();
-                if (voyage.getProduit() != null && voyage.getProduit().getTypeProduit() != null
-                        && voyage.getProduit().getTypeProduit() == Produit.TypeProduit.GAZOLE) {
-                    fraisParLitre = fraisAxe.getFraisParLitreGasoil() != null ? fraisAxe.getFraisParLitreGasoil() : BigDecimal.ZERO;
-                } else {
-                    fraisParLitre = fraisAxe.getFraisParLitre() != null ? fraisAxe.getFraisParLitre() : BigDecimal.ZERO;
-                }
-                fraisT1 = fraisAxe.getFraisT1() != null ? fraisAxe.getFraisT1() : BigDecimal.ZERO;
-            } else {
-                DouaneDTO douane = douaneService.getDouane();
-                if (voyage.getProduit() != null && voyage.getProduit().getTypeProduit() != null
-                        && voyage.getProduit().getTypeProduit() == Produit.TypeProduit.GAZOLE) {
-                    fraisParLitre = douane.getFraisParLitreGasoil();
-                } else {
-                    fraisParLitre = douane.getFraisParLitre();
-                }
-                fraisT1 = douane.getFraisT1();
-            }
+        boolean isGasoil = voyage.getProduit() != null && voyage.getProduit().getTypeProduit() != null
+                && voyage.getProduit().getTypeProduit() == Produit.TypeProduit.GAZOLE;
+
+        com.backend.gesy.pays.Pays paysAxe = (voyage.getAxe() != null) ? voyage.getAxe().getPays() : null;
+        if (paysAxe != null) {
+            fraisParLitre = isGasoil
+                    ? (paysAxe.getFraisParLitreGasoil() != null ? paysAxe.getFraisParLitreGasoil() : BigDecimal.ZERO)
+                    : (paysAxe.getFraisParLitre() != null ? paysAxe.getFraisParLitre() : BigDecimal.ZERO);
+            fraisT1 = paysAxe.getFraisT1() != null ? paysAxe.getFraisT1() : BigDecimal.ZERO;
         } else {
             DouaneDTO douane = douaneService.getDouane();
-            if (voyage.getProduit() != null && voyage.getProduit().getTypeProduit() != null
-                    && voyage.getProduit().getTypeProduit() == Produit.TypeProduit.GAZOLE) {
-                fraisParLitre = douane.getFraisParLitreGasoil();
-            } else {
-                fraisParLitre = douane.getFraisParLitre();
-            }
+            fraisParLitre = isGasoil ? douane.getFraisParLitreGasoil() : douane.getFraisParLitre();
             fraisT1 = douane.getFraisT1();
         }
 

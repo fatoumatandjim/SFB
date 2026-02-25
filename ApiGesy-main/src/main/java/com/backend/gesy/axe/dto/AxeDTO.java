@@ -10,5 +10,6 @@ import lombok.NoArgsConstructor;
 public class AxeDTO {
     private Long id;
     private String nom;
+    private Long paysId;
+    private String paysNom;
 }
-

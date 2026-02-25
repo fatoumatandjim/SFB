@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AxesService, Axe } from '../../services/axes.service';
+import { PaysService, Pays } from '../../services/pays.service';
 import { ToastService } from '../../nativeComp/toast/toast.service';
 import { AlertService } from '../../nativeComp/alert/alert.service';
 
@@ -14,22 +15,26 @@ import { AlertService } from '../../nativeComp/alert/alert.service';
 })
 export class AxesComponent implements OnInit {
   axes: Axe[] = [];
+  paysList: Pays[] = [];
   isLoading = false;
   searchTerm = '';
   showModal = false;
   isEditing = false;
   editingAxe: Axe | null = null;
   formNom = '';
+  formPaysId: number | undefined = undefined;
   isSaving = false;
 
   constructor(
     private axesService: AxesService,
+    private paysService: PaysService,
     private toastService: ToastService,
     private alertService: AlertService
   ) {}
 
   ngOnInit() {
     this.loadAxes();
+    this.loadPays();
   }
 
   loadAxes() {
@@ -40,16 +45,27 @@ export class AxesComponent implements OnInit {
     });
   }
 
+  loadPays() {
+    this.paysService.getAll().subscribe({
+      next: (data) => { this.paysList = data; },
+      error: () => {}
+    });
+  }
+
   get filteredAxes(): Axe[] {
     if (!this.searchTerm.trim()) return this.axes;
     const term = this.searchTerm.toLowerCase();
-    return this.axes.filter(a => a.nom.toLowerCase().includes(term));
+    return this.axes.filter(a =>
+      a.nom.toLowerCase().includes(term) ||
+      (a.paysNom || '').toLowerCase().includes(term)
+    );
   }
 
   openAdd() {
     this.isEditing = false;
     this.editingAxe = null;
     this.formNom = '';
+    this.formPaysId = undefined;
     this.showModal = true;
   }
 
@@ -57,6 +73,7 @@ export class AxesComponent implements OnInit {
     this.isEditing = true;
     this.editingAxe = axe;
     this.formNom = axe.nom;
+    this.formPaysId = axe.paysId;
     this.showModal = true;
   }
 
@@ -72,8 +89,10 @@ export class AxesComponent implements OnInit {
       return;
     }
     this.isSaving = true;
+    const payload = { nom, paysId: this.formPaysId };
+
     if (this.isEditing && this.editingAxe) {
-      this.axesService.updateAxe(this.editingAxe.id, { nom }).subscribe({
+      this.axesService.updateAxe(this.editingAxe.id, payload).subscribe({
         next: () => {
           this.loadAxes();
           this.closeModal();
@@ -86,7 +105,7 @@ export class AxesComponent implements OnInit {
         }
       });
     } else {
-      this.axesService.createAxe({ nom }).subscribe({
+      this.axesService.createAxe(payload).subscribe({
         next: () => {
           this.loadAxes();
           this.closeModal();
@@ -103,7 +122,7 @@ export class AxesComponent implements OnInit {
 
   deleteAxe(axe: Axe) {
     this.alertService.confirm(
-      `Supprimer l'axe « ${axe.nom } » ? Cette action est irréversible.`,
+      `Supprimer l'axe « ${axe.nom} » ? Cette action est irréversible.`,
       'Confirmer la suppression'
     ).subscribe(confirmed => {
       if (!confirmed) return;

@@ -6,6 +6,8 @@ import { environment } from 'src/environments/environment';
 export interface Axe {
   id: number;
   nom: string;
+  paysId?: number;
+  paysNom?: string;
 }
 
 @Injectable({
@@ -24,11 +26,11 @@ export class AxesService {
     return this.http.get<Axe>(`${this.apiUrl}/${id}`);
   }
 
-  createAxe(axe: { nom: string }): Observable<Axe> {
+  createAxe(axe: { nom: string; paysId?: number }): Observable<Axe> {
     return this.http.post<Axe>(this.apiUrl, axe);
   }
 
-  updateAxe(id: number, axe: { nom: string }): Observable<Axe> {
+  updateAxe(id: number, axe: { nom: string; paysId?: number }): Observable<Axe> {
     return this.http.put<Axe>(`${this.apiUrl}/${id}`, axe);
   }
 
@@ -36,4 +38,3 @@ export class AxesService {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
 }
-

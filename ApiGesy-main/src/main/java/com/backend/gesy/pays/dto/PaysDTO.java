@@ -1,4 +1,4 @@
-package com.backend.gesy.douane.dto;
+package com.backend.gesy.pays.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,8 +9,9 @@ import java.math.BigDecimal;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class CreateFraisDouaneAxeWithNewAxeDTO {
-    private String nomAxe;
+public class PaysDTO {
+    private Long id;
+    private String nom;
     private BigDecimal fraisParLitre;
     private BigDecimal fraisParLitreGasoil;
     private BigDecimal fraisT1;

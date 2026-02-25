@@ -849,13 +849,11 @@ export class PaiementComponent implements OnInit {
   }
 
   onCompteTypeChange() {
-    // Réinitialiser les sélections quand on change de type de compte (type de transaction reste VIREMENT_ENTRANT)
     if (this.compteType === 'banque') {
       this.newPaiement.caisseId = undefined;
     } else {
       this.newPaiement.compteId = undefined;
     }
-    this.newPaiement.type = this.PAIEMENT_TRANSACTION_TYPE;
   }
 
   closeAddModal() {
@@ -879,9 +877,8 @@ export class PaiementComponent implements OnInit {
 
     this.isLoading = true;
 
-    // Type fixé à Virement entrant pour le paiement de facture (pas de sélection)
     const transaction: Transaction = {
-      type: this.PAIEMENT_TRANSACTION_TYPE,
+      type: this.newPaiement.type || this.PAIEMENT_TRANSACTION_TYPE,
       montant: this.newPaiement.montant || 0,
       date: new Date(this.newPaiement.date!).toISOString(),
       statut: 'VALIDE',

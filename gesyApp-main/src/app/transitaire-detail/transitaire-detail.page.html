@@ -152,102 +152,74 @@
     </div>
   </div>
 
-  <!-- Frais de douane par axe (Dakar: Diboli, Moussala; Abidjan: Kadiana, Zegoua) -->
+  <!-- Frais de douane par pays -->
   <div class="douane-section frais-axe-section">
     <div class="douane-card">
       <div class="douane-header">
-        <h3>🛃 Frais de douane par axe</h3>
+        <h3>🛃 Frais de douane par pays</h3>
         <div class="douane-actions">
-          <button class="btn-add-frais-axe" (click)="openAddFraisAxeModal()" type="button">
-            Ajouter (axe)
+          <button class="btn-add-frais-axe" (click)="openAddPaysModal()" type="button">
+            Ajouter un pays
           </button>
         </div>
       </div>
-      @if (isLoadingFraisAxe) {
+      @if (isLoadingPays) {
         <div class="loading-message">Chargement...</div>
       } @else {
         <div class="frais-axe-content">
-          @if (fraisDouaneAxes.length === 0) {
-            <p class="no-frais-axe">Aucun frais par axe configuré. Les déclarations utilisent les frais globaux ci-dessus.</p>
+          @if (paysList.length === 0) {
+            <p class="no-frais-axe">Aucun pays configuré. Les déclarations utilisent les frais globaux ci-dessus.</p>
           } @else {
-            @for (group of getFraxisByBureau(); track group.bureau) {
-              <div class="frais-axe-bureau">
-                <h4 class="bureau-title">{{ group.bureau }}</h4>
-                <div class="frais-axe-list">
-                  @for (f of group.items; track f.id) {
-                    <div class="frais-axe-item">
-                      <span class="frais-axe-nom">{{ f.axeNom }}</span>
-                      <span class="frais-axe-values">
-                        Essence: {{ f.fraisParLitre | number }} F/L · Gasoil: {{ f.fraisParLitreGasoil | number }} F/L · T1: {{ f.fraisT1 | number }} F
-                      </span>
-                      <button class="btn-edit-frais-axe" (click)="openEditFraisAxeModal(f)" type="button">Modifier</button>
-                    </div>
-                  }
+            <div class="frais-axe-list">
+              @for (p of paysList; track p.id) {
+                <div class="frais-axe-item">
+                  <span class="frais-axe-nom">{{ p.nom }}</span>
+                  <span class="frais-axe-values">
+                    Essence: {{ p.fraisParLitre | number }} F/L · Gasoil: {{ p.fraisParLitreGasoil | number }} F/L · T1: {{ p.fraisT1 | number }} F
+                  </span>
+                  <button class="btn-edit-frais-axe" (click)="openEditPaysModal(p)" type="button">Modifier</button>
                 </div>
-              </div>
-            }
+              }
+            </div>
           }
         </div>
       }
     </div>
   </div>
 
-  @if (showFraisAxeModal) {
-  <div class="modal-overlay" (click)="closeFraisAxeModal()">
+  @if (showPaysModal) {
+  <div class="modal-overlay" (click)="closePaysModal()">
     <div class="modal-content frais-axe-modal" (click)="$event.stopPropagation()">
       <div class="modal-header">
-        <h2>{{ editingFraisAxe ? 'Modifier les frais (axe)' : 'Ajouter frais de douane (axe)' }}</h2>
-        <button type="button" class="modal-close" (click)="closeFraisAxeModal()">×</button>
+        <h2>{{ editingPays ? 'Modifier les frais (' + editingPays.nom + ')' : 'Ajouter un pays avec frais' }}</h2>
+        <button type="button" class="modal-close" (click)="closePaysModal()">×</button>
       </div>
       <div class="modal-body">
-        @if (!editingFraisAxe) {
-          <div class="form-group frais-axe-choice">
-            <label class="toggle-label">
-              <input type="checkbox" [(ngModel)]="createNewAxe" name="createNewAxe" />
-              <span>Créer un nouvel axe</span>
-            </label>
+        @if (!editingPays) {
+          <div class="form-group">
+            <label for="pays-nom">Nom du pays *</label>
+            <input id="pays-nom" type="text" [(ngModel)]="formPays.nom" name="paysNom"
+              class="form-input" placeholder="Ex: Sénégal, Côte d'Ivoire" />
           </div>
-          @if (createNewAxe) {
-            <div class="form-group">
-              <label for="frais-axe-new-nom">Nom du nouvel axe *</label>
-              <input id="frais-axe-new-nom" type="text" [(ngModel)]="newAxeNom" name="newAxeNom"
-                class="form-input" placeholder="Ex: Diboli, Moussala, Kadiana, Zegoua" />
-            </div>
-          } @else {
-            <div class="form-group">
-              <label for="frais-axe-select">Axe existant *</label>
-              <select id="frais-axe-select" [(ngModel)]="formFraisAxe.axeId" class="form-input">
-                <option [ngValue]="undefined">Sélectionner un axe</option>
-                @for (a of axesSansFrais(); track a.id) {
-                  <option [ngValue]="a.id">{{ a.nom }}</option>
-                }
-              </select>
-              @if (axesSansFrais().length === 0) {
-                <small class="form-hint">Aucun axe sans frais. Cochez « Créer un nouvel axe » pour en ajouter un.</small>
-              }
-            </div>
-          }
-        } @else {
-          <p class="frais-axe-edit-nom">Axe: <strong>{{ editingFraisAxe.axeNom }}</strong></p>
         }
         <div class="form-row">
           <div class="form-group">
-            <label for="frais-axe-essence">Frais par litre Essence (FCFA)</label>
-            <input id="frais-axe-essence" type="number" [(ngModel)]="formFraisAxe.fraisParLitre" min="0" step="0.01" class="form-input" />
+            <label for="pays-essence">Frais par litre Essence (FCFA)</label>
+            <input id="pays-essence" type="number" [(ngModel)]="formPays.fraisParLitre" min="0" step="0.01" class="form-input" />
           </div>
           <div class="form-group">
-            <label for="frais-axe-gasoil">Frais par litre Gasoil (FCFA)</label>
-            <input id="frais-axe-gasoil" type="number" [(ngModel)]="formFraisAxe.fraisParLitreGasoil" min="0" step="0.01" class="form-input" />
+            <label for="pays-gasoil">Frais par litre Gasoil (FCFA)</label>
+            <input id="pays-gasoil" type="number" [(ngModel)]="formPays.fraisParLitreGasoil" min="0" step="0.01" class="form-input" />
           </div>
         </div>
         <div class="form-group">
-          <label for="frais-axe-t1">Frais T1 (FCFA)</label>
-          <input id="frais-axe-t1" type="number" [(ngModel)]="formFraisAxe.fraisT1" min="0" step="0.01" class="form-input" />
+          <label for="pays-t1">Frais T1 (FCFA)</label>
+          <input id="pays-t1" type="number" [(ngModel)]="formPays.fraisT1" min="0" step="0.01" class="form-input" />
         </div>
         <div class="modal-actions">
-          <button type="button" class="btn-cancel" (click)="closeFraisAxeModal()">Annuler</button>
-          <button type="button" class="btn-save" (click)="saveFraisAxe()" [disabled]="isSavingFraisAxe">
-            {{ isSavingFraisAxe ? 'Enregistrement...' : 'Enregistrer' }}
+          <button type="button" class="btn-cancel" (click)="closePaysModal()">Annuler</button>
+          <button type="button" class="btn-save" (click)="savePays()" [disabled]="isSavingPays">
+            {{ isSavingPays ? 'Enregistrement...' : 'Enregistrer' }}
           </button>
         </div>
       </div>

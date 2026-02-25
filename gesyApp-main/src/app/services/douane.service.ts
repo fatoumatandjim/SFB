@@ -23,15 +23,6 @@ export interface HistoriqueDouane {
   commentaire: string;
 }
 
-export interface FraisDouaneAxe {
-  id?: number;
-  axeId: number;
-  axeNom?: string;
-  fraisParLitre: number;
-  fraisParLitreGasoil: number;
-  fraisT1: number;
-}
-
 @Injectable({
   providedIn: 'root'
 })
@@ -51,35 +42,4 @@ export class DouaneService {
   getHistorique(): Observable<HistoriqueDouane[]> {
     return this.http.get<HistoriqueDouane[]>(`${this.apiUrl}/historique`);
   }
-
-  getFraisDouaneAxeAll(): Observable<FraisDouaneAxe[]> {
-    return this.http.get<FraisDouaneAxe[]>(`${this.apiUrl}/frais-axe`);
-  }
-
-  getFraisDouaneAxeByAxeId(axeId: number): Observable<FraisDouaneAxe> {
-    return this.http.get<FraisDouaneAxe>(`${this.apiUrl}/frais-axe/axe/${axeId}`);
-  }
-
-  createFraisDouaneAxe(frais: FraisDouaneAxe): Observable<FraisDouaneAxe> {
-    return this.http.post<FraisDouaneAxe>(`${this.apiUrl}/frais-axe`, frais);
-  }
-
-  updateFraisDouaneAxe(id: number, frais: Partial<FraisDouaneAxe>): Observable<FraisDouaneAxe> {
-    return this.http.put<FraisDouaneAxe>(`${this.apiUrl}/frais-axe/${id}`, frais);
-  }
-
-  deleteFraisDouaneAxe(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/frais-axe/${id}`);
-  }
-
-  /** Crée un nouvel axe et ses frais de douane en une seule transaction. */
-  createFraisDouaneAxeWithNewAxe(data: {
-    nomAxe: string;
-    fraisParLitre: number;
-    fraisParLitreGasoil: number;
-    fraisT1: number;
-  }): Observable<FraisDouaneAxe> {
-    return this.http.post<FraisDouaneAxe>(`${this.apiUrl}/frais-axe/avec-nouvel-axe`, data);
-  }
 }
-

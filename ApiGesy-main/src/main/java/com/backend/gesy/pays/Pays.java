@@ -1,6 +1,5 @@
-package com.backend.gesy.douane;
+package com.backend.gesy.pays;
 
-import com.backend.gesy.axe.Axe;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,25 +8,24 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 
 @Entity
-@Table(name = "frais_douane_axe", uniqueConstraints = @UniqueConstraint(columnNames = "axe_id"))
+@Table(name = "pays")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class FraisDouaneAxe {
+public class Pays {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "axe_id", nullable = false, unique = true)
-    private Axe axe;
+    @Column(nullable = false, unique = true)
+    private String nom;
 
     @Column(name = "frais_par_litre", nullable = false)
-    private BigDecimal fraisParLitre;
+    private BigDecimal fraisParLitre = BigDecimal.ZERO;
 
     @Column(name = "frais_par_litre_gasoil", nullable = false)
-    private BigDecimal fraisParLitreGasoil;
+    private BigDecimal fraisParLitreGasoil = BigDecimal.ZERO;
 
     @Column(name = "frais_t1", nullable = false)
-    private BigDecimal fraisT1;
+    private BigDecimal fraisT1 = BigDecimal.ZERO;
 }

@@ -1,5 +1,6 @@
 package com.backend.gesy.axe;
 
+import com.backend.gesy.pays.Pays;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -17,5 +18,8 @@ public class Axe {
 
     @Column(nullable = false, unique = true)
     private String nom;
-}
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "pays_id")
+    private Pays pays;
+}
