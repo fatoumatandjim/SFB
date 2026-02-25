@@ -105,10 +105,20 @@
       </div>
     </div>
 
+    <div class="card axes-card">
+      <div class="card-header">
+        <h2>🛣️ Axes</h2>
+        <p>Gérer les axes de transport (Diboli, Moussala, Kadiana, Zegoua). Les frais de douane par axe se configurent dans l'espace Transitaire.</p>
+      </div>
+      <button type="button" class="btn-open-axes" (click)="goToAxes()">
+        Ouvrir la gestion des axes
+      </button>
+    </div>
+
     <div class="card douane-card">
       <div class="card-header">
         <h2>Frais Douane</h2>
-        <p>Gérer les frais de douane</p>
+        <p>Gérer les frais de douane globaux</p>
       </div>
 
       @if (isLoadingDouane) {

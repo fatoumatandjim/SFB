@@ -5,6 +5,7 @@ import { UtilisateursService, Utilisateur, Role as RoleUtilisateur } from '../..
 import { RolesService, Role } from '../../services/roles.service';
 import { DouaneService, Douane } from '../../services/douane.service';
 import { DepotsService, Depot } from '../../services/depots.service';
+import { NavigationService } from '../../services/navigation.service';
 import { AlertService } from '../../nativeComp/alert/alert.service';
 import { ToastService } from '../../nativeComp/toast/toast.service';
 
@@ -75,9 +76,14 @@ export class SettingsComponent implements OnInit {
     private rolesService: RolesService,
     private douaneService: DouaneService,
     private depotsService: DepotsService,
+    private navigationService: NavigationService,
     private alertService: AlertService,
     private toastService: ToastService
   ) {}
+
+  goToAxes() {
+    this.navigationService.setCurrentSection('axes');
+  }
 
   ngOnInit() {
     this.loadEmployes();

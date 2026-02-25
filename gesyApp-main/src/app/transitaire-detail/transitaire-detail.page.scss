@@ -1020,6 +1020,8 @@
   border-radius: 12px;
   max-width: 440px;
   width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   .modal-header {
     display: flex;
@@ -1028,16 +1030,61 @@
     padding: 16px 20px;
     border-bottom: 1px solid var(--border-color);
     h2 { margin: 0; font-size: 18px; font-weight: 600; color: var(--text-primary); }
-    .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-secondary); }
+    .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-secondary); line-height: 1; padding: 0 4px; }
   }
   .modal-body {
     padding: 20px;
     .form-group { margin-bottom: 16px; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .form-input { width: 100%; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: 8px; }
+    .form-input { width: 100%; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: 8px; box-sizing: border-box; }
     .form-hint { display: block; margin-top: 6px; font-size: 12px; color: var(--text-secondary); }
     .frais-axe-choice .toggle-label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
-    .modal-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px; }
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      margin-top: 20px;
+      flex-wrap: wrap;
+      .btn-cancel {
+        padding: 10px 20px;
+        background: var(--bg-secondary);
+        color: var(--text-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        min-width: 100px;
+      }
+      .btn-save {
+        padding: 10px 20px;
+        background: var(--success-color, #22c55e);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        min-width: 120px;
+      }
+      .btn-save:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+    }
+  }
+}
+
+@media (max-width: 520px) {
+  .modal-overlay { padding: 12px; align-items: flex-start; padding-top: 24px; }
+  .frais-axe-modal {
+    max-width: 100%;
+    max-height: none;
+    .modal-body .form-row { grid-template-columns: 1fr; }
+    .modal-body .modal-actions {
+      flex-direction: column;
+      .btn-cancel, .btn-save { width: 100%; min-width: 0; }
+    }
   }
 }
 
