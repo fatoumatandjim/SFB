@@ -1711,10 +1711,15 @@
   border-color: rgba(251, 191, 36, 0.3);
 }
 
-// Modal de changement de statut
+// Modal de changement de statut (Suivi de transport - Changer le statut du voyage)
 .statut-modal {
   max-width: 500px;
   width: 90%;
+
+  .modal-header h2 {
+    color: #1a1a2e;
+    font-weight: 600;
+  }
 
   .voyage-info {
     margin-bottom: 20px;
@@ -1722,7 +1727,7 @@
     background: var(--bg-tertiary);
     border-radius: 8px;
     font-size: 14px;
-    color: var(--text-secondary);
+    color: #374151;
   }
 
   .etats-list {
@@ -1766,11 +1771,11 @@
 
       .etat-content {
         .etat-label {
-          color: var(--text-muted);
+          color: #4b5563;
         }
 
         .etat-date {
-          color: var(--text-muted);
+          color: #6b7280;
           font-size: 12px;
         }
       }
@@ -1793,7 +1798,7 @@
         gap: 8px;
         font-size: 14px;
         font-weight: 500;
-        color: var(--text-primary);
+        color: #1a1a2e;
 
         .check-icon {
           color: var(--success);
@@ -1804,7 +1809,7 @@
 
       .etat-date {
         font-size: 12px;
-        color: var(--text-muted);
+        color: #6b7280;
         font-style: italic;
       }
     }

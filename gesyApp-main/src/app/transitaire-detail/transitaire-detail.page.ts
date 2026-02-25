@@ -6,7 +6,8 @@ import { Observable } from 'rxjs';
 import { VoyagesService, Voyage, VoyagePage, TransitaireStats } from '../services/voyages.service';
 import { TransactionsService, Transaction } from '../services/transactions.service';
 import { TransitairesService, Transitaire } from '../services/transitaires.service';
-import { DouaneService, Douane, HistoriqueDouane } from '../services/douane.service';
+import { DouaneService, Douane, HistoriqueDouane, FraisDouaneAxe } from '../services/douane.service';
+import { AxesService, Axe } from '../services/axes.service';
 import { CamionsService, Camion } from '../services/camions.service';
 import { addIcons } from 'ionicons';
 import { arrowBackOutline } from 'ionicons/icons';
@@ -90,12 +91,21 @@ export class TransitaireDetailPage implements OnInit {
   historiqueDouane: HistoriqueDouane[] = [];
   showHistorique: boolean = false;
 
+  fraisDouaneAxes: FraisDouaneAxe[] = [];
+  axes: Axe[] = [];
+  isLoadingFraisAxe: boolean = false;
+  showFraisAxeModal: boolean = false;
+  editingFraisAxe: FraisDouaneAxe | null = null;
+  formFraisAxe: { axeId?: number; fraisParLitre: number; fraisParLitreGasoil: number; fraisT1: number } = { fraisParLitre: 0, fraisParLitreGasoil: 0, fraisT1: 0 };
+  isSavingFraisAxe: boolean = false;
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,
     private voyagesService: VoyagesService,
     private transitairesService: TransitairesService,
     private douaneService: DouaneService,
+    private axesService: AxesService,
     private camionsService: CamionsService,
     private alertService: AlertService,
     private toastService: ToastService
@@ -124,6 +134,8 @@ export class TransitaireDetailPage implements OnInit {
         this.loadVoyages();
         this.loadStats();
         this.loadDouane();
+        this.loadFraisDouaneAxes();
+        this.loadAxes();
       },
       error: () => {
         this.toastService.error('Transitaire introuvable');
@@ -583,6 +595,102 @@ export class TransitaireDetailPage implements OnInit {
   toggleHistorique() {
     this.showHistorique = !this.showHistorique;
     if (this.showHistorique && this.historiqueDouane.length === 0) this.loadHistoriqueDouane();
+  }
+
+  loadAxes() {
+    this.axesService.getAllAxes().subscribe({
+      next: (data) => { this.axes = data; },
+      error: () => {}
+    });
+  }
+
+  loadFraisDouaneAxes() {
+    this.isLoadingFraisAxe = true;
+    this.douaneService.getFraisDouaneAxeAll().subscribe({
+      next: (data) => { this.fraisDouaneAxes = data; this.isLoadingFraisAxe = false; },
+      error: () => { this.isLoadingFraisAxe = false; }
+    });
+  }
+
+  getBureauForAxe(axeNom: string | undefined): string {
+    if (!axeNom) return 'Autre';
+    const n = axeNom.toLowerCase();
+    if (n === 'diboli' || n === 'moussala') return 'Dakar';
+    if (n === 'kadiana' || n === 'zegoua') return 'Abidjan';
+    return 'Autre';
+  }
+
+  getFraxisByBureau(): { bureau: string; items: FraisDouaneAxe[] }[] {
+    const groups = new Map<string, FraisDouaneAxe[]>();
+    for (const f of this.fraisDouaneAxes) {
+      const bureau = this.getBureauForAxe(f.axeNom);
+      if (!groups.has(bureau)) groups.set(bureau, []);
+      groups.get(bureau)!.push(f);
+    }
+    const order = ['Dakar', 'Abidjan', 'Autre'];
+    return order.filter(b => groups.has(b)).map(bureau => ({ bureau, items: groups.get(bureau)! }));
+  }
+
+  axesSansFrais(): Axe[] {
+    const axeIdsAvecFrais = new Set(this.fraisDouaneAxes.map(f => f.axeId));
+    return this.axes.filter(a => !axeIdsAvecFrais.has(a.id));
+  }
+
+  openAddFraisAxeModal() {
+    this.editingFraisAxe = null;
+    this.formFraisAxe = { fraisParLitre: 0, fraisParLitreGasoil: 0, fraisT1: 0 };
+    this.showFraisAxeModal = true;
+  }
+
+  openEditFraisAxeModal(frais: FraisDouaneAxe) {
+    this.editingFraisAxe = frais;
+    this.formFraisAxe = {
+      axeId: frais.axeId,
+      fraisParLitre: frais.fraisParLitre ?? 0,
+      fraisParLitreGasoil: frais.fraisParLitreGasoil ?? 0,
+      fraisT1: frais.fraisT1 ?? 0
+    };
+    this.showFraisAxeModal = true;
+  }
+
+  closeFraisAxeModal() {
+    this.showFraisAxeModal = false;
+    this.editingFraisAxe = null;
+  }
+
+  saveFraisAxe() {
+    if (this.editingFraisAxe?.id) {
+      this.isSavingFraisAxe = true;
+      this.douaneService.updateFraisDouaneAxe(this.editingFraisAxe.id, this.formFraisAxe).subscribe({
+        next: () => {
+          this.loadFraisDouaneAxes();
+          this.closeFraisAxeModal();
+          this.isSavingFraisAxe = false;
+          this.toastService.success('Frais de douane (axe) mis à jour');
+        },
+        error: () => { this.isSavingFraisAxe = false; this.toastService.error('Erreur lors de la mise à jour'); }
+      });
+    } else {
+      if (this.formFraisAxe.axeId == null) {
+        this.toastService.error('Veuillez sélectionner un axe');
+        return;
+      }
+      this.isSavingFraisAxe = true;
+      this.douaneService.createFraisDouaneAxe({
+        axeId: this.formFraisAxe.axeId,
+        fraisParLitre: this.formFraisAxe.fraisParLitre,
+        fraisParLitreGasoil: this.formFraisAxe.fraisParLitreGasoil,
+        fraisT1: this.formFraisAxe.fraisT1
+      }).subscribe({
+        next: () => {
+          this.loadFraisDouaneAxes();
+          this.closeFraisAxeModal();
+          this.isSavingFraisAxe = false;
+          this.toastService.success('Frais de douane (axe) ajoutés');
+        },
+        error: () => { this.isSavingFraisAxe = false; this.toastService.error('Erreur lors de l\'ajout'); }
+      });
+    }
   }
 
   formatDateTime(dateString: string): string {

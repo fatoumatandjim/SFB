@@ -948,6 +948,97 @@
   }
 }
 
+.frais-axe-section .douane-header .btn-add-frais-axe {
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.frais-axe-section .douane-header .btn-add-frais-axe:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.frais-axe-content {
+  padding: 20px;
+}
+.no-frais-axe {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin: 0;
+}
+.frais-axe-bureau {
+  margin-bottom: 16px;
+  .bureau-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 8px 0;
+  }
+}
+.frais-axe-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.frais-axe-item {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  .frais-axe-nom { font-weight: 600; color: var(--text-primary); min-width: 100px; }
+  .frais-axe-values { font-size: 13px; color: var(--text-secondary); flex: 1; }
+  .btn-edit-frais-axe {
+    padding: 6px 12px;
+    font-size: 12px;
+    background: var(--accent-primary, #3b82f6);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+}
+.frais-axe-edit-nom { margin: 0 0 12px 0; font-size: 14px; color: var(--text-secondary); }
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+.frais-axe-modal {
+  background: var(--bg-card);
+  border-radius: 12px;
+  max-width: 440px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color);
+    h2 { margin: 0; font-size: 18px; font-weight: 600; color: var(--text-primary); }
+    .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-secondary); }
+  }
+  .modal-body {
+    padding: 20px;
+    .form-group { margin-bottom: 16px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-input { width: 100%; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: 8px; }
+    .modal-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px; }
+  }
+}
+
 .loading-message {
   text-align: center;
   padding: 20px;

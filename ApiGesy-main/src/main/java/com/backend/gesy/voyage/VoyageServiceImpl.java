@@ -34,6 +34,8 @@ import com.backend.gesy.stock.Stock;
 import com.backend.gesy.mouvement.MouvementService;
 import com.backend.gesy.mouvement.dto.MouvementDTO;
 import com.backend.gesy.douane.DouaneService;
+import com.backend.gesy.douane.FraisDouaneAxeService;
+import com.backend.gesy.douane.dto.FraisDouaneAxeDTO;
 import com.backend.gesy.facture.Facture;
 import com.backend.gesy.facture.FactureRepository;
 import com.backend.gesy.facture.FactureService;
@@ -89,6 +91,8 @@ public class VoyageServiceImpl implements VoyageService {
     private MouvementService mouvementService;
     @Autowired
     private DouaneService douaneService;
+    @Autowired
+    private FraisDouaneAxeService fraisDouaneAxeService;
     @Autowired
     private TransactionRepository transactionRepository;
     @Autowired
@@ -2196,37 +2200,49 @@ public class VoyageServiceImpl implements VoyageService {
             throw new RuntimeException("Le voyage est dejà déclaré à la douane");
         }
 
-        // Récupérer les frais douane
-        DouaneDTO douane = douaneService.getDouane();
-
         // Récupérer le camion pour obtenir sa capacité
         Camion camion = voyage.getCamion();
         if (camion == null) {
             throw new RuntimeException("Le voyage n'a pas de camion associé");
         }
 
-        // Déterminer le frais par litre selon le type de produit
+        // Calcul des frais uniquement lors de la déclaration : utiliser les frais par axe si le voyage a un axe avec des frais définis, sinon douane globale
         BigDecimal fraisParLitre;
-        if (voyage.getProduit() != null && voyage.getProduit().getTypeProduit() != null) {
-            // Si le type de produit contient "GAZOLE" (ou "gasoil" en minuscule), utiliser
-            // le frais gasoil
-            if (voyage.getProduit().getTypeProduit() == Produit.TypeProduit.GAZOLE) {
-                fraisParLitre = douane.getFraisParLitreGasoil();
+        BigDecimal fraisT1;
+        if (voyage.getAxe() != null && voyage.getAxe().getId() != null) {
+            java.util.Optional<FraisDouaneAxeDTO> fraisAxeOpt = fraisDouaneAxeService.findByAxeId(voyage.getAxe().getId());
+            if (fraisAxeOpt.isPresent()) {
+                FraisDouaneAxeDTO fraisAxe = fraisAxeOpt.get();
+                if (voyage.getProduit() != null && voyage.getProduit().getTypeProduit() != null
+                        && voyage.getProduit().getTypeProduit() == Produit.TypeProduit.GAZOLE) {
+                    fraisParLitre = fraisAxe.getFraisParLitreGasoil() != null ? fraisAxe.getFraisParLitreGasoil() : BigDecimal.ZERO;
+                } else {
+                    fraisParLitre = fraisAxe.getFraisParLitre() != null ? fraisAxe.getFraisParLitre() : BigDecimal.ZERO;
+                }
+                fraisT1 = fraisAxe.getFraisT1() != null ? fraisAxe.getFraisT1() : BigDecimal.ZERO;
             } else {
-                // Pour l'essence et les autres types, utiliser le frais essence
-                fraisParLitre = douane.getFraisParLitre();
+                DouaneDTO douane = douaneService.getDouane();
+                if (voyage.getProduit() != null && voyage.getProduit().getTypeProduit() != null
+                        && voyage.getProduit().getTypeProduit() == Produit.TypeProduit.GAZOLE) {
+                    fraisParLitre = douane.getFraisParLitreGasoil();
+                } else {
+                    fraisParLitre = douane.getFraisParLitre();
+                }
+                fraisT1 = douane.getFraisT1();
             }
         } else {
-            // Par défaut, utiliser le frais essence
-            fraisParLitre = douane.getFraisParLitre();
+            DouaneDTO douane = douaneService.getDouane();
+            if (voyage.getProduit() != null && voyage.getProduit().getTypeProduit() != null
+                    && voyage.getProduit().getTypeProduit() == Produit.TypeProduit.GAZOLE) {
+                fraisParLitre = douane.getFraisParLitreGasoil();
+            } else {
+                fraisParLitre = douane.getFraisParLitre();
+            }
+            fraisT1 = douane.getFraisT1();
         }
 
         // Calculer les frais douane = fraisParLitre * capacité du camion
-        BigDecimal fraisDouane = fraisParLitre
-                .multiply(BigDecimal.valueOf(camion.getCapacite()));
-
-        // Récupérer les frais T1
-        BigDecimal fraisT1 = douane.getFraisT1();
+        BigDecimal fraisDouane = fraisParLitre.multiply(BigDecimal.valueOf(camion.getCapacite()));
 
         // Vérifier qu'on ne sélectionne pas les deux en même temps
         // if (compteId != null && caisseId != null) {
