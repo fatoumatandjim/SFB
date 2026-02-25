@@ -71,5 +71,15 @@ export class DouaneService {
   deleteFraisDouaneAxe(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/frais-axe/${id}`);
   }
+
+  /** Crée un nouvel axe et ses frais de douane en une seule transaction. */
+  createFraisDouaneAxeWithNewAxe(data: {
+    nomAxe: string;
+    fraisParLitre: number;
+    fraisParLitreGasoil: number;
+    fraisT1: number;
+  }): Observable<FraisDouaneAxe> {
+    return this.http.post<FraisDouaneAxe>(`${this.apiUrl}/frais-axe/avec-nouvel-axe`, data);
+  }
 }
 

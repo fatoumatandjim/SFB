@@ -97,6 +97,8 @@ export class TransitaireDetailPage implements OnInit {
   showFraisAxeModal: boolean = false;
   editingFraisAxe: FraisDouaneAxe | null = null;
   formFraisAxe: { axeId?: number; fraisParLitre: number; fraisParLitreGasoil: number; fraisT1: number } = { fraisParLitre: 0, fraisParLitreGasoil: 0, fraisT1: 0 };
+  createNewAxe: boolean = false;
+  newAxeNom: string = '';
   isSavingFraisAxe: boolean = false;
 
   constructor(
@@ -639,6 +641,8 @@ export class TransitaireDetailPage implements OnInit {
   openAddFraisAxeModal() {
     this.editingFraisAxe = null;
     this.formFraisAxe = { fraisParLitre: 0, fraisParLitreGasoil: 0, fraisT1: 0 };
+    this.createNewAxe = false;
+    this.newAxeNom = '';
     this.showFraisAxeModal = true;
   }
 
@@ -656,6 +660,8 @@ export class TransitaireDetailPage implements OnInit {
   closeFraisAxeModal() {
     this.showFraisAxeModal = false;
     this.editingFraisAxe = null;
+    this.createNewAxe = false;
+    this.newAxeNom = '';
   }
 
   saveFraisAxe() {
@@ -671,25 +677,56 @@ export class TransitaireDetailPage implements OnInit {
         error: () => { this.isSavingFraisAxe = false; this.toastService.error('Erreur lors de la mise à jour'); }
       });
     } else {
-      if (this.formFraisAxe.axeId == null) {
-        this.toastService.error('Veuillez sélectionner un axe');
-        return;
+      if (this.createNewAxe) {
+        const nom = this.newAxeNom?.trim();
+        if (!nom) {
+          this.toastService.error('Veuillez saisir le nom du nouvel axe');
+          return;
+        }
+        this.isSavingFraisAxe = true;
+        this.douaneService.createFraisDouaneAxeWithNewAxe({
+          nomAxe: nom,
+          fraisParLitre: this.formFraisAxe.fraisParLitre,
+          fraisParLitreGasoil: this.formFraisAxe.fraisParLitreGasoil,
+          fraisT1: this.formFraisAxe.fraisT1
+        }).subscribe({
+          next: () => {
+            this.loadAxes();
+            this.loadFraisDouaneAxes();
+            this.closeFraisAxeModal();
+            this.isSavingFraisAxe = false;
+            this.toastService.success('Axe créé et frais de douane ajoutés');
+          },
+          error: (err) => {
+            this.isSavingFraisAxe = false;
+            const msg = err?.error?.message || err?.message || 'Erreur lors de la création';
+            this.toastService.error(msg.includes('existe déjà')
+              ? msg + ' Décochez « Créer un nouvel axe » et sélectionnez-le dans la liste.'
+              : msg);
+            this.loadAxes();
+          }
+        });
+      } else {
+        if (this.formFraisAxe.axeId == null) {
+          this.toastService.error('Veuillez sélectionner un axe ou créer un nouvel axe');
+          return;
+        }
+        this.isSavingFraisAxe = true;
+        this.douaneService.createFraisDouaneAxe({
+          axeId: this.formFraisAxe.axeId,
+          fraisParLitre: this.formFraisAxe.fraisParLitre,
+          fraisParLitreGasoil: this.formFraisAxe.fraisParLitreGasoil,
+          fraisT1: this.formFraisAxe.fraisT1
+        }).subscribe({
+          next: () => {
+            this.loadFraisDouaneAxes();
+            this.closeFraisAxeModal();
+            this.isSavingFraisAxe = false;
+            this.toastService.success('Frais de douane (axe) ajoutés');
+          },
+          error: () => { this.isSavingFraisAxe = false; this.toastService.error('Erreur lors de l\'ajout'); }
+        });
       }
-      this.isSavingFraisAxe = true;
-      this.douaneService.createFraisDouaneAxe({
-        axeId: this.formFraisAxe.axeId,
-        fraisParLitre: this.formFraisAxe.fraisParLitre,
-        fraisParLitreGasoil: this.formFraisAxe.fraisParLitreGasoil,
-        fraisT1: this.formFraisAxe.fraisT1
-      }).subscribe({
-        next: () => {
-          this.loadFraisDouaneAxes();
-          this.closeFraisAxeModal();
-          this.isSavingFraisAxe = false;
-          this.toastService.success('Frais de douane (axe) ajoutés');
-        },
-        error: () => { this.isSavingFraisAxe = false; this.toastService.error('Erreur lors de l\'ajout'); }
-      });
     }
   }
 

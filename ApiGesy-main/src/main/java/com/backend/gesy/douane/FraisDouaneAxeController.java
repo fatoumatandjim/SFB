@@ -1,5 +1,6 @@
 package com.backend.gesy.douane;
 
+import com.backend.gesy.douane.dto.CreateFraisDouaneAxeWithNewAxeDTO;
 import com.backend.gesy.douane.dto.FraisDouaneAxeDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -7,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/douane/frais-axe")
@@ -35,21 +37,32 @@ public class FraisDouaneAxeController {
     }
 
     @PostMapping
-    public ResponseEntity<FraisDouaneAxeDTO> create(@RequestBody FraisDouaneAxeDTO dto) {
+    public ResponseEntity<?> create(@RequestBody FraisDouaneAxeDTO dto) {
         try {
             FraisDouaneAxeDTO saved = fraisDouaneAxeService.save(dto);
             return ResponseEntity.status(HttpStatus.CREATED).body(saved);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    /** Crée un nouvel axe et ses frais de douane en une seule transaction. */
+    @PostMapping("/avec-nouvel-axe")
+    public ResponseEntity<?> createWithNewAxe(@RequestBody CreateFraisDouaneAxeWithNewAxeDTO dto) {
+        try {
+            FraisDouaneAxeDTO saved = fraisDouaneAxeService.saveWithNewAxe(dto);
+            return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<FraisDouaneAxeDTO> update(@PathVariable Long id, @RequestBody FraisDouaneAxeDTO dto) {
+    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody FraisDouaneAxeDTO dto) {
         try {
             return ResponseEntity.ok(fraisDouaneAxeService.update(id, dto));
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
     }
 

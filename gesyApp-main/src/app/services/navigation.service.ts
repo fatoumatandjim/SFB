@@ -12,6 +12,7 @@ export type MenuSection =
   | 'client-fournisseur'
   | 'suivi-transport'
   | 'transitaire'
+  | 'axes'
   | 'depot'
   | 'recouvrement'
   | 'rapport'

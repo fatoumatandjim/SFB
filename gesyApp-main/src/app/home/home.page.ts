@@ -12,6 +12,7 @@ import { StockComponent } from '../Composant/stock/stock.component';
 import { ClientFournisseurComponent } from '../Composant/client-fournisseur/client-fournisseur.component';
 import { SuiviTransportComponent } from '../Composant/suivi-transport/suivi-transport.component';
 import { TransitaireComponent } from '../Composant/transitaire/transitaire.component';
+import { AxesComponent } from '../Composant/axes/axes.component';
 import { DepotComponent } from '../Composant/depot/depot.component';
 import { RecouvrementComponent } from '../Composant/recouvrement/recouvrement.component';
 import { RapportComponent } from '../Composant/rapport/rapport.component';
@@ -41,6 +42,7 @@ import { CapitalComponent } from '../Composant/capital/capital.component';
     ClientFournisseurComponent,
     SuiviTransportComponent,
     TransitaireComponent,
+    AxesComponent,
     DepotComponent,
     RecouvrementComponent,
     RapportComponent,

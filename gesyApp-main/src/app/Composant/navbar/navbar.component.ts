@@ -38,6 +38,7 @@ export class NavbarComponent implements OnInit {
   allLogistique: MenuItem[] = [
     { id: 'suivi-transport' as MenuSection, label: 'Suivis Transport', icon: '🚚' },
     { id: 'transitaire' as MenuSection, label: 'Transitaire', icon: '📋' },
+    { id: 'axes' as MenuSection, label: 'Axes', icon: '🛣️' },
     { id: 'depot' as MenuSection, label: 'Depot', icon: '🏭' },
     { id: 'cout' as MenuSection, label: 'Coût de transport', icon: '💰' },
     { id: 'email' as MenuSection, label: 'Messagerie', icon: '📧' }
@@ -106,12 +107,12 @@ export class NavbarComponent implements OnInit {
       this.logistique = this.allLogistique.filter(item => item.id === 'depot');
       this.rapport = [];
     } else if (isResponsableLogistique) {
-      // Responsable logistique unique : camions, suivi-transport, transitaire, depot, cout, email, stock ; PAS d'accès clients
+      // Responsable logistique unique : camions, suivi-transport, transitaire, axes, depot, cout, email, stock ; PAS d'accès clients
       this.menuPrincipal = this.allMenuPrincipal.filter(item =>
         ['camion', 'stock'].includes(item.id)
       );
       this.logistique = this.allLogistique.filter(item =>
-        ['suivi-transport', 'transitaire', 'depot', 'email'].includes(item.id)
+        ['suivi-transport', 'transitaire', 'axes', 'depot', 'email'].includes(item.id)
       );
       this.rapport = [];
     } else if (isLogisticien) {
@@ -122,10 +123,10 @@ export class NavbarComponent implements OnInit {
       );
       this.rapport = [];
     } else if (isControleur) {
-      // Contrôleur : attribution, gestion manquants (suivi-transport, transitaire) ; pas d'accès clients pour gestion pure
+      // Contrôleur : attribution, gestion manquants (suivi-transport, transitaire, axes) ; pas d'accès clients pour gestion pure
       this.menuPrincipal = [];
       this.logistique = this.allLogistique.filter(item =>
-        ['suivi-transport', 'depot', 'cout', 'client-fournisseur', 'stock'].includes(item.id)
+        ['suivi-transport', 'depot', 'cout', 'axes', 'client-fournisseur', 'stock'].includes(item.id)
       );
       this.rapport = [];
     } else {

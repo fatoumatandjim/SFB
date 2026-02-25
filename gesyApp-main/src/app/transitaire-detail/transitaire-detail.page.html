@@ -158,7 +158,7 @@
       <div class="douane-header">
         <h3>🛃 Frais de douane par axe</h3>
         <div class="douane-actions">
-          <button class="btn-add-frais-axe" (click)="openAddFraisAxeModal()" type="button" [disabled]="axesSansFrais().length === 0">
+          <button class="btn-add-frais-axe" (click)="openAddFraisAxeModal()" type="button">
             Ajouter (axe)
           </button>
         </div>
@@ -201,15 +201,32 @@
       </div>
       <div class="modal-body">
         @if (!editingFraisAxe) {
-          <div class="form-group">
-            <label for="frais-axe-select">Axe *</label>
-            <select id="frais-axe-select" [(ngModel)]="formFraisAxe.axeId" class="form-input">
-              <option [ngValue]="undefined">Sélectionner un axe</option>
-              @for (a of axesSansFrais(); track a.id) {
-                <option [ngValue]="a.id">{{ a.nom }}</option>
-              }
-            </select>
+          <div class="form-group frais-axe-choice">
+            <label class="toggle-label">
+              <input type="checkbox" [(ngModel)]="createNewAxe" name="createNewAxe" />
+              <span>Créer un nouvel axe</span>
+            </label>
           </div>
+          @if (createNewAxe) {
+            <div class="form-group">
+              <label for="frais-axe-new-nom">Nom du nouvel axe *</label>
+              <input id="frais-axe-new-nom" type="text" [(ngModel)]="newAxeNom" name="newAxeNom"
+                class="form-input" placeholder="Ex: Diboli, Moussala, Kadiana, Zegoua" />
+            </div>
+          } @else {
+            <div class="form-group">
+              <label for="frais-axe-select">Axe existant *</label>
+              <select id="frais-axe-select" [(ngModel)]="formFraisAxe.axeId" class="form-input">
+                <option [ngValue]="undefined">Sélectionner un axe</option>
+                @for (a of axesSansFrais(); track a.id) {
+                  <option [ngValue]="a.id">{{ a.nom }}</option>
+                }
+              </select>
+              @if (axesSansFrais().length === 0) {
+                <small class="form-hint">Aucun axe sans frais. Cochez « Créer un nouvel axe » pour en ajouter un.</small>
+              }
+            </div>
+          }
         } @else {
           <p class="frais-axe-edit-nom">Axe: <strong>{{ editingFraisAxe.axeNom }}</strong></p>
         }

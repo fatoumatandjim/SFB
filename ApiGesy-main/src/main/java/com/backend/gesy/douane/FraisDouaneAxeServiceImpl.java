@@ -2,12 +2,14 @@ package com.backend.gesy.douane;
 
 import com.backend.gesy.axe.Axe;
 import com.backend.gesy.axe.AxeRepository;
+import com.backend.gesy.douane.dto.CreateFraisDouaneAxeWithNewAxeDTO;
 import com.backend.gesy.douane.dto.FraisDouaneAxeDTO;
 import com.backend.gesy.douane.dto.FraisDouaneAxeMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -56,6 +58,26 @@ public class FraisDouaneAxeServiceImpl implements FraisDouaneAxeService {
         entity.setFraisParLitreGasoil(dto.getFraisParLitreGasoil() != null ? dto.getFraisParLitreGasoil() : java.math.BigDecimal.ZERO);
         entity.setFraisT1(dto.getFraisT1() != null ? dto.getFraisT1() : java.math.BigDecimal.ZERO);
         return mapper.toDTO(fraisDouaneAxeRepository.save(entity));
+    }
+
+    @Override
+    public FraisDouaneAxeDTO saveWithNewAxe(CreateFraisDouaneAxeWithNewAxeDTO dto) {
+        if (dto.getNomAxe() == null || dto.getNomAxe().trim().isEmpty()) {
+            throw new RuntimeException("Le nom de l'axe est obligatoire");
+        }
+        String nomTrimmed = dto.getNomAxe().trim();
+        if (axeRepository.existsByNom(nomTrimmed)) {
+            throw new RuntimeException("Un axe avec ce nom existe déjà. Veuillez le sélectionner dans la liste.");
+        }
+        Axe axe = new Axe();
+        axe.setNom(nomTrimmed);
+        axe = axeRepository.save(axe);
+        FraisDouaneAxe frais = new FraisDouaneAxe();
+        frais.setAxe(axe);
+        frais.setFraisParLitre(dto.getFraisParLitre() != null ? dto.getFraisParLitre() : BigDecimal.ZERO);
+        frais.setFraisParLitreGasoil(dto.getFraisParLitreGasoil() != null ? dto.getFraisParLitreGasoil() : BigDecimal.ZERO);
+        frais.setFraisT1(dto.getFraisT1() != null ? dto.getFraisT1() : BigDecimal.ZERO);
+        return mapper.toDTO(fraisDouaneAxeRepository.save(frais));
     }
 
     @Override

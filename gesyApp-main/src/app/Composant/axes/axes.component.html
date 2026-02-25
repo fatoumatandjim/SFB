@@ -1,0 +1,79 @@
+<div class="axes-container">
+  <div class="axes-header">
+    <div>
+      <h1>Gestion des axes</h1>
+      <p>Axes de transport (ex. Diboli, Moussala, Kadiana, Zegoua). Les frais de douane par axe se gèrent dans l'espace Transitaire.</p>
+    </div>
+    <div class="header-actions">
+      <button type="button" class="btn-new" (click)="openAdd()">
+        <span>+</span> Nouvel axe
+      </button>
+    </div>
+  </div>
+
+  <div class="actions-bar">
+    <input
+      type="text"
+      class="search-input"
+      placeholder="Rechercher un axe..."
+      [(ngModel)]="searchTerm"
+    />
+  </div>
+
+  <div class="table-wrap">
+    @if (isLoading) {
+      <div class="loading">Chargement...</div>
+    } @else if (filteredAxes.length === 0) {
+      <div class="empty">Aucun axe trouvé.</div>
+    } @else {
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Nom</th>
+            <th class="col-actions">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (axe of filteredAxes; track axe.id) {
+            <tr>
+              <td>{{ axe.nom }}</td>
+              <td class="col-actions">
+                <button type="button" class="btn-edit" (click)="openEdit(axe)">Modifier</button>
+                <button type="button" class="btn-delete" (click)="deleteAxe(axe)">Supprimer</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
+</div>
+
+@if (showModal) {
+<div class="modal-overlay" (click)="closeModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>{{ isEditing ? 'Modifier l\'axe' : 'Nouvel axe' }}</h2>
+      <button type="button" class="modal-close" (click)="closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label for="axe-nom">Nom de l'axe *</label>
+        <input
+          id="axe-nom"
+          type="text"
+          [(ngModel)]="formNom"
+          class="form-input"
+          placeholder="Ex: Diboli, Moussala"
+        />
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" (click)="closeModal()">Annuler</button>
+        <button type="button" class="btn-save" (click)="save()" [disabled]="isSaving || !formNom?.trim()">
+          {{ isSaving ? 'Enregistrement...' : 'Enregistrer' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+}
