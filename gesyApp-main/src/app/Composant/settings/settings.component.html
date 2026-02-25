@@ -108,83 +108,13 @@
     <div class="card axes-card">
       <div class="card-header">
         <h2>🛣️ Axes</h2>
-        <p>Gérer les axes de transport (Diboli, Moussala, Kadiana, Zegoua). Les frais de douane par axe se configurent dans l'espace Transitaire.</p>
+        <p>Gérer les axes de transport et les frais de douane par pays.</p>
       </div>
       <button type="button" class="btn-open-axes" (click)="goToAxes()">
         Ouvrir la gestion des axes
       </button>
     </div>
 
-    <div class="card douane-card">
-      <div class="card-header">
-        <h2>Frais Douane</h2>
-        <p>Gérer les frais de douane globaux</p>
-      </div>
-
-      @if (isLoadingDouane) {
-        <div class="loading-message">Chargement...</div>
-      } @else {
-        <div class="douane-content">
-          @if (!isEditingDouane) {
-            <div class="douane-display">
-              <div class="douane-item">
-                <span class="douane-label">Frais par litre (Essence):</span>
-                <span class="douane-value">{{ douane?.fraisParLitre | number }} FCFA</span>
-              </div>
-              <div class="douane-item">
-                <span class="douane-label">Frais par litre (Gasoil):</span>
-                <span class="douane-value">{{ douane?.fraisParLitreGasoil | number }} FCFA</span>
-              </div>
-              <div class="douane-item">
-                <span class="douane-label">Frais T1:</span>
-                <span class="douane-value">{{ douane?.fraisT1 | number }} FCFA</span>
-              </div>
-              <button class="btn-edit" (click)="editDouane()">Modifier</button>
-            </div>
-          } @else {
-            <div class="douane-form">
-              <div class="form-group">
-                <label for="frais-par-litre">Frais par litre Essence (FCFA) *</label>
-                <input
-                  id="frais-par-litre"
-                  type="number"
-                  [(ngModel)]="douaneForm.fraisParLitre"
-                  min="0"
-                  step="0.01"
-                  required
-                />
-              </div>
-              <div class="form-group">
-                <label for="frais-par-litre-gasoil">Frais par litre Gasoil (FCFA) *</label>
-                <input
-                  id="frais-par-litre-gasoil"
-                  type="number"
-                  [(ngModel)]="douaneForm.fraisParLitreGasoil"
-                  min="0"
-                  step="0.01"
-                  required
-                />
-              </div>
-              <div class="form-group">
-                <label for="frais-t1">Frais T1 (FCFA) *</label>
-                <input
-                  id="frais-t1"
-                  type="number"
-                  [(ngModel)]="douaneForm.fraisT1"
-                  min="0"
-                  step="0.01"
-                  required
-                />
-              </div>
-              <div class="form-actions">
-                <button class="btn-cancel" (click)="cancelEditDouane()">Annuler</button>
-                <button class="btn-submit" (click)="saveDouane()">Enregistrer</button>
-              </div>
-            </div>
-          }
-        </div>
-      }
-    </div>
 
     <div class="card password-card">
       <div class="card-header">

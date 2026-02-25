@@ -1,81 +1,203 @@
 <div class="axes-container">
   <div class="axes-header">
     <div>
-      <h1>Gestion des axes</h1>
-      <p>Axes de transport liés à un pays. Les frais de douane se gèrent par pays.</p>
+      <h1>Gestion des Pays et Axes</h1>
+      <p>Les frais de douane sont définis par pays. Chaque axe est rattaché à un pays.</p>
     </div>
-    <div class="header-actions">
-      <button type="button" class="btn-new" (click)="openAdd()">
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs-bar">
+    <button type="button" class="tab-btn" [class.active]="activeTab === 'pays'" (click)="activeTab = 'pays'">
+      Pays &amp; Frais
+    </button>
+    <button type="button" class="tab-btn" [class.active]="activeTab === 'axes'" (click)="activeTab = 'axes'">
+      Axes
+    </button>
+  </div>
+
+  <!-- ═══ TAB PAYS ═══ -->
+  @if (activeTab === 'pays') {
+  <div class="tab-content">
+    <div class="section-header">
+      <h2>Frais de douane par pays</h2>
+      <button type="button" class="btn-new" (click)="openAddPays()">
+        <span>+</span> Nouveau pays
+      </button>
+    </div>
+
+    @if (isLoadingPays) {
+      <div class="loading">Chargement...</div>
+    } @else if (paysList.length === 0) {
+      <div class="empty">Aucun pays configuré.</div>
+    } @else {
+      <div class="pays-list">
+        @for (pays of paysList; track pays.id) {
+          <div class="pays-card">
+            <div class="pays-card-header">
+              <h3>{{ pays.nom }}</h3>
+              <div class="pays-card-actions">
+                <button type="button" class="btn-historique" (click)="toggleHistorique(pays)">
+                  {{ showHistoriqueForPaysId === pays.id ? 'Masquer historique' : 'Historique' }}
+                </button>
+                <button type="button" class="btn-edit" (click)="openEditPays(pays)">Modifier</button>
+                <button type="button" class="btn-delete" (click)="deletePays(pays)">Supprimer</button>
+              </div>
+            </div>
+            <div class="pays-card-frais">
+              <div class="frais-item">
+                <span class="frais-label">Essence</span>
+                <span class="frais-value">{{ pays.fraisParLitre | number }} FCFA/L</span>
+              </div>
+              <div class="frais-item">
+                <span class="frais-label">Gasoil</span>
+                <span class="frais-value">{{ pays.fraisParLitreGasoil | number }} FCFA/L</span>
+              </div>
+              <div class="frais-item">
+                <span class="frais-label">T1</span>
+                <span class="frais-value">{{ pays.fraisT1 | number }} FCFA</span>
+              </div>
+            </div>
+
+            @if (showHistoriqueForPaysId === pays.id) {
+              <div class="historique-section">
+                <h4>Historique des modifications</h4>
+                @if (isLoadingHistorique) {
+                  <div class="loading">Chargement...</div>
+                } @else if (historiquePays.length === 0) {
+                  <p class="no-historique">Aucun historique disponible</p>
+                } @else {
+                  <div class="historique-list">
+                    @for (h of historiquePays; track h.id) {
+                      <div class="historique-item">
+                        <div class="historique-date">{{ formatDateTime(h.dateModification) }}</div>
+                        <div class="historique-user">Par : {{ h.modifiePar }}</div>
+                        <div class="historique-details">
+                          <span>Essence : {{ h.ancienFraisParLitre | number }} → {{ h.nouveauFraisParLitre | number }} FCFA</span>
+                          <span>Gasoil : {{ h.ancienFraisParLitreGasoil | number }} → {{ h.nouveauFraisParLitreGasoil | number }} FCFA</span>
+                          <span>T1 : {{ h.ancienFraisT1 | number }} → {{ h.nouveauFraisT1 | number }} FCFA</span>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+  </div>
+  }
+
+  <!-- ═══ TAB AXES ═══ -->
+  @if (activeTab === 'axes') {
+  <div class="tab-content">
+    <div class="section-header">
+      <h2>Axes de transport</h2>
+      <button type="button" class="btn-new" (click)="openAddAxe()">
         <span>+</span> Nouvel axe
       </button>
     </div>
-  </div>
 
-  <div class="actions-bar">
-    <input
-      type="text"
-      class="search-input"
-      placeholder="Rechercher un axe ou un pays..."
-      [(ngModel)]="searchTerm"
-    />
-  </div>
+    <div class="actions-bar">
+      <input
+        type="text"
+        class="search-input"
+        placeholder="Rechercher un axe ou un pays..."
+        [(ngModel)]="searchTerm"
+      />
+    </div>
 
-  <div class="table-wrap">
-    @if (isLoading) {
-      <div class="loading">Chargement...</div>
-    } @else if (filteredAxes.length === 0) {
-      <div class="empty">Aucun axe trouvé.</div>
-    } @else {
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Nom</th>
-            <th>Pays</th>
-            <th class="col-actions">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (axe of filteredAxes; track axe.id) {
+    <div class="table-wrap">
+      @if (isLoadingAxes) {
+        <div class="loading">Chargement...</div>
+      } @else if (filteredAxes.length === 0) {
+        <div class="empty">Aucun axe trouvé.</div>
+      } @else {
+        <table class="data-table">
+          <thead>
             <tr>
-              <td>{{ axe.nom }}</td>
-              <td>{{ axe.paysNom || '—' }}</td>
-              <td class="col-actions">
-                <button type="button" class="btn-edit" (click)="openEdit(axe)">Modifier</button>
-                <button type="button" class="btn-delete" (click)="deleteAxe(axe)">Supprimer</button>
-              </td>
+              <th>Nom</th>
+              <th>Pays</th>
+              <th class="col-actions">Actions</th>
             </tr>
-          }
-        </tbody>
-      </table>
-    }
+          </thead>
+          <tbody>
+            @for (axe of filteredAxes; track axe.id) {
+              <tr>
+                <td>{{ axe.nom }}</td>
+                <td>{{ axe.paysNom || '—' }}</td>
+                <td class="col-actions">
+                  <button type="button" class="btn-edit" (click)="openEditAxe(axe)">Modifier</button>
+                  <button type="button" class="btn-delete" (click)="deleteAxe(axe)">Supprimer</button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
   </div>
+  }
 </div>
 
-@if (showModal) {
-<div class="modal-overlay" (click)="closeModal()">
+<!-- Modal Pays -->
+@if (showPaysModal) {
+<div class="modal-overlay" (click)="closePaysModal()">
   <div class="modal-content" (click)="$event.stopPropagation()">
     <div class="modal-header">
-      <h2>{{ isEditing ? 'Modifier l\'axe' : 'Nouvel axe' }}</h2>
-      <button type="button" class="modal-close" (click)="closeModal()">×</button>
+      <h2>{{ isEditingPays ? 'Modifier ' + editingPays?.nom : 'Nouveau pays' }}</h2>
+      <button type="button" class="modal-close" (click)="closePaysModal()">×</button>
+    </div>
+    <div class="modal-body">
+      @if (!isEditingPays) {
+        <div class="form-group">
+          <label for="pays-nom">Nom du pays *</label>
+          <input id="pays-nom" type="text" [(ngModel)]="formPaysNom" class="form-input" placeholder="Ex: Sénégal, Côte d'Ivoire" />
+        </div>
+      }
+      <div class="form-row">
+        <div class="form-group">
+          <label for="pays-essence">Frais par litre Essence (FCFA)</label>
+          <input id="pays-essence" type="number" [(ngModel)]="formPaysFraisParLitre" min="0" step="0.01" class="form-input" />
+        </div>
+        <div class="form-group">
+          <label for="pays-gasoil">Frais par litre Gasoil (FCFA)</label>
+          <input id="pays-gasoil" type="number" [(ngModel)]="formPaysFraisParLitreGasoil" min="0" step="0.01" class="form-input" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="pays-t1">Frais T1 (FCFA)</label>
+        <input id="pays-t1" type="number" [(ngModel)]="formPaysFraisT1" min="0" step="0.01" class="form-input" />
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" (click)="closePaysModal()">Annuler</button>
+        <button type="button" class="btn-save" (click)="savePays()" [disabled]="isSavingPays || (!isEditingPays && !formPaysNom?.trim())">
+          {{ isSavingPays ? 'Enregistrement...' : 'Enregistrer' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+}
+
+<!-- Modal Axe -->
+@if (showAxeModal) {
+<div class="modal-overlay" (click)="closeAxeModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>{{ isEditingAxe ? 'Modifier l\'axe' : 'Nouvel axe' }}</h2>
+      <button type="button" class="modal-close" (click)="closeAxeModal()">×</button>
     </div>
     <div class="modal-body">
       <div class="form-group">
         <label for="axe-nom">Nom de l'axe *</label>
-        <input
-          id="axe-nom"
-          type="text"
-          [(ngModel)]="formNom"
-          class="form-input"
-          placeholder="Ex: Diboli, Moussala"
-        />
+        <input id="axe-nom" type="text" [(ngModel)]="formNom" class="form-input" placeholder="Ex: Diboli, Moussala" />
       </div>
       <div class="form-group">
         <label for="axe-pays">Pays</label>
-        <select
-          id="axe-pays"
-          [(ngModel)]="formPaysId"
-          class="form-input"
-        >
+        <select id="axe-pays" [(ngModel)]="formPaysId" class="form-input">
           <option [ngValue]="undefined">— Aucun pays —</option>
           @for (p of paysList; track p.id) {
             <option [ngValue]="p.id">{{ p.nom }}</option>
@@ -83,9 +205,9 @@
         </select>
       </div>
       <div class="modal-actions">
-        <button type="button" class="btn-cancel" (click)="closeModal()">Annuler</button>
-        <button type="button" class="btn-save" (click)="save()" [disabled]="isSaving || !formNom?.trim()">
-          {{ isSaving ? 'Enregistrement...' : 'Enregistrer' }}
+        <button type="button" class="btn-cancel" (click)="closeAxeModal()">Annuler</button>
+        <button type="button" class="btn-save" (click)="saveAxe()" [disabled]="isSavingAxe || !formNom?.trim()">
+          {{ isSavingAxe ? 'Enregistrement...' : 'Enregistrer' }}
         </button>
       </div>
     </div>

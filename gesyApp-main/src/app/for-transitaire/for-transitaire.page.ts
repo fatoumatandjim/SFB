@@ -7,8 +7,9 @@ import { VoyagesService, Voyage, VoyagePage, TransitaireStats } from '../service
 import { TransactionsService, Transaction } from '../services/transactions.service';
 import { AuthService } from '../services/auth.service';
 import { TransitairesService, Transitaire } from '../services/transitaires.service';
-import { DouaneService, Douane, HistoriqueDouane } from '../services/douane.service';
 import { CamionsService, Camion } from '../services/camions.service';
+import { PaysService, Pays } from '../services/pays.service';
+import { AxesService, Axe } from '../services/axes.service';
 import { addIcons } from 'ionicons';
 import { logOutOutline } from 'ionicons/icons';
 import { IonIcon } from '@ionic/angular/standalone';
@@ -87,13 +88,8 @@ export class ForTransitairePage implements OnInit {
   filterEndDate: string = '';
   useDateRange: boolean = false;
 
-  // Frais Douane
-  douane: Douane | null = null;
-  isLoadingDouane: boolean = false;
-  isEditingDouane: boolean = false;
-  douaneForm: Douane = { fraisParLitre: 0, fraisParLitreGasoil: 0, fraisT1: 0 };
-  historiqueDouane: HistoriqueDouane[] = [];
-  showHistorique: boolean = false;
+  paysList: Pays[] = [];
+  axesList: Axe[] = [];
 
   constructor(
     private voyagesService: VoyagesService,
@@ -101,8 +97,9 @@ export class ForTransitairePage implements OnInit {
     private router: Router,
     private authService: AuthService,
     private transitairesService: TransitairesService,
-    private douaneService: DouaneService,
     private camionsService: CamionsService,
+    private paysService: PaysService,
+    private axesService: AxesService,
     private alertService: AlertService,
     private toastService: ToastService
   ) {
@@ -121,7 +118,7 @@ export class ForTransitairePage implements OnInit {
       };
       this.loadVoyages();
       this.loadStats();
-      this.loadDouane();
+      this.loadPaysAndAxes();
     } else {
       console.warn('Aucune session utilisateur trouvée');
       this.router.navigate(['/login']);
@@ -505,48 +502,42 @@ export class ForTransitairePage implements OnInit {
       return;
     }
 
-    // Récupérer les frais douane et la capacité du camion
-    this.douaneService.getDouane().subscribe({
-      next: (douane: Douane) => {
-        this.camionsService.getCamionById(voyage.camionId).subscribe({
-          next: (camion: Camion) => {
-            // Calculer les frais douane = fraisParLitre * capacité du camion
-            const fraisDouane = douane.fraisParLitre * camion.capacite;
-            const fraisT1 = douane.fraisT1;
+    this.camionsService.getCamionById(voyage.camionId).subscribe({
+      next: (camion: Camion) => {
+        const pays = this.getPaysForVoyage(voyage);
+        if (!pays) {
+          this.toastService.error('Aucun pays/frais configuré pour l\'axe de ce voyage');
+          return;
+        }
 
-            const message = `Vous allez déclarer le citerne matriculé ${camion.immatriculation}\n\n` +
-              `Frais de douane: ${fraisDouane.toLocaleString('fr-FR')} FCFA\n` +
-              `Frais T1: ${fraisT1.toLocaleString('fr-FR')} FCFA\n\n` +
-              `Total: ${(fraisDouane + fraisT1).toLocaleString('fr-FR')} FCFA`;
+        const isGasoil = voyage.typeProduit === 'GAZOLE';
+        const fraisParLitre = isGasoil ? pays.fraisParLitreGasoil : pays.fraisParLitre;
+        const fraisDouane = fraisParLitre * camion.capacite;
+        const fraisT1 = pays.fraisT1;
 
-            this.alertService.confirm(message, 'Confirmation de déclaration').subscribe(confirmed => {
-              if (!confirmed) return;
+        const message = `Vous allez déclarer le citerne matriculé ${camion.immatriculation}\n\n` +
+          `Pays : ${pays.nom}\n` +
+          `Frais de douane: ${fraisDouane.toLocaleString('fr-FR')} FCFA\n` +
+          `Frais T1: ${fraisT1.toLocaleString('fr-FR')} FCFA\n\n` +
+          `Total: ${(fraisDouane + fraisT1).toLocaleString('fr-FR')} FCFA`;
 
-              // Pour l'instant, on utilise caisseId = null et compteId = null
-              // TODO: Ajouter la sélection du compte/caisse si nécessaire
-              this.voyagesService.declarerVoyage(voyage.id!, undefined, undefined).subscribe({
-                next: () => {
-                  this.loadVoyages();
-                  this.loadStats();
-                  this.toastService.success('Voyage déclaré avec succès');
-                },
-                error: (error) => {
-                  console.error('Erreur lors de la déclaration:', error);
-                  const errorMessage = error.error?.message || 'Erreur lors de la déclaration du voyage';
-                  this.toastService.error(errorMessage);
-                }
-              });
-            });
-          },
-          error: (error) => {
-            console.error('Erreur lors de la récupération du camion:', error);
-            this.toastService.error('Erreur lors de la récupération des informations du camion');
-          }
+        this.alertService.confirm(message, 'Confirmation de déclaration').subscribe(confirmed => {
+          if (!confirmed) return;
+          this.voyagesService.declarerVoyage(voyage.id!, undefined, undefined).subscribe({
+            next: () => {
+              this.loadVoyages();
+              this.loadStats();
+              this.toastService.success('Voyage déclaré avec succès');
+            },
+            error: (error) => {
+              const errorMessage = error.error?.message || 'Erreur lors de la déclaration du voyage';
+              this.toastService.error(errorMessage);
+            }
+          });
         });
       },
-      error: (error) => {
-        console.error('Erreur lors de la récupération des frais douane:', error);
-        this.toastService.error('Erreur lors de la récupération des frais douane');
+      error: () => {
+        this.toastService.error('Erreur lors de la récupération des informations du camion');
       }
     });
   }
@@ -695,62 +686,52 @@ export class ForTransitairePage implements OnInit {
       return;
     }
 
-    // Récupérer les informations des voyages pour afficher le total
     const voyagesSelectionnes = this.filteredVoyages.filter(v => v.id && this.selectedVoyages.has(v.id));
 
-    // Calculer le total des frais
-    this.douaneService.getDouane().subscribe({
-      next: (douane: Douane) => {
-        let totalFrais = 0;
-        let totalCamions = 0;
+    const camionPromises = voyagesSelectionnes.map(voyage => {
+      if (!voyage.camionId) return Promise.resolve(null);
+      return this.camionsService.getCamionById(voyage.camionId).toPromise();
+    });
 
-        const camionPromises = voyagesSelectionnes.map(voyage => {
-          if (!voyage.camionId) return Promise.resolve(null);
-          return this.camionsService.getCamionById(voyage.camionId).toPromise();
+    Promise.all(camionPromises).then(camions => {
+      let totalFrais = 0;
+      let totalCamions = 0;
+
+      camions.forEach((camion, index) => {
+        if (camion) {
+          const voyage = voyagesSelectionnes[index];
+          const pays = this.getPaysForVoyage(voyage);
+          if (pays) {
+            const isGasoil = voyage.typeProduit === 'GAZOLE';
+            const fraisParLitre = isGasoil ? pays.fraisParLitreGasoil : pays.fraisParLitre;
+            totalFrais += fraisParLitre * camion.capacite + pays.fraisT1;
+            totalCamions++;
+          }
+        }
+      });
+
+      const message = `Vous allez déclarer ${totalCamions} camion(s)\n\n` +
+        `Total des frais: ${totalFrais.toLocaleString('fr-FR')} FCFA`;
+
+      this.alertService.confirm(message, 'Confirmation de déclaration multiple').subscribe(confirmed => {
+        if (!confirmed) return;
+
+        this.isDeclaringMultiple = true;
+        this.voyagesService.declarerVoyagesMultiple(voyageIds, undefined, undefined).subscribe({
+          next: (updatedVoyages) => {
+            this.loadVoyages();
+            this.loadStats();
+            this.selectedVoyages.clear();
+            this.toastService.success(`${updatedVoyages.length} voyage(s) déclaré(s) avec succès`);
+            this.isDeclaringMultiple = false;
+          },
+          error: (error) => {
+            const errorMessage = error.error?.message || 'Erreur lors de la déclaration des voyages';
+            this.toastService.error(errorMessage);
+            this.isDeclaringMultiple = false;
+          }
         });
-
-        Promise.all(camionPromises).then(camions => {
-          camions.forEach((camion, index) => {
-            if (camion) {
-              const voyage = voyagesSelectionnes[index];
-              // Déterminer le frais par litre selon le type de produit
-              const fraisParLitre = voyage.typeProduit === 'GAZOLE' ? douane.fraisParLitreGasoil : douane.fraisParLitre;
-              const fraisDouane = fraisParLitre * camion.capacite;
-              const fraisT1 = douane.fraisT1;
-              totalFrais += fraisDouane + fraisT1;
-              totalCamions++;
-            }
-          });
-
-          const message = `Vous allez déclarer ${totalCamions} camion(s)\n\n` +
-            `Total des frais: ${totalFrais.toLocaleString('fr-FR')} FCFA`;
-
-          this.alertService.confirm(message, 'Confirmation de déclaration multiple').subscribe(confirmed => {
-            if (!confirmed) return;
-
-            this.isDeclaringMultiple = true;
-            this.voyagesService.declarerVoyagesMultiple(voyageIds, undefined, undefined).subscribe({
-              next: (updatedVoyages) => {
-                this.loadVoyages();
-                this.loadStats();
-                this.selectedVoyages.clear();
-                this.toastService.success(`${updatedVoyages.length} voyage(s) déclaré(s) avec succès`);
-                this.isDeclaringMultiple = false;
-              },
-              error: (error) => {
-                console.error('Erreur lors de la déclaration multiple:', error);
-                const errorMessage = error.error?.message || 'Erreur lors de la déclaration des voyages';
-                this.toastService.error(errorMessage);
-                this.isDeclaringMultiple = false;
-              }
-            });
-          });
-        });
-      },
-      error: (error) => {
-        console.error('Erreur lors de la récupération des frais douane:', error);
-        this.toastService.error('Erreur lors de la récupération des frais douane');
-      }
+      });
     });
   }
 
@@ -774,68 +755,22 @@ export class ForTransitairePage implements OnInit {
     });
   }
 
-  // Méthodes pour la gestion des frais douane
-  loadDouane() {
-    this.isLoadingDouane = true;
-    this.douaneService.getDouane().subscribe({
-      next: (douane) => {
-        this.douane = douane;
-        this.isLoadingDouane = false;
-      },
-      error: (error) => {
-        console.error('Erreur lors du chargement des frais douane:', error);
-        this.isLoadingDouane = false;
-      }
+  loadPaysAndAxes() {
+    this.paysService.getAll().subscribe({
+      next: (data) => { this.paysList = data; },
+      error: () => {}
+    });
+    this.axesService.getAllAxes().subscribe({
+      next: (data) => { this.axesList = data; },
+      error: () => {}
     });
   }
 
-  editDouane() {
-    if (this.douane) {
-      this.douaneForm = { ...this.douane };
-    }
-    this.isEditingDouane = true;
-  }
-
-  cancelEditDouane() {
-    this.isEditingDouane = false;
-  }
-
-  saveDouane() {
-    if (!this.douaneForm.fraisParLitre || !this.douaneForm.fraisParLitreGasoil || !this.douaneForm.fraisT1) {
-      this.toastService.error('Veuillez remplir tous les champs');
-      return;
-    }
-
-    this.douaneService.updateDouane(this.douaneForm).subscribe({
-      next: (updated) => {
-        this.douane = updated;
-        this.isEditingDouane = false;
-        this.toastService.success('Frais de douane mis à jour avec succès');
-        this.loadHistoriqueDouane();
-      },
-      error: (error) => {
-        console.error('Erreur lors de la mise à jour:', error);
-        this.toastService.error('Erreur lors de la mise à jour des frais');
-      }
-    });
-  }
-
-  loadHistoriqueDouane() {
-    this.douaneService.getHistorique().subscribe({
-      next: (historique) => {
-        this.historiqueDouane = historique;
-      },
-      error: (error) => {
-        console.error('Erreur lors du chargement de l\'historique:', error);
-      }
-    });
-  }
-
-  toggleHistorique() {
-    this.showHistorique = !this.showHistorique;
-    if (this.showHistorique && this.historiqueDouane.length === 0) {
-      this.loadHistoriqueDouane();
-    }
+  getPaysForVoyage(voyage: VoyageDisplay): Pays | null {
+    if (!voyage.axeId) return null;
+    const axe = this.axesList.find(a => a.id === voyage.axeId);
+    if (!axe || !axe.paysId) return null;
+    return this.paysList.find(p => p.id === axe.paysId) ?? null;
   }
 
   formatDateTime(dateString: string): string {

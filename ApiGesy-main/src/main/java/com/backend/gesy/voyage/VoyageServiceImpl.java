@@ -7,7 +7,6 @@ import com.backend.gesy.camion.Camion;
 import com.backend.gesy.compte.Compte;
 import com.backend.gesy.compte.CompteRepository;
 import com.backend.gesy.camion.CamionRepository;
-import com.backend.gesy.douane.dto.DouaneDTO;
 import com.backend.gesy.facture.LigneFacture;
 import com.backend.gesy.fournisseur.Fournisseur;
 import com.backend.gesy.fournisseur.FournisseurRepository;
@@ -33,7 +32,6 @@ import com.backend.gesy.stock.StockRepository;
 import com.backend.gesy.stock.Stock;
 import com.backend.gesy.mouvement.MouvementService;
 import com.backend.gesy.mouvement.dto.MouvementDTO;
-import com.backend.gesy.douane.DouaneService;
 import com.backend.gesy.facture.Facture;
 import com.backend.gesy.facture.FactureRepository;
 import com.backend.gesy.facture.FactureService;
@@ -87,8 +85,6 @@ public class VoyageServiceImpl implements VoyageService {
     private StockRepository stockRepository;
     @Autowired
     private MouvementService mouvementService;
-    @Autowired
-    private DouaneService douaneService;
     @Autowired
     private TransactionRepository transactionRepository;
     @Autowired
@@ -2202,23 +2198,18 @@ public class VoyageServiceImpl implements VoyageService {
             throw new RuntimeException("Le voyage n'a pas de camion associé");
         }
 
-        // Calcul des frais : si l'axe du voyage a un pays avec des frais définis, on les utilise ; sinon, douane globale
-        BigDecimal fraisParLitre;
-        BigDecimal fraisT1;
+        // Calcul des frais via le pays de l'axe du voyage
+        if (voyage.getAxe() == null || voyage.getAxe().getPays() == null) {
+            throw new RuntimeException("L'axe du voyage n'a pas de pays configuré. Veuillez d'abord associer un pays à l'axe.");
+        }
+        com.backend.gesy.pays.Pays paysAxe = voyage.getAxe().getPays();
         boolean isGasoil = voyage.getProduit() != null && voyage.getProduit().getTypeProduit() != null
                 && voyage.getProduit().getTypeProduit() == Produit.TypeProduit.GAZOLE;
 
-        com.backend.gesy.pays.Pays paysAxe = (voyage.getAxe() != null) ? voyage.getAxe().getPays() : null;
-        if (paysAxe != null) {
-            fraisParLitre = isGasoil
-                    ? (paysAxe.getFraisParLitreGasoil() != null ? paysAxe.getFraisParLitreGasoil() : BigDecimal.ZERO)
-                    : (paysAxe.getFraisParLitre() != null ? paysAxe.getFraisParLitre() : BigDecimal.ZERO);
-            fraisT1 = paysAxe.getFraisT1() != null ? paysAxe.getFraisT1() : BigDecimal.ZERO;
-        } else {
-            DouaneDTO douane = douaneService.getDouane();
-            fraisParLitre = isGasoil ? douane.getFraisParLitreGasoil() : douane.getFraisParLitre();
-            fraisT1 = douane.getFraisT1();
-        }
+        BigDecimal fraisParLitre = isGasoil
+                ? (paysAxe.getFraisParLitreGasoil() != null ? paysAxe.getFraisParLitreGasoil() : BigDecimal.ZERO)
+                : (paysAxe.getFraisParLitre() != null ? paysAxe.getFraisParLitre() : BigDecimal.ZERO);
+        BigDecimal fraisT1 = paysAxe.getFraisT1() != null ? paysAxe.getFraisT1() : BigDecimal.ZERO;
 
         // Calculer les frais douane = fraisParLitre * capacité du camion
         BigDecimal fraisDouane = fraisParLitre.multiply(BigDecimal.valueOf(camion.getCapacite()));

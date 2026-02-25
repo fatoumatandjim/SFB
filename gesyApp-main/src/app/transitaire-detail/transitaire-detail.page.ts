@@ -6,10 +6,9 @@ import { Observable } from 'rxjs';
 import { VoyagesService, Voyage, VoyagePage, TransitaireStats } from '../services/voyages.service';
 import { TransactionsService, Transaction } from '../services/transactions.service';
 import { TransitairesService, Transitaire } from '../services/transitaires.service';
-import { DouaneService, Douane, HistoriqueDouane } from '../services/douane.service';
-import { AxesService, Axe } from '../services/axes.service';
-import { PaysService, Pays } from '../services/pays.service';
 import { CamionsService, Camion } from '../services/camions.service';
+import { PaysService, Pays } from '../services/pays.service';
+import { AxesService, Axe } from '../services/axes.service';
 import { addIcons } from 'ionicons';
 import { arrowBackOutline } from 'ionicons/icons';
 import { IonIcon } from '@ionic/angular/standalone';
@@ -85,29 +84,17 @@ export class TransitaireDetailPage implements OnInit {
   filterEndDate: string = '';
   useDateRange: boolean = false;
 
-  douane: Douane | null = null;
-  isLoadingDouane: boolean = false;
-  isEditingDouane: boolean = false;
-  douaneForm: Douane = { fraisParLitre: 0, fraisParLitreGasoil: 0, fraisT1: 0 };
-  historiqueDouane: HistoriqueDouane[] = [];
-  showHistorique: boolean = false;
-
   paysList: Pays[] = [];
-  isLoadingPays: boolean = false;
-  showPaysModal: boolean = false;
-  editingPays: Pays | null = null;
-  formPays: { nom: string; fraisParLitre: number; fraisParLitreGasoil: number; fraisT1: number } = { nom: '', fraisParLitre: 0, fraisParLitreGasoil: 0, fraisT1: 0 };
-  isSavingPays: boolean = false;
+  axesList: Axe[] = [];
 
   constructor(
     private route: ActivatedRoute,
     private router: Router,
     private voyagesService: VoyagesService,
     private transitairesService: TransitairesService,
-    private douaneService: DouaneService,
-    private axesService: AxesService,
-    private paysService: PaysService,
     private camionsService: CamionsService,
+    private paysService: PaysService,
+    private axesService: AxesService,
     private alertService: AlertService,
     private toastService: ToastService
   ) {
@@ -134,8 +121,7 @@ export class TransitaireDetailPage implements OnInit {
         };
         this.loadVoyages();
         this.loadStats();
-        this.loadDouane();
-        this.loadPays();
+        this.loadPaysAndAxes();
       },
       error: () => {
         this.toastService.error('Transitaire introuvable');
@@ -414,29 +400,31 @@ export class TransitaireDetailPage implements OnInit {
       this.toastService.error('Informations du voyage incomplètes');
       return;
     }
-    this.douaneService.getDouane().subscribe({
-      next: (douane: Douane) => {
-        this.camionsService.getCamionById(voyage.camionId).subscribe({
-          next: (camion: Camion) => {
-            const fraisDouane = douane.fraisParLitre * camion.capacite;
-            const fraisT1 = douane.fraisT1;
-            const message = `Déclarer le citerne ${camion.immatriculation}\n\nFrais douane: ${fraisDouane.toLocaleString('fr-FR')} FCFA\nFrais T1: ${fraisT1.toLocaleString('fr-FR')} FCFA\nTotal: ${(fraisDouane + fraisT1).toLocaleString('fr-FR')} FCFA`;
-            this.alertService.confirm(message, 'Confirmation').subscribe(confirmed => {
-              if (!confirmed) return;
-              this.voyagesService.declarerVoyage(voyage.id!, undefined, undefined).subscribe({
-                next: () => {
-                  this.loadVoyages();
-                  this.loadStats();
-                  this.toastService.success('Voyage déclaré avec succès');
-                },
-                error: (err) => this.toastService.error(err?.error?.message || 'Erreur lors de la déclaration')
-              });
-            });
-          },
-          error: () => this.toastService.error('Erreur lors de la récupération du camion')
+    this.camionsService.getCamionById(voyage.camionId).subscribe({
+      next: (camion: Camion) => {
+        const pays = this.getPaysForVoyage(voyage);
+        if (!pays) {
+          this.toastService.error('Aucun pays/frais configuré pour l\'axe de ce voyage');
+          return;
+        }
+        const isGasoil = voyage.typeProduit === 'GAZOLE';
+        const fraisParLitre = isGasoil ? pays.fraisParLitreGasoil : pays.fraisParLitre;
+        const fraisDouane = fraisParLitre * camion.capacite;
+        const fraisT1 = pays.fraisT1;
+        const message = `Déclarer le citerne ${camion.immatriculation}\n\nPays: ${pays.nom}\nFrais douane: ${fraisDouane.toLocaleString('fr-FR')} FCFA\nFrais T1: ${fraisT1.toLocaleString('fr-FR')} FCFA\nTotal: ${(fraisDouane + fraisT1).toLocaleString('fr-FR')} FCFA`;
+        this.alertService.confirm(message, 'Confirmation').subscribe(confirmed => {
+          if (!confirmed) return;
+          this.voyagesService.declarerVoyage(voyage.id!, undefined, undefined).subscribe({
+            next: () => {
+              this.loadVoyages();
+              this.loadStats();
+              this.toastService.success('Voyage déclaré avec succès');
+            },
+            error: (err) => this.toastService.error(err?.error?.message || 'Erreur lors de la déclaration')
+          });
         });
       },
-      error: () => this.toastService.error('Erreur lors de la récupération des frais douane')
+      error: () => this.toastService.error('Erreur lors de la récupération du camion')
     });
   }
 
@@ -496,40 +484,39 @@ export class TransitaireDetailPage implements OnInit {
       return;
     }
     const voyagesSelectionnes = this.filteredVoyages.filter(v => v.id && this.selectedVoyages.has(v.id));
-    this.douaneService.getDouane().subscribe({
-      next: (douane: Douane) => {
-        let totalFrais = 0;
-        let totalCamions = 0;
-        const camionPromises = voyagesSelectionnes.map(v => v.camionId ? this.camionsService.getCamionById(v.camionId).toPromise() : Promise.resolve(null));
-        Promise.all(camionPromises).then(camions => {
-          camions.forEach((camion, index) => {
-            if (camion) {
-              const voyage = voyagesSelectionnes[index];
-              const fraisParLitre = voyage.typeProduit === 'GAZOLE' ? douane.fraisParLitreGasoil : douane.fraisParLitre;
-              totalFrais += fraisParLitre * camion.capacite + douane.fraisT1;
-              totalCamions++;
-            }
-          });
-          this.alertService.confirm(`Déclarer ${totalCamions} camion(s)\n\nTotal: ${totalFrais.toLocaleString('fr-FR')} FCFA`, 'Confirmation').subscribe(confirmed => {
-            if (!confirmed) return;
-            this.isDeclaringMultiple = true;
-            this.voyagesService.declarerVoyagesMultiple(voyageIds, undefined, undefined).subscribe({
-              next: (updatedVoyages) => {
-                this.loadVoyages();
-                this.loadStats();
-                this.selectedVoyages.clear();
-                this.isDeclaringMultiple = false;
-                this.toastService.success(`${updatedVoyages.length} voyage(s) déclaré(s)`);
-              },
-              error: (err) => {
-                this.isDeclaringMultiple = false;
-                this.toastService.error(err?.error?.message || 'Erreur');
-              }
-            });
-          });
+    const camionPromises = voyagesSelectionnes.map(v => v.camionId ? this.camionsService.getCamionById(v.camionId).toPromise() : Promise.resolve(null));
+    Promise.all(camionPromises).then(camions => {
+      let totalFrais = 0;
+      let totalCamions = 0;
+      camions.forEach((camion, index) => {
+        if (camion) {
+          const voyage = voyagesSelectionnes[index];
+          const pays = this.getPaysForVoyage(voyage);
+          if (pays) {
+            const isGasoil = voyage.typeProduit === 'GAZOLE';
+            const fraisParLitre = isGasoil ? pays.fraisParLitreGasoil : pays.fraisParLitre;
+            totalFrais += fraisParLitre * camion.capacite + pays.fraisT1;
+            totalCamions++;
+          }
+        }
+      });
+      this.alertService.confirm(`Déclarer ${totalCamions} camion(s)\n\nTotal: ${totalFrais.toLocaleString('fr-FR')} FCFA`, 'Confirmation').subscribe(confirmed => {
+        if (!confirmed) return;
+        this.isDeclaringMultiple = true;
+        this.voyagesService.declarerVoyagesMultiple(voyageIds, undefined, undefined).subscribe({
+          next: (updatedVoyages) => {
+            this.loadVoyages();
+            this.loadStats();
+            this.selectedVoyages.clear();
+            this.isDeclaringMultiple = false;
+            this.toastService.success(`${updatedVoyages.length} voyage(s) déclaré(s)`);
+          },
+          error: (err) => {
+            this.isDeclaringMultiple = false;
+            this.toastService.error(err?.error?.message || 'Erreur');
+          }
         });
-      },
-      error: () => this.toastService.error('Erreur frais douane')
+      });
     });
   }
 
@@ -549,116 +536,23 @@ export class TransitaireDetailPage implements OnInit {
     });
   }
 
-  loadDouane() {
-    this.isLoadingDouane = true;
-    this.douaneService.getDouane().subscribe({
-      next: (douane) => {
-        this.douane = douane;
-        this.isLoadingDouane = false;
-      },
-      error: () => { this.isLoadingDouane = false; }
+
+  loadPaysAndAxes() {
+    this.paysService.getAll().subscribe({
+      next: (data) => { this.paysList = data; },
+      error: () => {}
     });
-  }
-
-  editDouane() {
-    if (this.douane) this.douaneForm = { ...this.douane };
-    this.isEditingDouane = true;
-  }
-
-  cancelEditDouane() {
-    this.isEditingDouane = false;
-  }
-
-  saveDouane() {
-    if (!this.douaneForm.fraisParLitre || !this.douaneForm.fraisParLitreGasoil || !this.douaneForm.fraisT1) {
-      this.toastService.error('Veuillez remplir tous les champs');
-      return;
-    }
-    this.douaneService.updateDouane(this.douaneForm).subscribe({
-      next: (updated) => {
-        this.douane = updated;
-        this.isEditingDouane = false;
-        this.toastService.success('Frais de douane mis à jour');
-        this.loadHistoriqueDouane();
-      },
-      error: () => { this.toastService.error('Erreur lors de la mise à jour'); }
-    });
-  }
-
-  loadHistoriqueDouane() {
-    this.douaneService.getHistorique().subscribe({
-      next: (historique) => { this.historiqueDouane = historique; },
+    this.axesService.getAllAxes().subscribe({
+      next: (data) => { this.axesList = data; },
       error: () => {}
     });
   }
 
-  toggleHistorique() {
-    this.showHistorique = !this.showHistorique;
-    if (this.showHistorique && this.historiqueDouane.length === 0) this.loadHistoriqueDouane();
-  }
-
-  loadPays() {
-    this.isLoadingPays = true;
-    this.paysService.getAll().subscribe({
-      next: (data) => { this.paysList = data; this.isLoadingPays = false; },
-      error: () => { this.isLoadingPays = false; }
-    });
-  }
-
-  openEditPaysModal(pays: Pays) {
-    this.editingPays = pays;
-    this.formPays = {
-      nom: pays.nom,
-      fraisParLitre: pays.fraisParLitre ?? 0,
-      fraisParLitreGasoil: pays.fraisParLitreGasoil ?? 0,
-      fraisT1: pays.fraisT1 ?? 0
-    };
-    this.showPaysModal = true;
-  }
-
-  openAddPaysModal() {
-    this.editingPays = null;
-    this.formPays = { nom: '', fraisParLitre: 0, fraisParLitreGasoil: 0, fraisT1: 0 };
-    this.showPaysModal = true;
-  }
-
-  closePaysModal() {
-    this.showPaysModal = false;
-    this.editingPays = null;
-  }
-
-  savePays() {
-    if (this.editingPays?.id) {
-      this.isSavingPays = true;
-      this.paysService.update(this.editingPays.id, this.formPays).subscribe({
-        next: () => {
-          this.loadPays();
-          this.closePaysModal();
-          this.isSavingPays = false;
-          this.toastService.success('Frais du pays mis à jour');
-        },
-        error: (err) => { this.isSavingPays = false; this.toastService.error(err?.error?.message || 'Erreur lors de la mise à jour'); }
-      });
-    } else {
-      const nom = this.formPays.nom?.trim();
-      if (!nom) {
-        this.toastService.error('Veuillez saisir le nom du pays');
-        return;
-      }
-      this.isSavingPays = true;
-      this.paysService.create({ ...this.formPays, nom }).subscribe({
-        next: () => {
-          this.loadPays();
-          this.closePaysModal();
-          this.isSavingPays = false;
-          this.toastService.success('Pays et frais ajoutés');
-        },
-        error: (err) => {
-          this.isSavingPays = false;
-          this.toastService.error(err?.error?.message || 'Erreur lors de la création');
-        }
-      });
-    }
+  getPaysForVoyage(voyage: VoyageDisplay): Pays | null {
+    if (!voyage.axeId) return null;
+    const axe = this.axesList.find(a => a.id === voyage.axeId);
+    if (!axe || !axe.paysId) return null;
+    return this.paysList.find(p => p.id === axe.paysId) ?? null;
   }
 
   formatDateTime(dateString: string): string {

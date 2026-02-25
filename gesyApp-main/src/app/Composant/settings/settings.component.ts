@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { UtilisateursService, Utilisateur, Role as RoleUtilisateur } from '../../services/utilisateurs.service';
 import { RolesService, Role } from '../../services/roles.service';
-import { DouaneService, Douane } from '../../services/douane.service';
 import { DepotsService, Depot } from '../../services/depots.service';
 import { NavigationService } from '../../services/navigation.service';
 import { AlertService } from '../../nativeComp/alert/alert.service';
@@ -61,20 +60,10 @@ export class SettingsComponent implements OnInit {
   confirmPassword: string = '';
   editingEmployeId: number | undefined;
 
-  // Frais Douane
-  douane: Douane | null = null;
-  isLoadingDouane: boolean = false;
-  isEditingDouane: boolean = false;
-  douaneForm: { fraisParLitre: number; fraisParLitreGasoil: number; fraisT1: number } = {
-    fraisParLitre: 0,
-    fraisParLitreGasoil: 0,
-    fraisT1: 0
-  };
 
   constructor(
     private utilisateursService: UtilisateursService,
     private rolesService: RolesService,
-    private douaneService: DouaneService,
     private depotsService: DepotsService,
     private navigationService: NavigationService,
     private alertService: AlertService,
@@ -88,7 +77,6 @@ export class SettingsComponent implements OnInit {
   ngOnInit() {
     this.loadEmployes();
     this.loadRoles();
-    this.loadDouane();
     this.loadDepots();
   }
 
@@ -362,77 +350,4 @@ export class SettingsComponent implements OnInit {
     this.toastService.success('Mot de passe changé avec succès');
   }
 
-  // Méthodes pour gérer les frais douane
-  loadDouane() {
-    this.isLoadingDouane = true;
-    this.douaneService.getDouane().subscribe({
-      next: (douane: Douane) => {
-        this.douane = douane;
-        this.douaneForm = {
-          fraisParLitre: douane.fraisParLitre,
-          fraisT1: douane.fraisT1,
-          fraisParLitreGasoil: douane.fraisParLitreGasoil
-        };
-        this.isLoadingDouane = false;
-      },
-      error: (error) => {
-        console.error('Erreur lors du chargement des frais douane:', error);
-        this.isLoadingDouane = false;
-        this.toastService.error('Erreur lors du chargement des frais douane');
-      }
-    });
-  }
-
-  editDouane() {
-    this.isEditingDouane = true;
-    if (this.douane) {
-      this.douaneForm = {
-        fraisParLitre: this.douane.fraisParLitre,
-        fraisParLitreGasoil: this.douane.fraisParLitreGasoil,
-        fraisT1: this.douane.fraisT1
-      };
-    }
-  }
-
-  cancelEditDouane() {
-    this.isEditingDouane = false;
-    if (this.douane) {
-      this.douaneForm = {
-        fraisParLitre: this.douane.fraisParLitre,
-        fraisParLitreGasoil: this.douane.fraisParLitreGasoil,
-        fraisT1: this.douane.fraisT1
-      };
-    }
-  }
-
-  saveDouane() {
-    if (!this.douaneForm.fraisParLitre || !this.douaneForm.fraisParLitreGasoil || !this.douaneForm.fraisT1) {
-      this.toastService.warning('Veuillez remplir tous les champs');
-      return;
-    }
-
-    if (this.douaneForm.fraisParLitre <= 0 || this.douaneForm.fraisParLitreGasoil <= 0 || this.douaneForm.fraisT1 <= 0) {
-      this.toastService.warning('Les frais doivent être supérieurs à 0');
-      return;
-    }
-
-    const douaneToUpdate: Douane = {
-      id: this.douane?.id,
-      fraisParLitre: this.douaneForm.fraisParLitre,
-      fraisParLitreGasoil: this.douaneForm.fraisParLitreGasoil,
-      fraisT1: this.douaneForm.fraisT1
-    };
-
-    this.douaneService.updateDouane(douaneToUpdate).subscribe({
-      next: (updated: Douane) => {
-        this.douane = updated;
-        this.isEditingDouane = false;
-        this.toastService.success('Frais douane mis à jour avec succès');
-      },
-      error: (error) => {
-        console.error('Erreur lors de la mise à jour des frais douane:', error);
-        this.toastService.error('Erreur lors de la mise à jour des frais douane');
-      }
-    });
-  }
 }

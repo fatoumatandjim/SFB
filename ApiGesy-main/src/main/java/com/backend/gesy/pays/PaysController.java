@@ -1,5 +1,6 @@
 package com.backend.gesy.pays;
 
+import com.backend.gesy.pays.dto.HistoriquePaysDTO;
 import com.backend.gesy.pays.dto.PaysDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -55,5 +56,10 @@ public class PaysController {
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    @GetMapping("/{id}/historique")
+    public ResponseEntity<List<HistoriquePaysDTO>> getHistorique(@PathVariable Long id) {
+        return ResponseEntity.ok(paysService.getHistoriqueByPaysId(id));
     }
 }

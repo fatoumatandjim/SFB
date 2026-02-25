@@ -1,4 +1,4 @@
-package com.backend.gesy.douane;
+package com.backend.gesy.pays;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -9,14 +9,18 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "historique_douanes")
+@Table(name = "historique_pays")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class HistoriqueDouane {
+public class HistoriquePays {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "pays_id", nullable = false)
+    private Pays pays;
 
     @Column(name = "ancien_frais_par_litre")
     private BigDecimal ancienFraisParLitre;

@@ -7,8 +7,6 @@ import com.backend.gesy.compte.Compte;
 import com.backend.gesy.compte.CompteRepository;
 import com.backend.gesy.depot.DepotService;
 import com.backend.gesy.depot.dto.DepotDTO;
-import com.backend.gesy.douane.Douane;
-import com.backend.gesy.douane.DouaneRepository;
 import com.backend.gesy.produit.ProduitService;
 import com.backend.gesy.produit.dto.ProduitDTO;
 import com.backend.gesy.roles.Roles;
@@ -39,8 +37,6 @@ public class GesyApplication {
 	private PasswordEncoder passwordEncoder;
 	@Autowired
 	private CompteRepository compteRepository;
-	@Autowired
-	private DouaneRepository douaneRepository;
 	@Autowired
 	private CategorieDepenseRepository categorieDepenseRepository;
 	public static void main(String[] args) {
@@ -74,17 +70,6 @@ public class GesyApplication {
 				utilisateurRepository.save(adminUser);
 			}
 
-			Douane existingDouane = douaneRepository.findFirstByOrderByIdAsc();
-
-			if (existingDouane == null) {
-				// Créer la configuration par défaut
-				Douane douane = new Douane();
-				douane.setFraisParLitre(new BigDecimal("240"));
-				douane.setFraisT1(new BigDecimal("240000"));
-				douane.setFraisParLitreGasoil(new BigDecimal("100"));
-
-				douaneRepository.save(douane);
-			}
 		};
 	}
 

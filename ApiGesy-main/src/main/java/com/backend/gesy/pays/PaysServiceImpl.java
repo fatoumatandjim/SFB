@@ -1,12 +1,18 @@
 package com.backend.gesy.pays;
 
+import com.backend.gesy.alerte.Alerte;
+import com.backend.gesy.alerte.AlerteRepository;
+import com.backend.gesy.pays.dto.HistoriquePaysDTO;
 import com.backend.gesy.pays.dto.PaysDTO;
 import com.backend.gesy.pays.dto.PaysMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -18,6 +24,8 @@ public class PaysServiceImpl implements PaysService {
 
     private final PaysRepository paysRepository;
     private final PaysMapper paysMapper;
+    private final HistoriquePaysRepository historiquePaysRepository;
+    private final AlerteRepository alerteRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -66,6 +74,40 @@ public class PaysServiceImpl implements PaysService {
             }
             existing.setNom(dto.getNom().trim());
         }
+
+        boolean fraisChanged = hasFraisChanged(existing, dto);
+
+        if (fraisChanged) {
+            String modifiePar = getCurrentUsername();
+
+            HistoriquePays historique = new HistoriquePays();
+            historique.setPays(existing);
+            historique.setAncienFraisParLitre(existing.getFraisParLitre());
+            historique.setNouveauFraisParLitre(dto.getFraisParLitre() != null ? dto.getFraisParLitre() : existing.getFraisParLitre());
+            historique.setAncienFraisParLitreGasoil(existing.getFraisParLitreGasoil());
+            historique.setNouveauFraisParLitreGasoil(dto.getFraisParLitreGasoil() != null ? dto.getFraisParLitreGasoil() : existing.getFraisParLitreGasoil());
+            historique.setAncienFraisT1(existing.getFraisT1());
+            historique.setNouveauFraisT1(dto.getFraisT1() != null ? dto.getFraisT1() : existing.getFraisT1());
+            historique.setDateModification(LocalDateTime.now());
+            historique.setModifiePar(modifiePar);
+            historique.setCommentaire(buildCommentaire(existing, dto));
+            historiquePaysRepository.save(historique);
+
+            Alerte alerte = new Alerte();
+            alerte.setType(Alerte.TypeAlerte.AUTRE);
+            alerte.setMessage(String.format("Modification des frais du pays %s par %s. Essence: %s → %s, Gasoil: %s → %s, T1: %s → %s",
+                    existing.getNom(), modifiePar,
+                    existing.getFraisParLitre(), dto.getFraisParLitre(),
+                    existing.getFraisParLitreGasoil(), dto.getFraisParLitreGasoil(),
+                    existing.getFraisT1(), dto.getFraisT1()));
+            alerte.setDate(LocalDateTime.now());
+            alerte.setLu(false);
+            alerte.setPriorite(Alerte.PrioriteAlerte.MOYENNE);
+            alerte.setEntiteType("Pays");
+            alerte.setEntiteId(existing.getId());
+            alerteRepository.save(alerte);
+        }
+
         if (dto.getFraisParLitre() != null) existing.setFraisParLitre(dto.getFraisParLitre());
         if (dto.getFraisParLitreGasoil() != null) existing.setFraisParLitreGasoil(dto.getFraisParLitreGasoil());
         if (dto.getFraisT1() != null) existing.setFraisT1(dto.getFraisT1());
@@ -79,5 +121,57 @@ public class PaysServiceImpl implements PaysService {
             throw new RuntimeException("Pays non trouvé avec l'id: " + id);
         }
         paysRepository.deleteById(id);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<HistoriquePaysDTO> getHistoriqueByPaysId(Long paysId) {
+        return historiquePaysRepository.findByPaysIdOrderByDateModificationDesc(paysId).stream()
+                .map(h -> {
+                    HistoriquePaysDTO dto = new HistoriquePaysDTO();
+                    dto.setId(h.getId());
+                    dto.setPaysId(h.getPays().getId());
+                    dto.setPaysNom(h.getPays().getNom());
+                    dto.setAncienFraisParLitre(h.getAncienFraisParLitre());
+                    dto.setNouveauFraisParLitre(h.getNouveauFraisParLitre());
+                    dto.setAncienFraisParLitreGasoil(h.getAncienFraisParLitreGasoil());
+                    dto.setNouveauFraisParLitreGasoil(h.getNouveauFraisParLitreGasoil());
+                    dto.setAncienFraisT1(h.getAncienFraisT1());
+                    dto.setNouveauFraisT1(h.getNouveauFraisT1());
+                    dto.setDateModification(h.getDateModification().toString());
+                    dto.setModifiePar(h.getModifiePar());
+                    dto.setCommentaire(h.getCommentaire());
+                    return dto;
+                })
+                .collect(Collectors.toList());
+    }
+
+    private boolean hasFraisChanged(Pays existing, PaysDTO dto) {
+        if (dto.getFraisParLitre() != null && existing.getFraisParLitre().compareTo(dto.getFraisParLitre()) != 0) return true;
+        if (dto.getFraisParLitreGasoil() != null && existing.getFraisParLitreGasoil().compareTo(dto.getFraisParLitreGasoil()) != 0) return true;
+        if (dto.getFraisT1() != null && existing.getFraisT1().compareTo(dto.getFraisT1()) != 0) return true;
+        return false;
+    }
+
+    private String getCurrentUsername() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated()) {
+            return authentication.getName();
+        }
+        return "Système";
+    }
+
+    private String buildCommentaire(Pays ancien, PaysDTO nouveau) {
+        StringBuilder sb = new StringBuilder();
+        if (nouveau.getFraisParLitre() != null && ancien.getFraisParLitre().compareTo(nouveau.getFraisParLitre()) != 0) {
+            sb.append(String.format("Essence: %s → %s. ", ancien.getFraisParLitre(), nouveau.getFraisParLitre()));
+        }
+        if (nouveau.getFraisParLitreGasoil() != null && ancien.getFraisParLitreGasoil().compareTo(nouveau.getFraisParLitreGasoil()) != 0) {
+            sb.append(String.format("Gasoil: %s → %s. ", ancien.getFraisParLitreGasoil(), nouveau.getFraisParLitreGasoil()));
+        }
+        if (nouveau.getFraisT1() != null && ancien.getFraisT1().compareTo(nouveau.getFraisT1()) != 0) {
+            sb.append(String.format("T1: %s → %s. ", ancien.getFraisT1(), nouveau.getFraisT1()));
+        }
+        return sb.toString().trim();
     }
 }
