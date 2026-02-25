@@ -1712,53 +1712,25 @@
 }
 
 // Modal de changement de statut (Suivi de transport - Changer le statut du voyage)
-// Variables dédiées (design tokens) : un seul endroit à modifier + option thème sombre
+// Mêmes couleurs que les autres modals (var(--bg-card), var(--text-primary), etc.) pour cohérence et visibilité
 .statut-modal {
-  // --- Tokens thème clair (défaut) ---
-  --statut-modal-bg: #ffffff;
-  --statut-modal-bg-header: #f8fafc;
-  --statut-modal-bg-muted: #f1f5f9;
-  --statut-modal-bg-form: #f8fafc;
-  --statut-modal-text: #0f172a;
-  --statut-modal-text-secondary: #334155;
-  --statut-modal-text-muted: #64748b;
-  --statut-modal-border: #e2e8f0;
-  --statut-modal-border-strong: #cbd5e1;
-  --statut-modal-border-hover: #94a3b8;
-  --statut-modal-accent: #2563eb;
-  --statut-modal-accent-hover: #1d4ed8;
-  --statut-modal-accent-bg: #eff6ff;
-  --statut-modal-success: #16a34a;
-  --statut-modal-info-bg: #f0f9ff;
-  --statut-modal-info-border: #bae6fd;
-  --statut-modal-danger-bg: #fef2f2;
-  --statut-modal-danger-border: #dc2626;
-  --statut-modal-danger-text: #991b1b;
-  --statut-modal-btn-cancel-bg: #f1f5f9;
-  --statut-modal-btn-cancel-text: #334155;
-  --statut-modal-btn-cancel-border: #cbd5e1;
-  --statut-modal-btn-submit-bg: #2563eb;
-  --statut-modal-btn-submit-text: #ffffff;
-  --statut-modal-btn-disabled-bg: #94a3b8;
-
   max-width: 500px;
   width: 90%;
-  background: var(--statut-modal-bg);
+  background: var(--bg-card);
 
   .modal-header {
-    background: var(--statut-modal-bg-header);
-    border-bottom: 1px solid var(--statut-modal-border);
+    border-bottom: 1px solid var(--border-color);
     padding: 16px 20px;
 
     h2 {
-      color: var(--statut-modal-text);
+      color: var(--text-primary);
       font-weight: 600;
       font-size: 1.125rem;
       margin: 0;
     }
 
     .modal-close {
-      color: var(--statut-modal-text-secondary);
+      color: var(--text-muted);
       font-size: 24px;
       line-height: 1;
       padding: 0 4px;
@@ -1767,26 +1739,26 @@
       border: none;
     }
     .modal-close:hover {
-      color: var(--statut-modal-text);
+      color: var(--text-primary);
     }
   }
 
   .modal-body {
-    background: var(--statut-modal-bg);
-    color: var(--statut-modal-text-secondary);
+    background: var(--bg-card);
+    color: var(--text-secondary);
   }
 
   .voyage-info {
     margin-bottom: 20px;
     padding: 12px;
-    background: var(--statut-modal-bg-muted);
+    background: var(--bg-primary);
     border-radius: 8px;
     font-size: 14px;
-    color: var(--statut-modal-text-secondary);
+    color: var(--text-secondary);
   }
 
   .voyage-info strong {
-    color: var(--statut-modal-text);
+    color: var(--text-primary);
   }
 
   .etats-list {
@@ -1799,42 +1771,42 @@
   }
   .etat-info {
     padding: 12px 16px;
-    border: 2px solid var(--statut-modal-danger-border);
+    border: 2px solid var(--danger);
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s;
-    background: var(--statut-modal-danger-bg);
-    color: var(--statut-modal-danger-text);
+    background: var(--bg-primary);
+    color: var(--danger);
     text-align: center;
     font-weight: 600;
   }
 
   .etat-item {
     padding: 12px 16px;
-    border: 2px solid var(--statut-modal-border);
+    border: 2px solid var(--border-color);
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s;
-    background: var(--statut-modal-bg);
+    background: var(--bg-card);
 
     &:hover:not(.etat-valide) {
       border-color: var(--accent-primary);
-      background: var(--statut-modal-accent-bg);
+      background: var(--bg-primary);
     }
 
     &.etat-valide {
-      background: var(--statut-modal-bg-muted);
-      border-color: var(--statut-modal-border);
+      background: var(--bg-primary);
+      border-color: var(--border-color);
       cursor: not-allowed;
       opacity: 0.9;
 
       .etat-content {
         .etat-label {
-          color: var(--statut-modal-text-muted);
+          color: var(--text-muted);
         }
 
         .etat-date {
-          color: var(--statut-modal-text-muted);
+          color: var(--text-muted);
           font-size: 12px;
         }
       }
@@ -1842,7 +1814,7 @@
 
     &.etat-selected:not(.etat-valide) {
       border-color: var(--accent-primary);
-      background: var(--statut-modal-accent-bg);
+      background: var(--bg-primary);
       box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
     }
 
@@ -1857,18 +1829,18 @@
         gap: 8px;
         font-size: 14px;
         font-weight: 500;
-        color: var(--statut-modal-text);
+        color: var(--text-primary);
       }
 
       .etat-label .check-icon {
-        color: var(--statut-modal-success);
+        color: var(--accent-primary);
         font-weight: bold;
         font-size: 16px;
       }
 
       .etat-date {
         font-size: 12px;
-        color: var(--statut-modal-text-muted);
+        color: var(--text-muted);
         font-style: italic;
       }
     }
@@ -1877,15 +1849,15 @@
   .livre-form {
     margin-top: 24px;
     padding: 20px;
-    background: var(--statut-modal-bg-form);
+    background: var(--bg-primary);
     border-radius: 8px;
-    border: 1px solid var(--statut-modal-border);
+    border: 1px solid var(--border-color);
 
     h3 {
       margin: 0 0 20px 0;
       font-size: 16px;
       font-weight: 600;
-      color: var(--statut-modal-text);
+      color: var(--text-primary);
       display: flex;
       align-items: center;
       gap: 8px;
@@ -1907,7 +1879,7 @@
         display: block;
         font-size: 13px;
         font-weight: 600;
-        color: var(--statut-modal-text-secondary);
+        color: var(--text-secondary);
         margin-bottom: 8px;
 
         &::after {
@@ -1918,13 +1890,13 @@
       .form-input {
         width: 100%;
         padding: 12px;
-        border: 1px solid var(--statut-modal-border);
+        border: 1px solid var(--border-color);
         border-radius: 6px;
         font-size: 14px;
         outline: none;
         transition: all 0.2s;
-        background: var(--statut-modal-bg);
-        color: var(--statut-modal-text);
+        background: var(--bg-card);
+        color: var(--text-primary);
 
         &:focus {
           border-color: var(--accent-primary);
@@ -1932,11 +1904,11 @@
         }
 
         &:hover:not(:focus) {
-          border-color: var(--statut-modal-border-hover);
+          border-color: var(--text-muted);
         }
 
         &::placeholder {
-          color: var(--statut-modal-text-muted);
+          color: var(--text-muted);
         }
       }
 
@@ -1944,7 +1916,7 @@
         display: block;
         margin-top: 6px;
         font-size: 12px;
-        color: var(--statut-modal-text-muted);
+        color: var(--text-muted);
         font-style: italic;
       }
 
@@ -2226,15 +2198,15 @@
   .decharger-form {
     margin-top: 24px;
     padding: 20px;
-    background: var(--statut-modal-bg-form);
+    background: var(--bg-primary);
     border-radius: 8px;
-    border: 1px solid var(--statut-modal-border);
+    border: 1px solid var(--border-color);
 
     h3 {
       margin: 0 0 20px 0;
       font-size: 16px;
       font-weight: 600;
-      color: var(--statut-modal-text);
+      color: var(--text-primary);
       display: flex;
       align-items: center;
       gap: 8px;
@@ -2253,8 +2225,8 @@
       }
 
       &.client-livre {
-        background: var(--statut-modal-info-bg);
-        border: 1px solid var(--statut-modal-info-border);
+        background: var(--bg-tertiary);
+        border: 1px solid var(--border-color);
         border-radius: 8px;
         padding: 1rem;
         margin-bottom: 1rem;
@@ -2271,14 +2243,14 @@
             gap: 0.5rem;
             cursor: pointer;
             font-weight: 500;
-            color: var(--statut-modal-text);
+            color: var(--text-primary);
             flex: 1;
 
             .toggle-checkbox {
               width: 20px;
               height: 20px;
               cursor: pointer;
-              accent-color: var(--statut-modal-success);
+              accent-color: var(--accent-primary);
             }
 
             .toggle-text {
@@ -2288,8 +2260,8 @@
             }
 
             .livre-badge {
-              background: var(--statut-modal-success);
-              color: white;
+              background: var(--accent-primary);
+              color: var(--bg-card);
               padding: 2px 8px;
               border-radius: 12px;
               font-size: 12px;
@@ -2299,8 +2271,8 @@
 
           .btn-modifier {
             padding: 4px 12px;
-            background: var(--statut-modal-accent);
-            color: white;
+            background: var(--accent-primary);
+            color: var(--bg-card);
             border: none;
             border-radius: 4px;
             font-size: 12px;
@@ -2308,7 +2280,7 @@
             transition: background 0.2s;
 
             &:hover {
-              background: var(--statut-modal-accent-hover);
+              opacity: 0.9;
             }
           }
         }
@@ -2318,13 +2290,13 @@
             display: block;
             font-size: 13px;
             font-weight: 600;
-            color: var(--statut-modal-text-secondary);
+            color: var(--text-secondary);
             margin-bottom: 8px;
           }
 
           .form-input.disabled {
-            background: var(--statut-modal-bg-muted);
-            color: var(--statut-modal-text-muted);
+            background: var(--bg-primary);
+            color: var(--text-muted);
             cursor: not-allowed;
             opacity: 0.7;
           }
@@ -2342,17 +2314,17 @@
       .form-input {
         width: 100%;
         padding: 12px;
-        border: 1px solid var(--statut-modal-border);
+        border: 1px solid var(--border-color);
         border-radius: 6px;
         font-size: 14px;
         outline: none;
         transition: all 0.2s;
-        background: var(--statut-modal-bg);
-        color: var(--statut-modal-text);
+        background: var(--bg-card);
+        color: var(--text-primary);
 
         &.disabled {
-          background: var(--statut-modal-bg-muted);
-          color: var(--statut-modal-text-muted);
+          background: var(--bg-primary);
+          color: var(--text-muted);
           cursor: not-allowed;
           opacity: 0.7;
         }
@@ -2363,11 +2335,11 @@
         }
 
         &:hover:not(:focus) {
-          border-color: var(--statut-modal-border-hover);
+          border-color: var(--text-muted);
         }
 
         &::placeholder {
-          color: var(--statut-modal-text-muted);
+          color: var(--text-muted);
         }
       }
 
@@ -2375,7 +2347,7 @@
         display: block;
         margin-top: 6px;
         font-size: 12px;
-        color: var(--statut-modal-text-muted);
+        color: var(--text-muted);
         font-style: italic;
       }
     }
@@ -2401,13 +2373,13 @@
     justify-content: flex-end;
     margin-top: 20px;
     padding-top: 20px;
-    border-top: 1px solid var(--statut-modal-border);
+    border-top: 1px solid var(--border-color);
 
     .btn-cancel {
       padding: 10px 20px;
-      background: var(--statut-modal-btn-cancel-bg);
-      color: var(--statut-modal-btn-cancel-text);
-      border: 1px solid var(--statut-modal-btn-cancel-border);
+      background: var(--bg-card);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-color);
       border-radius: 6px;
       font-size: 14px;
       font-weight: 500;
@@ -2415,16 +2387,16 @@
       transition: all 0.2s;
 
       &:hover {
-        background: var(--statut-modal-bg-muted);
-        border-color: var(--statut-modal-border-hover);
-        color: var(--statut-modal-text);
+        background: var(--bg-primary);
+        border-color: var(--text-muted);
+        color: var(--text-primary);
       }
     }
 
     .btn-submit {
       padding: 10px 20px;
-      background: var(--statut-modal-btn-submit-bg);
-      color: var(--statut-modal-btn-submit-text);
+      background: var(--accent-primary);
+      color: var(--bg-card);
       border: none;
       border-radius: 6px;
       font-size: 14px;
@@ -2433,41 +2405,18 @@
       transition: all 0.2s;
 
       &:hover:not(:disabled) {
-        background: var(--statut-modal-accent-hover);
+        opacity: 0.95;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);
       }
 
       &:disabled {
-        background: var(--statut-modal-btn-disabled-bg);
-        color: var(--statut-modal-btn-submit-text);
+        background: var(--text-muted);
+        color: var(--bg-card);
         cursor: not-allowed;
-        opacity: 0.7;
+        opacity: 0.6;
       }
     }
-  }
-}
-
-// Thème sombre optionnel pour le modal statut (prefers-color-scheme ou .dark sur le host)
-@media (prefers-color-scheme: dark) {
-  .statut-modal {
-    --statut-modal-bg: #1e293b;
-    --statut-modal-bg-header: #334155;
-    --statut-modal-bg-muted: #334155;
-    --statut-modal-bg-form: #334155;
-    --statut-modal-text: #f1f5f9;
-    --statut-modal-text-secondary: #cbd5e1;
-    --statut-modal-text-muted: #94a3b8;
-    --statut-modal-border: #475569;
-    --statut-modal-border-strong: #64748b;
-    --statut-modal-border-hover: #94a3b8;
-    --statut-modal-accent-bg: rgba(59, 130, 246, 0.2);
-    --statut-modal-info-bg: rgba(59, 130, 246, 0.15);
-    --statut-modal-info-border: rgba(59, 130, 246, 0.4);
-    --statut-modal-btn-cancel-bg: #475569;
-    --statut-modal-btn-cancel-text: #e2e8f0;
-    --statut-modal-btn-cancel-border: #64748b;
-    --statut-modal-danger-bg: #450a0a;
-    --statut-modal-danger-border: #dc2626;
-    --statut-modal-danger-text: #fecaca;
   }
 }
 
