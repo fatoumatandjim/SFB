@@ -614,9 +614,14 @@ export class TransitaireDetailPage implements OnInit {
     });
   }
 
+  /**
+   * Regroupe l'affichage des frais par axe sous un "bureau" (Dakar / Abidjan).
+   * Le bureau est déduit du NOM de l'axe (liste fixe ci‑dessous), pas stocké en base.
+   * Pour que ce soit configurable : ajouter un champ "bureau" sur l'entité Axe côté backend.
+   */
   getBureauForAxe(axeNom: string | undefined): string {
     if (!axeNom) return 'Autre';
-    const n = axeNom.toLowerCase();
+    const n = axeNom.toLowerCase().trim();
     if (n === 'diboli' || n === 'moussala') return 'Dakar';
     if (n === 'kadiana' || n === 'zegoua') return 'Abidjan';
     return 'Autre';
