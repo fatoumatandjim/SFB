@@ -10,6 +10,7 @@ import { TransitairesService, Transitaire } from '../services/transitaires.servi
 import { CamionsService, Camion } from '../services/camions.service';
 import { PaysService, Pays } from '../services/pays.service';
 import { AxesService, Axe } from '../services/axes.service';
+import { AxesComponent } from '../Composant/axes/axes.component';
 import { addIcons } from 'ionicons';
 import { logOutOutline } from 'ionicons/icons';
 import { IonIcon } from '@ionic/angular/standalone';
@@ -38,7 +39,7 @@ interface TransitaireInfo {
   templateUrl: './for-transitaire.page.html',
   styleUrls: ['./for-transitaire.page.scss'],
   standalone: true,
-  imports: [CommonModule, FormsModule, IonIcon]
+  imports: [CommonModule, FormsModule, IonIcon, AxesComponent]
 })
 export class ForTransitairePage implements OnInit {
   activeTab: 'en-cours' | 'voyages-en-cours' | 'archives' = 'en-cours';
@@ -132,7 +133,7 @@ export class ForTransitairePage implements OnInit {
     // Charger uniquement les voyages non déclarés pour l'onglet "en-cours" via l'identifiant
     this.voyagesService.getVoyagesNonDeclaresByTransitaireIdentifiant(this.transitaireInfo.identifiant).subscribe({
       next: (data) => {
-        this.voyages = data.map(v => ({
+        this.voyages = this.sortByDateDepartAsc(data.map(v => ({
           ...v,
           camionImmatriculation: (v as any).camionImmatriculation,
           clientNom: (v as any).clientNom,
@@ -176,7 +177,7 @@ export class ForTransitairePage implements OnInit {
       )
       .subscribe({
         next: (page: VoyagePage) => {
-          this.voyagesEnCours = (page.voyages || []).map(v => ({
+          this.voyagesEnCours = this.sortByDateDepartAsc((page.voyages || []).map(v => ({
             ...v,
             camionImmatriculation: (v as any).camionImmatriculation,
             clientNom: (v as any).clientNom,
@@ -273,7 +274,7 @@ export class ForTransitairePage implements OnInit {
 
     request.subscribe({
       next: (page: VoyagePage) => {
-        this.filteredVoyages = page.voyages.map(v => ({
+        this.filteredVoyages = this.sortByDateDepartAsc(page.voyages.map(v => ({
           ...v,
           camionImmatriculation: (v as any).camionImmatriculation,
           clientNom: (v as any).clientNom,
@@ -782,6 +783,14 @@ export class ForTransitairePage implements OnInit {
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
+    });
+  }
+
+  private sortByDateDepartAsc<T extends { dateDepart?: string }>(voyages: T[]): T[] {
+    return voyages.sort((a, b) => {
+      const da = a.dateDepart ? new Date(a.dateDepart).getTime() : 0;
+      const db = b.dateDepart ? new Date(b.dateDepart).getTime() : 0;
+      return da - db;
     });
   }
 }

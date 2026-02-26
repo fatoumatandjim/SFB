@@ -190,7 +190,7 @@
           <th>Type Produit</th>
           <th>Quantité</th>
           <th>Départ</th>
-          <th>Destination</th>
+          <th>Axe</th>
           <th>Actions</th>
         </tr>
       </thead>
@@ -243,7 +243,7 @@
                 <td><div class="produit-type">{{ voyage.typeProduit || 'Essence' }}</div></td>
                 <td><div class="quantite">{{ voyage.quantite }} L</div></td>
                 <td><div class="date-value">{{ formatDate(voyage.dateDepart) }}</div></td>
-                <td><div class="destination-value">{{ voyage.destination }}</div></td>
+                <td><div class="destination-value">{{ getAxeName(voyage) }}</div></td>
                 <td>
                   <button class="action-btn" (click)="viewVoyage(voyage)" title="Voir le détail">Voir</button>
                 </td>
@@ -331,7 +331,7 @@
                 <div class="date-value">{{ formatDate(voyage.dateDepart) }}</div>
               </td>
               <td>
-                <div class="destination-value">{{ voyage.destination }}</div>
+                <div class="destination-value">{{ getAxeName(voyage) }}</div>
               </td>
               <td>
                 <div class="action-buttons">

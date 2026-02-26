@@ -148,6 +148,7 @@ export class TransitaireDetailPage implements OnInit {
           transactions: (v as any).transactions || [],
           liberer: (v as any).liberer ?? false
         }));
+        this.sortVoyagesByDateDepartAsc(this.voyages);
         this.updateFilteredVoyages();
         this.isLoading = false;
       },
@@ -190,6 +191,7 @@ export class TransitaireDetailPage implements OnInit {
             transactions: (v as any).transactions || [],
             liberer: (v as any).liberer ?? false
           }));
+          this.sortVoyagesByDateDepartAsc(this.voyagesEnCours);
           this.totalPagesEnCours = page.totalPages ?? 0;
           this.totalElementsEnCours = page.totalElements ?? 0;
           this.isLoadingEnCours = false;
@@ -228,10 +230,11 @@ export class TransitaireDetailPage implements OnInit {
       filtered = filtered.filter(v =>
         v.numeroVoyage?.toLowerCase().includes(term) ||
         v.clientNom?.toLowerCase().includes(term) ||
-        v.destination?.toLowerCase().includes(term) ||
+        this.getAxeName(v).toLowerCase().includes(term) ||
         v.camionImmatriculation?.toLowerCase().includes(term)
       );
     }
+    this.sortVoyagesByDateDepartAsc(filtered);
     this.filteredVoyages = filtered;
   }
 
@@ -267,12 +270,13 @@ export class TransitaireDetailPage implements OnInit {
           typeProduit: (v as any).typeProduit || 'Essence',
           transactions: (v as any).transactions || []
         }));
+        this.sortVoyagesByDateDepartAsc(this.filteredVoyages);
         if (this.searchTerm.trim()) {
           const term = this.searchTerm.toLowerCase();
           this.filteredVoyages = this.filteredVoyages.filter(v =>
             v.numeroVoyage?.toLowerCase().includes(term) ||
             v.clientNom?.toLowerCase().includes(term) ||
-            v.destination?.toLowerCase().includes(term) ||
+            this.getAxeName(v).toLowerCase().includes(term) ||
             v.camionImmatriculation?.toLowerCase().includes(term));
         }
         this.currentPage = page.currentPage;
@@ -555,10 +559,26 @@ export class TransitaireDetailPage implements OnInit {
     return this.paysList.find(p => p.id === axe.paysId) ?? null;
   }
 
+  getAxeName(voyage: VoyageDisplay): string {
+    if (!voyage.axeId) {
+      return voyage.destination || '';
+    }
+    const axe = this.axesList.find(a => a.id === voyage.axeId);
+    return axe?.nom || voyage.destination || '';
+  }
+
   formatDateTime(dateString: string): string {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('fr-FR', {
       day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+  }
+
+  private sortVoyagesByDateDepartAsc(list: VoyageDisplay[]) {
+    list.sort((a, b) => {
+      const da = a.dateDepart ? new Date(a.dateDepart).getTime() : 0;
+      const db = b.dateDepart ? new Date(b.dateDepart).getTime() : 0;
+      return da - db;
     });
   }
 }
