@@ -170,8 +170,8 @@ public class VoyageServiceImpl implements VoyageService {
     public List<VoyageDTO> findVoyagesNonDeclaresByTransitaireId(Long transitaireId) {
         Transitaire transitaire = transitaireRepository.findById(transitaireId)
                 .orElseThrow(() -> new RuntimeException("Transitaire non trouvé avec l'id: " + transitaireId));
-        // Voyages actifs = non libérés (reste en « en cours » après déclarer ou passer non déclarer)
-        return voyageRepository.findVoyagesActifsByTransitaire(transitaire)
+        // À déclarer = non déclarés uniquement ; reste dans la liste même après Libérer tant que non déclaré
+        return voyageRepository.findVoyagesNonDeclaresByTransitaire(transitaire)
                 .stream()
                 .map(voyageMapper::toDTO)
                 .collect(Collectors.toList());
@@ -181,8 +181,8 @@ public class VoyageServiceImpl implements VoyageService {
     public List<VoyageDTO> findVoyagesNonDeclaresByTransitaireIdentifiant(String identifiant) {
         Transitaire transitaire = transitaireRepository.findByIdentifiant(identifiant)
                 .orElseThrow(() -> new RuntimeException("Transitaire non trouvé avec l'identifiant: " + identifiant));
-        // Voyages actifs = non libérés (reste en « en cours » après déclarer ou passer non déclarer)
-        return voyageRepository.findVoyagesActifsByTransitaire(transitaire)
+        // À déclarer = non déclarés uniquement ; reste dans la liste même après Libérer tant que non déclaré
+        return voyageRepository.findVoyagesNonDeclaresByTransitaire(transitaire)
                 .stream()
                 .map(voyageMapper::toDTO)
                 .collect(Collectors.toList());
