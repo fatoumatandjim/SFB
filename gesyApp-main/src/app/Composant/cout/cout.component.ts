@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FournisseursService, Fournisseur } from '../../services/fournisseurs.service';
 import { VoyagesService, CoutTransport } from '../../services/voyages.service';
+import { CamionsService, CamionWithVoyagesCount } from '../../services/camions.service';
 
 
 @Component({
@@ -28,9 +29,18 @@ export class CoutComponent implements OnInit {
   totalNonPaye: number = 0;
   totalPaye: number = 0;
 
+  // Diagnostic (pour comprendre pourquoi la liste est vide)
+  diagnosticIsLoading: boolean = false;
+  diagnosticError: string | null = null;
+  diagnosticCamions: CamionWithVoyagesCount[] = [];
+  diagnosticCamionsCount: number = 0;
+  diagnosticVoyagesCount: number = 0;
+  diagnosticVoyagesNonCessionCount: number = 0;
+
   constructor(
     private fournisseursService: FournisseursService,
-    private voyagesService: VoyagesService
+    private voyagesService: VoyagesService,
+    private camionsService: CamionsService
   ) {}
 
   ngOnInit() {
@@ -39,11 +49,11 @@ export class CoutComponent implements OnInit {
 
   loadFournisseurs() {
     this.fournisseursService.getAllFournisseurs().subscribe({
-      next: (data) => {
+      next: (data: Fournisseur[]) => {
         // Filtrer uniquement les fournisseurs de transport
-        this.fournisseurs = data.filter(f => f.typeFournisseur === 'TRANSPORT');
+        this.fournisseurs = (data || []).filter((f: Fournisseur) => f.typeFournisseur === 'TRANSPORT');
       },
-      error: (error) => {
+      error: (error: unknown) => {
         console.error('Erreur lors du chargement des fournisseurs:', error);
       }
     });
@@ -55,6 +65,7 @@ export class CoutComponent implements OnInit {
     } else {
       this.couts = [];
       this.resetStats();
+      this.resetDiagnostic();
     }
   }
 
@@ -75,10 +86,12 @@ export class CoutComponent implements OnInit {
     if (fournisseurId == null) {
       this.couts = [];
       this.resetStats();
+      this.resetDiagnostic();
       return;
     }
 
     this.isLoading = true;
+    this.loadDiagnostic(fournisseurId);
 
     // Préparer les paramètres
     let filterOption = this.filterOption;
@@ -92,7 +105,7 @@ export class CoutComponent implements OnInit {
 
     // Appeler le backend
     this.voyagesService.getCoutsTransport(fournisseurId, filterOption, startDate, endDate).subscribe({
-      next: (response) => {
+      next: (response: any) => {
         this.couts = response.couts ?? [];
         // Mettre à jour les statistiques depuis le backend
         if (response.stats) {
@@ -104,11 +117,45 @@ export class CoutComponent implements OnInit {
         }
         this.isLoading = false;
       },
-      error: (error: any) => {
+      error: (error: unknown) => {
         console.error('Erreur lors du chargement des coûts:', error);
         this.couts = [];
         this.resetStats();
         this.isLoading = false;
+      }
+    });
+  }
+
+  private resetDiagnostic() {
+    this.diagnosticIsLoading = false;
+    this.diagnosticError = null;
+    this.diagnosticCamions = [];
+    this.diagnosticCamionsCount = 0;
+    this.diagnosticVoyagesCount = 0;
+    this.diagnosticVoyagesNonCessionCount = 0;
+  }
+
+  private loadDiagnostic(fournisseurId: number) {
+    this.diagnosticIsLoading = true;
+    this.diagnosticError = null;
+
+    this.camionsService.getCamionsByFournisseur(fournisseurId).subscribe({
+      next: (camions: CamionWithVoyagesCount[]) => {
+        const list: CamionWithVoyagesCount[] = camions ?? [];
+        this.diagnosticCamions = list;
+        this.diagnosticCamionsCount = list.length;
+        this.diagnosticVoyagesCount = list.reduce((sum: number, c: CamionWithVoyagesCount) => sum + (c.nombreVoyages || 0), 0);
+        this.diagnosticVoyagesNonCessionCount = list.reduce((sum: number, c: CamionWithVoyagesCount) => sum + (c.nombreVoyagesNonCession || 0), 0);
+        this.diagnosticIsLoading = false;
+      },
+      error: (error: unknown) => {
+        console.error('Erreur lors du diagnostic camions/voyages:', error);
+        this.diagnosticError = 'Impossible de charger le diagnostic (camions/voyages).';
+        this.diagnosticCamions = [];
+        this.diagnosticCamionsCount = 0;
+        this.diagnosticVoyagesCount = 0;
+        this.diagnosticVoyagesNonCessionCount = 0;
+        this.diagnosticIsLoading = false;
       }
     });
   }

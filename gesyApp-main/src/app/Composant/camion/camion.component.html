@@ -249,9 +249,9 @@
                 [(ngModel)]="newCamion.fournisseurId"
                 name="fournisseurId"
               >
-                <option [value]="undefined">Sélectionner un fournisseur (optionnel)</option>
+                <option [ngValue]="undefined">Sélectionner un fournisseur (optionnel)</option>
                 @for (fournisseur of fournisseursTransport; track fournisseur.id) {
-                <option [value]="fournisseur.id">
+                <option [ngValue]="fournisseur.id">
                   {{ fournisseur.nom }} - {{ fournisseur.email }}
                 </option>
                 }

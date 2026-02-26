@@ -34,6 +34,7 @@ export interface CamionWithVoyagesCount {
   capacite: number;
   statut: string;
   nombreVoyages: number;
+  nombreVoyagesNonCession?: number;
 }
 
 @Injectable({
