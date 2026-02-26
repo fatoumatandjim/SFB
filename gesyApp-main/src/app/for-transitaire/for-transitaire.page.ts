@@ -133,15 +133,17 @@ export class ForTransitairePage implements OnInit {
     // Charger uniquement les voyages non déclarés pour l'onglet "en-cours" via l'identifiant
     this.voyagesService.getVoyagesNonDeclaresByTransitaireIdentifiant(this.transitaireInfo.identifiant).subscribe({
       next: (data) => {
-        this.voyages = this.sortByDateDepartAsc(data.map(v => ({
-          ...v,
-          camionImmatriculation: (v as any).camionImmatriculation,
-          clientNom: (v as any).clientNom,
-          clientEmail: (v as any).clientEmail,
-          typeProduit: (v as any).typeProduit || 'Essence',
-          transactions: (v as any).transactions || [],
-          liberer: (v as any).liberer ?? false
-        }));
+        this.voyages = this.sortByDateDepartAsc(
+          data.map(v => ({
+            ...v,
+            camionImmatriculation: (v as any).camionImmatriculation,
+            clientNom: (v as any).clientNom,
+            clientEmail: (v as any).clientEmail,
+            typeProduit: (v as any).typeProduit || 'Essence',
+            transactions: (v as any).transactions || [],
+            liberer: (v as any).liberer ?? false
+          }))
+        );
         this.updateFilteredVoyages();
         this.isLoading = false;
       },
@@ -177,15 +179,17 @@ export class ForTransitairePage implements OnInit {
       )
       .subscribe({
         next: (page: VoyagePage) => {
-          this.voyagesEnCours = this.sortByDateDepartAsc((page.voyages || []).map(v => ({
-            ...v,
-            camionImmatriculation: (v as any).camionImmatriculation,
-            clientNom: (v as any).clientNom,
-            clientEmail: (v as any).clientEmail,
-            typeProduit: (v as any).typeProduit || 'Essence',
-            transactions: (v as any).transactions || [],
-            liberer: (v as any).liberer ?? false
-          }));
+          this.voyagesEnCours = this.sortByDateDepartAsc(
+            (page.voyages || []).map(v => ({
+              ...v,
+              camionImmatriculation: (v as any).camionImmatriculation,
+              clientNom: (v as any).clientNom,
+              clientEmail: (v as any).clientEmail,
+              typeProduit: (v as any).typeProduit || 'Essence',
+              transactions: (v as any).transactions || [],
+              liberer: (v as any).liberer ?? false
+            }))
+          );
           this.totalPagesEnCours = page.totalPages ?? 0;
           this.totalElementsEnCours = page.totalElements ?? 0;
           this.isLoadingEnCours = false;
@@ -274,14 +278,16 @@ export class ForTransitairePage implements OnInit {
 
     request.subscribe({
       next: (page: VoyagePage) => {
-        this.filteredVoyages = this.sortByDateDepartAsc(page.voyages.map(v => ({
-          ...v,
-          camionImmatriculation: (v as any).camionImmatriculation,
-          clientNom: (v as any).clientNom,
-          clientEmail: (v as any).clientEmail,
-          typeProduit: (v as any).typeProduit || 'Essence',
-          transactions: (v as any).transactions || []
-        }));
+        this.filteredVoyages = this.sortByDateDepartAsc(
+          page.voyages.map(v => ({
+            ...v,
+            camionImmatriculation: (v as any).camionImmatriculation,
+            clientNom: (v as any).clientNom,
+            clientEmail: (v as any).clientEmail,
+            typeProduit: (v as any).typeProduit || 'Essence',
+            transactions: (v as any).transactions || []
+          }))
+        );
 
         // Appliquer le filtre de recherche si présent
         if (this.searchTerm.trim()) {
