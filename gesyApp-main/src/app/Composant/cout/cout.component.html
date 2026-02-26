@@ -141,6 +141,13 @@
     <div class="empty-state">
       <p><strong>Aucun coût trouvé pour les critères sélectionnés.</strong></p>
 
+      @if (coutsError) {
+        <div class="diagnostic error">
+          <p class="diagnostic-title">Erreur lors du chargement des coûts</p>
+          <p class="diagnostic-line">{{ coutsError }}</p>
+        </div>
+      }
+
       <div class="diagnostic">
         <p class="diagnostic-title">Diagnostic (données trouvées côté backend)</p>
         @if (diagnosticIsLoading) {

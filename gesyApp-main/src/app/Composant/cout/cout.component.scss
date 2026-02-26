@@ -149,6 +149,12 @@
   }
 }
 
+.diagnostic.error {
+  border-style: solid;
+  border-color: var(--danger);
+  background: var(--danger-bg);
+}
+
 .diagnostic-pills {
   margin-top: 6px;
 }

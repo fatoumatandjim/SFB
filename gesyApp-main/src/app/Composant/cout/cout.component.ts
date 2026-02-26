@@ -29,6 +29,9 @@ export class CoutComponent implements OnInit {
   totalNonPaye: number = 0;
   totalPaye: number = 0;
 
+  // Erreur API (couts-transport)
+  coutsError: string | null = null;
+
   // Diagnostic (pour comprendre pourquoi la liste est vide)
   diagnosticIsLoading: boolean = false;
   diagnosticError: string | null = null;
@@ -66,6 +69,7 @@ export class CoutComponent implements OnInit {
       this.couts = [];
       this.resetStats();
       this.resetDiagnostic();
+      this.coutsError = null;
     }
   }
 
@@ -87,10 +91,12 @@ export class CoutComponent implements OnInit {
       this.couts = [];
       this.resetStats();
       this.resetDiagnostic();
+      this.coutsError = null;
       return;
     }
 
     this.isLoading = true;
+    this.coutsError = null;
     this.loadDiagnostic(fournisseurId);
 
     // Préparer les paramètres
@@ -117,10 +123,13 @@ export class CoutComponent implements OnInit {
         }
         this.isLoading = false;
       },
-      error: (error: unknown) => {
+      error: (error: any) => {
         console.error('Erreur lors du chargement des coûts:', error);
         this.couts = [];
         this.resetStats();
+        const status = error?.status;
+        const message = error?.error?.message || error?.message || 'Erreur inconnue';
+        this.coutsError = status ? `Erreur API (${status}) : ${message}` : `Erreur API : ${message}`;
         this.isLoading = false;
       }
     });
