@@ -470,7 +470,23 @@
               />
             </div>
 
-            <!-- <div class="form-group">
+            <div class="form-group">
+              <label for="edit-fournisseur-camion">Fournisseur Transport</label>
+              <select
+                id="edit-fournisseur-camion"
+                [(ngModel)]="editCamionData.fournisseurId"
+                name="edit-fournisseurId"
+              >
+                <option [ngValue]="undefined">Sélectionner un fournisseur (optionnel)</option>
+                @for (fournisseur of fournisseursTransport; track fournisseur.id) {
+                  <option [ngValue]="fournisseur.id">{{ fournisseur.nom }} - {{ fournisseur.email }}</option>
+                }
+              </select>
+              <p class="form-hint">Requis pour afficher les coûts dans « Calcul des Coûts de Transport »</p>
+            </div>
+          </div>
+
+          <!-- <div class="form-group">
               <label for="edit-kilometrage">Kilométrage *</label>
               <input
                 type="number"
@@ -483,7 +499,6 @@
                 placeholder="Ex: 125000"
               />
             </div> -->
-          </div>
 
           <!-- <div class="form-group">
             <label for="edit-dernierControle">Dernier contrôle</label>

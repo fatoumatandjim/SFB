@@ -915,6 +915,7 @@ export class CamionComponent implements OnInit {
   }
 
   editCamion(camion: CamionDisplay) {
+    this.loadFournisseursTransport(); // pour le select Fournisseur Transport
     this.editCamionData = {
       id: camion.id,
       immatriculation: camion.immatriculation,
