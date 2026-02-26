@@ -14,10 +14,10 @@
         id="fournisseur-select"
         class="filter-select"
         [(ngModel)]="selectedFournisseurId"
-        (change)="onFournisseurChange()">
-        <option [value]="null">Sélectionner un fournisseur</option>
+        (ngModelChange)="onFournisseurChange()">
+        <option [ngValue]="null">Sélectionner un fournisseur</option>
         @for (fournisseur of fournisseurs; track fournisseur.id) {
-          <option [value]="fournisseur.id">{{ fournisseur.nom }}</option>
+          <option [ngValue]="fournisseur.id">{{ fournisseur.nom }}</option>
         }
       </select>
     </div>

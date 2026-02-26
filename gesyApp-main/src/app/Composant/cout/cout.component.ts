@@ -71,7 +71,10 @@ export class CoutComponent implements OnInit {
   }
 
   loadCouts() {
-    if (!this.selectedFournisseurId) {
+    const fournisseurId = this.selectedFournisseurId != null ? Number(this.selectedFournisseurId) : null;
+    if (fournisseurId == null) {
+      this.couts = [];
+      this.resetStats();
       return;
     }
 
@@ -79,10 +82,6 @@ export class CoutComponent implements OnInit {
 
     // Préparer les paramètres
     let filterOption = this.filterOption;
-    if (filterOption === 'tous') {
-      filterOption = 'tous';
-    }
-
     let startDate: string | undefined;
     let endDate: string | undefined;
 
@@ -92,10 +91,9 @@ export class CoutComponent implements OnInit {
     }
 
     // Appeler le backend
-    this.voyagesService.getCoutsTransport(this.selectedFournisseurId, filterOption, startDate, endDate).subscribe({
+    this.voyagesService.getCoutsTransport(fournisseurId, filterOption, startDate, endDate).subscribe({
       next: (response) => {
-
-        this.couts = response.couts;
+        this.couts = response.couts ?? [];
         // Mettre à jour les statistiques depuis le backend
         if (response.stats) {
           this.totalCout = response.stats.totalCout || 0;
@@ -108,6 +106,8 @@ export class CoutComponent implements OnInit {
       },
       error: (error: any) => {
         console.error('Erreur lors du chargement des coûts:', error);
+        this.couts = [];
+        this.resetStats();
         this.isLoading = false;
       }
     });
