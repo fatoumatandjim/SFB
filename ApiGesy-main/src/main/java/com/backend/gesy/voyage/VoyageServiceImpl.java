@@ -1550,20 +1550,17 @@ public class VoyageServiceImpl implements VoyageService {
             return "NON_PAYE";
         }
 
-        // Récupérer le paiement associé au voyage (si présent)
-        Paiement paiement = paiementRepository.findByVoyage(voyage);
-        if (paiement == null || paiement.getStatut() == null) {
-            // Aucun paiement enregistré ou statut inconnu => considéré comme non payé
+        // Le coût de transport peut avoir plusieurs paiements (tentatives, régularisations, etc.)
+        // On se base sur les paiements "coût transport" (référence PAY-COU-VOY-xxx) pour éviter
+        // les NonUniqueResultException et coller au métier.
+        List<Paiement> paiements = paiementRepository.findCoutTransportByVoyageId(voyage.getId());
+        if (paiements == null || paiements.isEmpty()) {
             return "NON_PAYE";
         }
 
-        // Si le paiement est validé, le voyage est considéré comme payé
-        if (paiement.getStatut() == Paiement.StatutPaiement.VALIDE) {
-            return "PAYE";
-        }
-
-        // Tous les autres statuts (EN_ATTENTE, REJETE, ANNULE) sont considérés comme non payés
-        return "NON_PAYE";
+        boolean hasValid = paiements.stream()
+                .anyMatch(p -> p != null && p.getStatut() == Paiement.StatutPaiement.VALIDE);
+        return hasValid ? "PAYE" : "NON_PAYE";
     }
 
     private BigDecimal calculateFraisTotaux(Voyage voyage) {
@@ -1580,32 +1577,21 @@ public class VoyageServiceImpl implements VoyageService {
     }
 
     private LocalDateTime getDatePaiement(Voyage voyage) {
-        if (voyage.getFactures() == null || voyage.getFactures().isEmpty()) {
+        if (voyage == null || voyage.getId() == null) {
             return null;
         }
 
-        // Utiliser la première facture pour la compatibilité
-        Facture facture = voyage.getFactures().get(0);
-
-        // Si la facture est payée, retourner la date de la facture ou la date de
-        // dernière transaction
-        if (facture.getMontantPaye() != null && facture.getMontant() != null) {
-            if (facture.getMontantPaye().compareTo(facture.getMontant()) >= 0) {
-                // Chercher la date de la dernière transaction payée
-                if (voyage.getTransactions() != null && !voyage.getTransactions().isEmpty()) {
-                    return voyage.getTransactions().stream()
-                            .filter(t -> t
-                                    .getStatut() == Transaction.StatutTransaction.VALIDE)
-                            .map(Transaction::getDate)
-                            .filter(Objects::nonNull)
-                            .max(LocalDateTime::compareTo)
-                            .orElse(facture.getDate() != null ? facture.getDate().atStartOfDay() : null);
-                }
-                return facture.getDate() != null ? facture.getDate().atStartOfDay() : null;
-            }
+        // Date de paiement = date du dernier paiement "coût transport" validé (si présent)
+        List<Paiement> paiements = paiementRepository.findCoutTransportByVoyageId(voyage.getId());
+        if (paiements == null || paiements.isEmpty()) {
+            return null;
         }
 
-        return null;
+        return paiements.stream()
+                .filter(p -> p != null && p.getStatut() == Paiement.StatutPaiement.VALIDE && p.getDate() != null)
+                .map(p -> p.getDate().atStartOfDay())
+                .max(LocalDateTime::compareTo)
+                .orElse(null);
     }
 
     @Override
