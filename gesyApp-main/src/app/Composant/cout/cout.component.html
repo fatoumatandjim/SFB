@@ -139,7 +139,11 @@
     </div>
   } @else if (selectedFournisseurId && couts.length === 0) {
     <div class="empty-state">
-      <p>Aucun coût trouvé pour les critères sélectionnés</p>
+      <p><strong>Aucun coût trouvé pour les critères sélectionnés.</strong></p>
+      <p class="empty-state-hint">
+        Les coûts sont calculés à partir des <strong>voyages</strong> des <strong>camions</strong> rattachés à ce fournisseur.
+        Vérifiez que&nbsp;: des camions ont bien ce fournisseur en «&nbsp;Fournisseur Transport&nbsp;» (écran Camions), et que ces camions ont des voyages enregistrés.
+      </p>
     </div>
   } @else if (selectedFournisseurId && couts.length > 0) {
     <div class="couts-table-container">
