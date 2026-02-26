@@ -42,7 +42,7 @@ interface TransitaireInfo {
   imports: [CommonModule, FormsModule, IonIcon, AxesComponent]
 })
 export class ForTransitairePage implements OnInit {
-  activeTab: 'en-cours' | 'voyages-en-cours' | 'archives' = 'en-cours';
+  activeTab: 'en-cours' | 'voyages-en-cours' | 'archives' | 'axes' = 'en-cours';
   searchTerm: string = '';
   isLoading: boolean = false;
   voyages: VoyageDisplay[] = [];
@@ -154,7 +154,7 @@ export class ForTransitairePage implements OnInit {
     });
   }
 
-  setTab(tab: 'en-cours' | 'voyages-en-cours' | 'archives') {
+  setTab(tab: 'en-cours' | 'voyages-en-cours' | 'archives' | 'axes') {
     this.activeTab = tab;
     if (tab === 'archives') {
       this.currentPage = 0;
@@ -162,7 +162,7 @@ export class ForTransitairePage implements OnInit {
     } else if (tab === 'voyages-en-cours') {
       this.currentPageEnCours = 0;
       this.loadVoyagesEnCours();
-    } else {
+    } else if (tab === 'en-cours') {
       this.loadVoyages();
     }
   }

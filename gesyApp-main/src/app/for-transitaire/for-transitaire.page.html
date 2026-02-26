@@ -17,12 +17,6 @@
       </button>
     </div>
   </div>
-
-  <div class="axes-management-section">
-    <h2>Gestion des axes et des frais par pays</h2>
-    <app-axes></app-axes>
-  </div>
-
   <!-- Statistiques -->
   <div class="stats-section">
     <div class="stat-card">
@@ -78,8 +72,16 @@
         <span>📦</span>
         Archives
       </button>
+      <button
+        class="tab-btn"
+        [class.active]="activeTab === 'axes'"
+        (click)="setTab('axes')">
+        <span>🧭</span>
+        Axes / Frais
+      </button>
     </div>
 
+    @if (activeTab !== 'axes') {
     <div class="actions-bar">
       <div class="search-container">
         <input
@@ -172,8 +174,10 @@
         </div>
       }
     </div>
+    }
   </div>
 
+  @if (activeTab !== 'axes') {
   <div class="table-container">
     <table class="voyages-table">
       <thead>
@@ -406,5 +410,13 @@
       </div>
     }
   </div>
+  }
+
+  @if (activeTab === 'axes') {
+  <div class="axes-management-section">
+    <h2>Gestion des axes et des frais par pays</h2>
+    <app-axes></app-axes>
+  </div>
+  }
 </div>
 
