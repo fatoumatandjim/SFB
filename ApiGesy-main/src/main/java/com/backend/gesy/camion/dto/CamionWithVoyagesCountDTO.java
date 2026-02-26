@@ -17,7 +17,5 @@ public class CamionWithVoyagesCountDTO {
     private Double capacite;
     private String statut;
     private Long nombreVoyages;
-    /** Voyages hors cession (ceux pris en compte pour les coûts de transport) */
-    private Long nombreVoyagesNonCession;
 }
 

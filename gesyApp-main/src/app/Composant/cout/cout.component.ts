@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FournisseursService, Fournisseur } from '../../services/fournisseurs.service';
 import { VoyagesService, CoutTransport } from '../../services/voyages.service';
-import { CamionsService, CamionWithVoyagesCount } from '../../services/camions.service';
 
 
 @Component({
@@ -32,18 +31,9 @@ export class CoutComponent implements OnInit {
   // Erreur API (couts-transport)
   coutsError: string | null = null;
 
-  // Diagnostic (pour comprendre pourquoi la liste est vide)
-  diagnosticIsLoading: boolean = false;
-  diagnosticError: string | null = null;
-  diagnosticCamions: CamionWithVoyagesCount[] = [];
-  diagnosticCamionsCount: number = 0;
-  diagnosticVoyagesCount: number = 0;
-  diagnosticVoyagesNonCessionCount: number = 0;
-
   constructor(
     private fournisseursService: FournisseursService,
-    private voyagesService: VoyagesService,
-    private camionsService: CamionsService
+    private voyagesService: VoyagesService
   ) {}
 
   ngOnInit() {
@@ -68,7 +58,6 @@ export class CoutComponent implements OnInit {
     } else {
       this.couts = [];
       this.resetStats();
-      this.resetDiagnostic();
       this.coutsError = null;
     }
   }
@@ -90,14 +79,12 @@ export class CoutComponent implements OnInit {
     if (fournisseurId == null) {
       this.couts = [];
       this.resetStats();
-      this.resetDiagnostic();
       this.coutsError = null;
       return;
     }
 
     this.isLoading = true;
     this.coutsError = null;
-    this.loadDiagnostic(fournisseurId);
 
     // Préparer les paramètres
     let filterOption = this.filterOption;
@@ -131,40 +118,6 @@ export class CoutComponent implements OnInit {
         const message = error?.error?.message || error?.message || 'Erreur inconnue';
         this.coutsError = status ? `Erreur API (${status}) : ${message}` : `Erreur API : ${message}`;
         this.isLoading = false;
-      }
-    });
-  }
-
-  private resetDiagnostic() {
-    this.diagnosticIsLoading = false;
-    this.diagnosticError = null;
-    this.diagnosticCamions = [];
-    this.diagnosticCamionsCount = 0;
-    this.diagnosticVoyagesCount = 0;
-    this.diagnosticVoyagesNonCessionCount = 0;
-  }
-
-  private loadDiagnostic(fournisseurId: number) {
-    this.diagnosticIsLoading = true;
-    this.diagnosticError = null;
-
-    this.camionsService.getCamionsByFournisseur(fournisseurId).subscribe({
-      next: (camions: CamionWithVoyagesCount[]) => {
-        const list: CamionWithVoyagesCount[] = camions ?? [];
-        this.diagnosticCamions = list;
-        this.diagnosticCamionsCount = list.length;
-        this.diagnosticVoyagesCount = list.reduce((sum: number, c: CamionWithVoyagesCount) => sum + (c.nombreVoyages || 0), 0);
-        this.diagnosticVoyagesNonCessionCount = list.reduce((sum: number, c: CamionWithVoyagesCount) => sum + (c.nombreVoyagesNonCession || 0), 0);
-        this.diagnosticIsLoading = false;
-      },
-      error: (error: unknown) => {
-        console.error('Erreur lors du diagnostic camions/voyages:', error);
-        this.diagnosticError = 'Impossible de charger le diagnostic (camions/voyages).';
-        this.diagnosticCamions = [];
-        this.diagnosticCamionsCount = 0;
-        this.diagnosticVoyagesCount = 0;
-        this.diagnosticVoyagesNonCessionCount = 0;
-        this.diagnosticIsLoading = false;
       }
     });
   }

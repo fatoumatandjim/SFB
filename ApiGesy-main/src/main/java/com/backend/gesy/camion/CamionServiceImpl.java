@@ -127,9 +127,7 @@ public class CamionServiceImpl implements CamionService {
         
         return camions.stream()
             .map(camion -> {
-                List<com.backend.gesy.voyage.Voyage> voyages = voyageRepository.findByCamion(camion);
-                Long nombreVoyages = (long) voyages.size();
-                Long nombreVoyagesNonCession = (long) voyages.stream().filter(v -> v != null && !v.isCession()).count();
+                Long nombreVoyages = (long) voyageRepository.findByCamion(camion).size();
                 
                 CamionWithVoyagesCountDTO dto = new CamionWithVoyagesCountDTO();
                 dto.setId(camion.getId());
@@ -141,7 +139,6 @@ public class CamionServiceImpl implements CamionService {
                 dto.setCapacite(camion.getCapacite());
                 dto.setStatut(camion.getStatut() != null ? camion.getStatut().name() : null);
                 dto.setNombreVoyages(nombreVoyages);
-                dto.setNombreVoyagesNonCession(nombreVoyagesNonCession);
                 
                 return dto;
             })

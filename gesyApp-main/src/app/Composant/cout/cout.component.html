@@ -142,50 +142,8 @@
       <p><strong>Aucun coût trouvé pour les critères sélectionnés.</strong></p>
 
       @if (coutsError) {
-        <div class="diagnostic error">
-          <p class="diagnostic-title">Erreur lors du chargement des coûts</p>
-          <p class="diagnostic-line">{{ coutsError }}</p>
-        </div>
+        <p class="error-text">{{ coutsError }}</p>
       }
-
-      <div class="diagnostic">
-        <p class="diagnostic-title">Diagnostic (données trouvées côté backend)</p>
-        @if (diagnosticIsLoading) {
-          <p class="diagnostic-line">Chargement du diagnostic...</p>
-        } @else if (diagnosticError) {
-          <p class="diagnostic-line">{{ diagnosticError }}</p>
-        } @else {
-          <p class="diagnostic-line"><strong>Camions liés</strong> : {{ diagnosticCamionsCount }}</p>
-          <p class="diagnostic-line"><strong>Voyages trouvés</strong> : {{ diagnosticVoyagesCount }}</p>
-          <p class="diagnostic-line"><strong>Voyages hors cession</strong> : {{ diagnosticVoyagesNonCessionCount }}</p>
-          @if (diagnosticCamionsCount > 0) {
-            <div class="diagnostic-line">Camions :</div>
-            <div class="diagnostic-pills">
-              @for (c of diagnosticCamions; track c.id) {
-                <span class="pill">
-                  {{ c.immatriculation }} ({{ c.nombreVoyages || 0 }} / {{ c.nombreVoyagesNonCession || 0 }})
-                </span>
-              }
-            </div>
-          }
-          @if (diagnosticVoyagesCount > 0 && diagnosticVoyagesNonCessionCount === 0) {
-            <p class="diagnostic-hint">
-              Il y a des voyages, mais <strong>tous sont en cession</strong> (donc exclus des coûts).
-              Recréez un voyage avec « cession » décoché, ou modifiez le flux pour que le voyage ne soit pas en cession.
-            </p>
-          } @else if (diagnosticVoyagesNonCessionCount > 0) {
-            <p class="diagnostic-hint">
-              Il y a des voyages hors cession, donc `GET /voyages/couts-transport` devrait renvoyer des lignes.
-              Si ce n’est pas le cas, le problème est plutôt côté API (données du voyage, camion rattaché, ou appel réseau).
-            </p>
-          } @else {
-            <p class="diagnostic-hint">
-              Les coûts sont calculés à partir des voyages des camions liés à ce fournisseur.
-              Vérifiez que le voyage a été créé sur un camion lié à ce fournisseur.
-            </p>
-          }
-        }
-      </div>
     </div>
   } @else if (selectedFournisseurId && couts.length > 0) {
     <div class="couts-table-container">
