@@ -245,19 +245,13 @@
                   }
                 </td>
                 <td>
-                  <div class="status-cell">
-                    @if (!voyage.declarer && voyage.statut === 'DOUANE') {
-                      <button
-                        class="btn-declarer"
-                        (click)="declarerVoyage(voyage)"
-                        title="Déclarer le voyage">
-                        Déclarer
-                      </button>
-                    } @else {
-                      <span class="status-badge" [class]="getStatusClass(voyage.statut || '')">
-                        {{ getStatusLabel(voyage.statut, voyage.declarer, voyage.passager) }}
-                      </span>
-                    }
+                  <div
+                    class="status-cell"
+                    [class.clickable]="canDeclarer(voyage)"
+                    (click)="onStatutClick(voyage)">
+                    <span class="status-badge" [class]="getStatusClass(voyage.statut || '')">
+                      {{ getStatusLabel(voyage.statut, voyage.declarer, voyage.passager) }}
+                    </span>
                   </div>
                 </td>
                 <td><div class="produit-type">{{ voyage.typeProduit || 'Essence' }}</div></td>
@@ -326,19 +320,13 @@
                   }
                 </td>
                 <td>
-                  <div class="status-cell">
-                    @if (!voyage.declarer && voyage.statut === 'DOUANE') {
-                      <button
-                        class="btn-declarer"
-                        (click)="declarerVoyage(voyage)"
-                        title="Déclarer le voyage">
-                        Déclarer
-                      </button>
-                    } @else {
-                      <span class="status-badge" [class]="getStatusClass(voyage.statut || '')">
-                        {{ getStatusLabel(voyage.statut, voyage.declarer, voyage.passager) }}
-                      </span>
-                    }
+                  <div
+                    class="status-cell"
+                    [class.clickable]="canDeclarer(voyage)"
+                    (click)="onStatutClick(voyage)">
+                    <span class="status-badge" [class]="getStatusClass(voyage.statut || '')">
+                      {{ getStatusLabel(voyage.statut, voyage.declarer, voyage.passager) }}
+                    </span>
                   </div>
                 </td>
                 <td>

@@ -387,7 +387,7 @@ export class ForTransitairePage implements OnInit {
   /** Libellé du statut. En espace transitaire, "DOUANE" non déclaré (ou passé non déclaré) s'affiche "À déclarer" jusqu'à déclaration. */
   getStatusLabel(statut: string | undefined, declarer?: boolean, passager?: string): string {
     if (!statut) return 'N/A';
-    if ((statut === 'DOUANE' && !declarer) || (passager === 'passer_non_declarer' && !declarer)) return 'À déclarer';
+    if ((statut === 'DOUANE' && declarer !== true) || (passager === 'passer_non_declarer' && declarer !== true)) return 'À déclarer';
     const labels: { [key: string]: string } = {
       'CHARGEMENT': 'Chargement',
       'CHARGE': 'Chargé',
@@ -411,6 +411,18 @@ export class ForTransitairePage implements OnInit {
       'LIVRE': 'badge-teal'
     };
     return classes[statut] || 'badge-gray';
+  }
+
+  /** True si le statut doit être cliquable pour déclencher la déclaration. */
+  canDeclarer(voyage: VoyageDisplay): boolean {
+    return !!voyage && voyage.statut === 'DOUANE' && voyage.declarer !== true;
+  }
+
+  /** Gestion du clic sur la cellule de statut : tant que non déclaré, on lance la déclaration. */
+  onStatutClick(voyage: VoyageDisplay) {
+    if (this.canDeclarer(voyage)) {
+      this.declarerVoyage(voyage);
+    }
   }
 
   formatDate(dateString: string | undefined): string {
