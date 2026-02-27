@@ -542,11 +542,44 @@
 }
 
 .status-cell {
-  &.clickable {
-    cursor: pointer;
+  display: inline-block;
 
-    .status-badge {
-      box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.5);
+  &--button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+    pointer-events: auto;
+
+    &:hover .status-badge {
+      box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.6);
+    }
+
+    &:focus {
+      outline: none;
+
+      .status-badge {
+        box-shadow: 0 0 0 2px var(--accent-primary);
+      }
+    }
+  }
+
+  @media (max-width: 768px) {
+    &--button {
+      width: 100%;
+      justify-content: center;
+
+      .status-badge {
+        width: 100%;
+        text-align: center;
+        white-space: normal;
+      }
     }
   }
 

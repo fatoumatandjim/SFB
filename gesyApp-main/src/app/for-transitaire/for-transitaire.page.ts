@@ -384,10 +384,28 @@ export class ForTransitairePage implements OnInit {
     return statut === 'LIVRE' || statut === 'RECEPTIONNER';
   }
 
-  /** Libellé du statut. En espace transitaire, "DOUANE" non déclaré (ou passé non déclaré) s'affiche "À déclarer" jusqu'à déclaration. */
-  getStatusLabel(statut: string | undefined, declarer?: boolean, passager?: string): string {
+  /** Retourne true si le voyage est considéré comme déclaré (backend peut renvoyer boolean ou string). */
+  isDeclared(voyage: VoyageDisplay): boolean {
+    if (!voyage) return false;
+    const d = (voyage as { declarer?: boolean | string }).declarer;
+    return d === true || d === 'true';
+  }
+
+  /** True si le voyage est en état "À déclarer" (douane non déclaré ou passé non déclaré). */
+  isStatutADeclarer(voyage: VoyageDisplay): boolean {
+    if (!voyage) return false;
+    const statut = (voyage.statut || '').toString().toUpperCase();
+    const isDouane = statut === 'DOUANE';
+    const isPasseNonDeclarer = voyage.passager === 'passer_non_declarer';
+    return (isDouane || isPasseNonDeclarer) && !this.isDeclared(voyage);
+  }
+
+  /** Libellé du statut. Utilise isStatutADeclarer pour "À déclarer" (une seule source de vérité). */
+  getStatusLabel(statut: string | undefined, declarer?: boolean | string, passager?: string): string {
     if (!statut) return 'N/A';
-    if ((statut === 'DOUANE' && declarer !== true) || (passager === 'passer_non_declarer' && declarer !== true)) return 'À déclarer';
+    const v: VoyageDisplay = { statut, declarer, passager } as VoyageDisplay;
+    if (this.isStatutADeclarer(v)) return 'À déclarer';
+    const key = (statut || '').toString().toUpperCase();
     const labels: { [key: string]: string } = {
       'CHARGEMENT': 'Chargement',
       'CHARGE': 'Chargé',
@@ -397,10 +415,11 @@ export class ForTransitairePage implements OnInit {
       'RECEPTIONNER': 'Sortie de douane',
       'LIVRE': 'Livré'
     };
-    return labels[statut] || statut;
+    return labels[key] || statut;
   }
 
   getStatusClass(statut: string): string {
+    const key = (statut || '').toString().toUpperCase();
     const classes: { [key: string]: string } = {
       'CHARGEMENT': 'badge-blue',
       'CHARGE': 'badge-orange',
@@ -410,12 +429,12 @@ export class ForTransitairePage implements OnInit {
       'RECEPTIONNER': 'badge-teal',
       'LIVRE': 'badge-teal'
     };
-    return classes[statut] || 'badge-gray';
+    return classes[key] || 'badge-gray';
   }
 
-  /** True si le statut doit être cliquable pour déclencher la déclaration. */
+  /** True si le statut doit être cliquable pour déclencher la déclaration (même logique que l'affichage "À déclarer"). */
   canDeclarer(voyage: VoyageDisplay): boolean {
-    return !!voyage && voyage.statut === 'DOUANE' && voyage.declarer !== true;
+    return this.isStatutADeclarer(voyage);
   }
 
   /** Gestion du clic sur la cellule de statut : tant que non déclaré, on lance la déclaration. */
