@@ -125,10 +125,12 @@ export class NavbarComponent implements OnInit {
       );
       this.rapport = [];
     } else if (isControleur) {
-      // Contrôleur : attribution, gestion manquants (suivi-transport, transitaire, axes) ; pas d'accès clients pour gestion pure
-      this.menuPrincipal = [];
+      // Contrôleur : attribution, gestion manquants (suivi-transport, depot, cout, axes) ; voit clients & fournisseurs (lecture) ; pas de modification des prix
+      this.menuPrincipal = this.allMenuPrincipal.filter(item =>
+        ['client-fournisseur', 'stock'].includes(item.id)
+      );
       this.logistique = this.allLogistique.filter(item =>
-        ['suivi-transport', 'depot', 'cout', 'axes', 'client-fournisseur', 'stock'].includes(item.id)
+        ['suivi-transport', 'depot', 'cout', 'axes'].includes(item.id)
       );
       this.rapport = [];
     } else {
