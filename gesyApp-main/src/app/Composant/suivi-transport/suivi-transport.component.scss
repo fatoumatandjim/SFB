@@ -894,6 +894,20 @@
       font-weight: 500;
       color: var(--text-primary);
     }
+
+    .btn-edit-prix-inline {
+      margin-top: 6px;
+      padding: 6px 12px;
+      background: var(--accent-primary);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      align-self: flex-start;
+      transition: opacity 0.2s;
+      &:hover { opacity: 0.9; }
+    }
   }
 
   .client-card {

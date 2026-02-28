@@ -1771,6 +1771,49 @@ export class SuiviTransportComponent implements OnInit {
       && !this.authService.isResponsableLogistique() && !this.authService.isControleur();
   }
 
+  isComptable(): boolean {
+    return this.authService.isComptable();
+  }
+
+  // Modal modification prix unitaire transport (comptable)
+  showEditPrixModal = false;
+  editingVoyageForPrix: VoyageDisplay | null = null;
+  editingPrixUnitaireValue = 0;
+
+  openEditPrixModal(voyage: VoyageDisplay) {
+    this.editingVoyageForPrix = voyage;
+    this.editingPrixUnitaireValue = voyage.prixUnitaire ?? 0;
+    this.showEditPrixModal = true;
+  }
+
+  closeEditPrixModal() {
+    this.showEditPrixModal = false;
+    this.editingVoyageForPrix = null;
+    this.editingPrixUnitaireValue = 0;
+  }
+
+  savePrixUnitaire() {
+    if (!this.editingVoyageForPrix?.id || this.editingPrixUnitaireValue <= 0) {
+      this.toastService.warning('Veuillez saisir un prix valide');
+      return;
+    }
+    const payload = { ...this.editingVoyageForPrix, prixUnitaire: this.editingPrixUnitaireValue };
+    this.voyagesService.updateVoyage(this.editingVoyageForPrix.id, payload).subscribe({
+      next: (updated) => {
+        if (this.selectedVoyage?.id === updated.id) {
+          this.selectedVoyage = { ...this.selectedVoyage!, prixUnitaire: updated.prixUnitaire };
+        }
+        const idx = this.voyages.findIndex(v => v.id === updated.id);
+        if (idx !== -1) this.voyages[idx] = { ...this.voyages[idx], prixUnitaire: updated.prixUnitaire };
+        this.toastService.success('Prix unitaire mis à jour');
+        this.closeEditPrixModal();
+      },
+      error: (err) => {
+        this.toastService.error(err?.error?.message || 'Erreur lors de la mise à jour du prix');
+      }
+    });
+  }
+
   formatDate(dateString: string | undefined): string {
     if (!dateString) return 'N/A';
     try {

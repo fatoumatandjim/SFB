@@ -100,12 +100,12 @@ export class NavbarComponent implements OnInit {
       this.logistique = [...this.allLogistique];
       this.rapport = [...this.allRapport];
     } else if (isComptable) {
-      // Comptable : gestion paiements, facturation, banque-caisse, dépenses, achats, stock, clients, camions (liste), coûts transport
+      // Comptable : gestion paiements, facturation, banque-caisse, dépenses, achats, stock, clients, camions (liste), coûts transport, suivi voyages attribués
       this.menuPrincipal = this.allMenuPrincipal.filter(item =>
         ['paiement', 'facturation', 'banque-caisse', 'client-fournisseur', 'achats', 'stock', 'depenses', 'camion'].includes(item.id)
       );
       this.logistique = this.allLogistique.filter(item =>
-        ['depot', 'cout'].includes(item.id)
+        ['suivi-transport', 'depot', 'cout'].includes(item.id)
       );
       this.rapport = [];
     } else if (isResponsableLogistique) {
