@@ -100,11 +100,13 @@ export class NavbarComponent implements OnInit {
       this.logistique = [...this.allLogistique];
       this.rapport = [...this.allRapport];
     } else if (isComptable) {
-      // Comptable : gestion de tous les paiements, facturation, banque-caisse, dépenses, achats, stock, clients (facturation)
+      // Comptable : gestion paiements, facturation, banque-caisse, dépenses, achats, stock, clients, camions (liste), coûts transport
       this.menuPrincipal = this.allMenuPrincipal.filter(item =>
-        ['paiement', 'facturation', 'banque-caisse', 'client-fournisseur', 'achats', 'stock', 'depenses'].includes(item.id)
+        ['paiement', 'facturation', 'banque-caisse', 'client-fournisseur', 'achats', 'stock', 'depenses', 'camion'].includes(item.id)
       );
-      this.logistique = this.allLogistique.filter(item => item.id === 'depot');
+      this.logistique = this.allLogistique.filter(item =>
+        ['depot', 'cout'].includes(item.id)
+      );
       this.rapport = [];
     } else if (isResponsableLogistique) {
       // Responsable logistique unique : camions, suivi-transport, transitaire, axes, depot, cout, email, stock ; PAS d'accès clients

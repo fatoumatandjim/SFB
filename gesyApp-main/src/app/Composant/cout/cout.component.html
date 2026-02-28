@@ -155,11 +155,15 @@
             <th>Date Départ</th>
             <th>Destination</th>
             <th>Quantité (L)</th>
+            <th>Prix unit. (F/L)</th>
             <th>Coût Voyage</th>
             <th>Frais Totaux</th>
             <th>Coût Total</th>
             <th>Statut Paiement</th>
             <th>Date Paiement</th>
+            @if (isComptable()) {
+            <th>Action</th>
+            }
           </tr>
         </thead>
         <tbody>
@@ -170,6 +174,7 @@
               <td>{{ formatDate(cout.dateDepart) }}</td>
               <td>{{ cout.destination || 'N/A' }}</td>
               <td>{{ cout.quantite | number }}</td>
+              <td>{{ cout.prixUnitaire != null ? (cout.prixUnitaire | number) + ' F' : 'N/A' }}</td>
               <td>{{ formatMontant(cout.coutVoyage) }}</td>
               <td>{{ formatMontant(cout.fraisTotaux) }}</td>
               <td class="cout-total">{{ formatMontant(cout.coutTotal) }}</td>
@@ -179,14 +184,24 @@
                 </span>
               </td>
               <td>{{ formatDate(cout.datePaiement) }}</td>
+              @if (isComptable()) {
+              <td>
+                <button type="button" class="btn-edit-prix" (click)="openEditPrixModal(cout)" title="Modifier le prix unitaire">
+                  💰
+                </button>
+              </td>
+              }
             </tr>
           }
         </tbody>
         <tfoot>
           <tr>
-            <td colspan="7" class="total-label">Total</td>
+            <td colspan="8" class="total-label">Total</td>
             <td class="total-value">{{ formatMontant(totalCout) }}</td>
             <td colspan="2"></td>
+            @if (isComptable()) {
+            <td></td>
+            }
           </tr>
         </tfoot>
       </table>
@@ -195,5 +210,37 @@
     <div class="empty-state">
       <p>Veuillez sélectionner un fournisseur pour afficher les coûts</p>
     </div>
+  }
+
+  @if (showEditPrixModal && editingCout) {
+  <div class="modal-overlay" (click)="closeEditPrixModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Modifier le prix unitaire de transport</h2>
+        <button class="modal-close" (click)="closeEditPrixModal()" aria-label="Fermer">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-voyage-ref">Voyage {{ editingCout.numeroVoyage }} - {{ editingCout.quantite | number }} L</p>
+        <div class="form-group">
+          <label for="edit-prix-cout">Prix unitaire (FCFA/litre) *</label>
+          <input
+            type="number"
+            id="edit-prix-cout"
+            [(ngModel)]="editingPrixUnitaire"
+            name="editingPrixUnitaire"
+            min="1"
+            step="1"
+            placeholder="Ex: 25"
+          />
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" (click)="closeEditPrixModal()">Annuler</button>
+          <button type="button" class="btn-submit" (click)="savePrixUnitaire()">
+            Enregistrer
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
   }
 </div>

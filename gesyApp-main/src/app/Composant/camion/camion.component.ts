@@ -1072,4 +1072,48 @@ export class CamionComponent implements OnInit {
   isAdmin(): boolean {
     return this.authService.hasRole('ROLE_ADMIN');
   }
+
+  // Vérifier si l'utilisateur connecté est comptable (peut modifier les prix de transport)
+  isComptable(): boolean {
+    return this.authService.isComptable();
+  }
+
+  // Modal modification prix unitaire (comptable)
+  showEditPrixModal = false;
+  editingVoyage: Voyage | null = null;
+  editingPrixUnitaire: number = 0;
+
+  openEditPrixModal(voyage: Voyage) {
+    this.editingVoyage = voyage;
+    this.editingPrixUnitaire = voyage.prixUnitaire ?? 0;
+    this.showEditPrixModal = true;
+  }
+
+  closeEditPrixModal() {
+    this.showEditPrixModal = false;
+    this.editingVoyage = null;
+    this.editingPrixUnitaire = 0;
+  }
+
+  savePrixUnitaire() {
+    if (!this.editingVoyage?.id || this.editingPrixUnitaire <= 0) {
+      this.toastService.warning('Veuillez saisir un prix valide');
+      return;
+    }
+    this.isLoading = true;
+    const payload = { ...this.editingVoyage, prixUnitaire: this.editingPrixUnitaire };
+    this.voyagesService.updateVoyage(this.editingVoyage.id, payload).subscribe({
+      next: (updated) => {
+        const idx = this.voyages.findIndex(v => v.id === updated.id);
+        if (idx !== -1) this.voyages[idx] = updated;
+        this.toastService.success('Prix unitaire mis à jour');
+        this.closeEditPrixModal();
+        this.isLoading = false;
+      },
+      error: (err) => {
+        this.toastService.error(err?.error?.message || 'Erreur lors de la mise à jour du prix');
+        this.isLoading = false;
+      }
+    });
+  }
 }

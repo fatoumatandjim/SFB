@@ -2,7 +2,9 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FournisseursService, Fournisseur } from '../../services/fournisseurs.service';
-import { VoyagesService, CoutTransport } from '../../services/voyages.service';
+import { VoyagesService, CoutTransport, Voyage } from '../../services/voyages.service';
+import { AuthService } from '../../services/auth.service';
+import { ToastService } from '../../nativeComp/toast/toast.service';
 
 
 @Component({
@@ -31,9 +33,16 @@ export class CoutComponent implements OnInit {
   // Erreur API (couts-transport)
   coutsError: string | null = null;
 
+  // Modal modification prix (comptable)
+  showEditPrixModal = false;
+  editingCout: CoutTransport | null = null;
+  editingPrixUnitaire = 0;
+
   constructor(
     private fournisseursService: FournisseursService,
-    private voyagesService: VoyagesService
+    private voyagesService: VoyagesService,
+    private authService: AuthService,
+    private toastService: ToastService
   ) {}
 
   ngOnInit() {
@@ -165,5 +174,44 @@ export class CoutComponent implements OnInit {
   getStatutPaiementLabel(statut: string | undefined): string {
     if (!statut) return 'N/A';
     return statut === 'PAYE' ? 'Payé' : 'Non payé';
+  }
+
+  isComptable(): boolean {
+    return this.authService.isComptable();
+  }
+
+  openEditPrixModal(c: CoutTransport) {
+    this.editingCout = c;
+    this.editingPrixUnitaire = c.prixUnitaire ?? 0;
+    this.showEditPrixModal = true;
+  }
+
+  closeEditPrixModal() {
+    this.showEditPrixModal = false;
+    this.editingCout = null;
+    this.editingPrixUnitaire = 0;
+  }
+
+  savePrixUnitaire() {
+    if (!this.editingCout?.id || this.editingPrixUnitaire <= 0) {
+      this.toastService.warning('Veuillez saisir un prix valide');
+      return;
+    }
+    this.voyagesService.getVoyageById(this.editingCout.id).subscribe({
+      next: (voyage: Voyage) => {
+        const payload = { ...voyage, prixUnitaire: this.editingPrixUnitaire };
+        this.voyagesService.updateVoyage(this.editingCout!.id!, payload).subscribe({
+          next: () => {
+            this.toastService.success('Prix unitaire mis à jour');
+            this.closeEditPrixModal();
+            if (this.selectedFournisseurId) this.loadCouts();
+          },
+          error: (err) => {
+            this.toastService.error(err?.error?.message || 'Erreur lors de la mise à jour');
+          }
+        });
+      },
+      error: () => this.toastService.error('Impossible de charger le voyage')
+    });
   }
 }

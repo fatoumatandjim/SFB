@@ -17,6 +17,8 @@ public class CoutTransportDTO {
     private LocalDateTime dateDepart;
     private String destination;
     private Double quantite;
+    /** Prix unitaire transport (FCFA/litre) — modifiable par le comptable */
+    private BigDecimal prixUnitaire;
     // Coût brut = prixUnitaire * quantite (avant manquants)
     private BigDecimal coutVoyage;
     // Frais supplémentaires éventuels (non utilisés pour l'instant)

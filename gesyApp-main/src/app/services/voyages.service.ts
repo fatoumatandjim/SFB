@@ -407,6 +407,8 @@ export interface CoutTransport {
   dateDepart?: string;
   destination?: string;
   quantite?: number;
+  /** Prix unitaire transport (FCFA/litre) — modifiable par le comptable */
+  prixUnitaire?: number;
   coutVoyage?: number;
   fraisTotaux?: number;
   coutTotal?: number;

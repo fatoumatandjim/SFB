@@ -2,8 +2,9 @@
   <div class="camion-header">
     <div>
       <h1>Gestion Camions</h1>
-      <p>Gestion de votre flotte de camions</p>
+      <p>@if (isComptable()) { Liste des camions attribués } @else { Gestion de votre flotte de camions }</p>
     </div>
+    @if (!isComptable()) {
     <div class="header-actions">
       <button class="btn-new-voyage" (click)="nouveauVoyage()">
         <span>🚛</span>
@@ -14,6 +15,7 @@
         Nouveau Camion
       </button>
     </div>
+    }
   </div>
 
   <div class="stats-cards">
@@ -683,7 +685,18 @@
                             }
                             <span class="voyage-separator">•</span>
                             <span class="voyage-quantite">{{ voyage.quantite | number }} L</span>
+                            @if (!voyage.cession) {
+                              <span class="voyage-separator">•</span>
+                              <span class="voyage-prix">Prix: {{ voyage.prixUnitaire != null ? (voyage.prixUnitaire | number) + ' F/L' : 'Non défini' }}</span>
+                            }
                           </div>
+                          @if (isComptable() && !voyage.cession && voyage.id) {
+                          <div class="voyage-comptable-actions">
+                            <button type="button" class="btn-edit-prix" (click)="openEditPrixModal(voyage)" title="Modifier le prix unitaire">
+                              💰 Modifier le prix
+                            </button>
+                          </div>
+                          }
                           @if (voyage.notes) {
                           <div class="voyage-notes">
                             <span class="notes-label">Notes:</span>
@@ -827,7 +840,7 @@
         <button type="button" class="btn-cancel" (click)="closeDetailModal()">
           Fermer
         </button>
-        @if (selectedCamion.statut !== 'EN_MAINTENANCE' && !selectedCamion.loue && canEditCamion(selectedCamion)) {
+        @if (!isComptable() && selectedCamion.statut !== 'EN_MAINTENANCE' && !selectedCamion.loue && canEditCamion(selectedCamion)) {
         <button type="button" class="btn-maintenance" (click)="mettreEnMaintenance()" [disabled]="isLoading">
           🔧 Mettre en maintenance
         </button>
@@ -837,6 +850,38 @@
           ✏️ Modifier
         </button>
         }
+      </div>
+    </div>
+  </div>
+  }
+
+  @if (showEditPrixModal && editingVoyage) {
+  <div class="modal-overlay" (click)="closeEditPrixModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Modifier le prix unitaire de transport</h2>
+        <button class="modal-close" (click)="closeEditPrixModal()" aria-label="Fermer">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-voyage-ref">Voyage {{ editingVoyage.numeroVoyage }} - {{ editingVoyage.quantite | number }} L</p>
+        <div class="form-group">
+          <label for="edit-prix-unitaire">Prix unitaire (FCFA/litre) *</label>
+          <input
+            type="number"
+            id="edit-prix-unitaire"
+            [(ngModel)]="editingPrixUnitaire"
+            name="editingPrixUnitaire"
+            min="1"
+            step="1"
+            placeholder="Ex: 25"
+          />
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" (click)="closeEditPrixModal()">Annuler</button>
+          <button type="button" class="btn-submit" (click)="savePrixUnitaire()" [disabled]="isLoading">
+            @if (isLoading) { Enregistrement... } @else { Enregistrer }
+          </button>
+        </div>
       </div>
     </div>
   </div>

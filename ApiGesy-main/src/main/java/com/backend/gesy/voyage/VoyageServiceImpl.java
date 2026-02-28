@@ -1506,6 +1506,7 @@ public class VoyageServiceImpl implements VoyageService {
                             v.getDateDepart(),
                             v.getDestination(),
                             v.getQuantite(),
+                            v.getPrixUnitaire(),
                             coutVoyage,
                             BigDecimal.ZERO, // fraisTotaux non utilisés pour l'instant
                             coutTotal,
