@@ -1,0 +1,38 @@
+@if (voyageRef) {
+<div class="modal-overlay" (click)="onCancel()">
+  <div
+    class="modal-content"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="edit-prix-modal-title"
+    aria-describedby="edit-prix-modal-desc"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="modal-header">
+      <h2 id="edit-prix-modal-title">Modifier le prix unitaire de transport</h2>
+      <button type="button" class="modal-close" (click)="onCancel()" aria-label="Fermer">×</button>
+    </div>
+    <div class="modal-body">
+      <p id="edit-prix-modal-desc" class="modal-voyage-ref">{{ displayRef }}</p>
+      <div class="form-group">
+        <label for="edit-prix-transport">Prix unitaire (FCFA/litre) *</label>
+        <input
+          #prixInput
+          type="number"
+          id="edit-prix-transport"
+          [(ngModel)]="prixUnitaire"
+          min="1"
+          step="1"
+          placeholder="Ex: 25"
+        />
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-cancel" (click)="onCancel()">Annuler</button>
+        <button type="button" class="btn-submit" (click)="onSave()" [disabled]="isLoading || prixUnitaire <= 0">
+          @if (isLoading) { Enregistrement... } @else { Enregistrer }
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+}

@@ -5,6 +5,7 @@ import { FournisseursService, Fournisseur } from '../../services/fournisseurs.se
 import { VoyagesService, CoutTransport, Voyage } from '../../services/voyages.service';
 import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../nativeComp/toast/toast.service';
+import { EditPrixTransportModalComponent, VoyagePrixRef } from '../shared/edit-prix-transport-modal/edit-prix-transport-modal.component';
 
 
 @Component({
@@ -12,7 +13,7 @@ import { ToastService } from '../../nativeComp/toast/toast.service';
   templateUrl: './cout.component.html',
   styleUrls: ['./cout.component.scss'],
   standalone: true,
-  imports: [CommonModule, FormsModule]
+  imports: [CommonModule, FormsModule, EditPrixTransportModalComponent]
 })
 export class CoutComponent implements OnInit {
   fournisseurs: Fournisseur[] = [];
@@ -33,10 +34,9 @@ export class CoutComponent implements OnInit {
   // Erreur API (couts-transport)
   coutsError: string | null = null;
 
-  // Modal modification prix (comptable)
-  showEditPrixModal = false;
+  // Modal modification prix (comptable) — référence stable (pas de getter)
   editingCout: CoutTransport | null = null;
-  editingPrixUnitaire = 0;
+  voyageRefToPass: VoyagePrixRef | null = null;
 
   constructor(
     private fournisseursService: FournisseursService,
@@ -182,24 +182,27 @@ export class CoutComponent implements OnInit {
 
   openEditPrixModal(c: CoutTransport) {
     this.editingCout = c;
-    this.editingPrixUnitaire = c.prixUnitaire ?? 0;
-    this.showEditPrixModal = true;
+    this.voyageRefToPass = {
+      id: c.id!,
+      numeroVoyage: c.numeroVoyage,
+      quantite: c.quantite,
+      prixUnitaire: c.prixUnitaire
+    };
   }
 
   closeEditPrixModal() {
-    this.showEditPrixModal = false;
     this.editingCout = null;
-    this.editingPrixUnitaire = 0;
+    this.voyageRefToPass = null;
   }
 
-  savePrixUnitaire() {
-    if (!this.editingCout?.id || this.editingPrixUnitaire <= 0) {
+  onSavePrixUnitaire(prixUnitaire: number) {
+    if (!this.editingCout?.id || prixUnitaire <= 0) {
       this.toastService.warning('Veuillez saisir un prix valide');
       return;
     }
     this.voyagesService.getVoyageById(this.editingCout.id).subscribe({
       next: (voyage: Voyage) => {
-        const payload = { ...voyage, prixUnitaire: this.editingPrixUnitaire };
+        const payload = { ...voyage, prixUnitaire };
         this.voyagesService.updateVoyage(this.editingCout!.id!, payload).subscribe({
           next: () => {
             this.toastService.success('Prix unitaire mis à jour');

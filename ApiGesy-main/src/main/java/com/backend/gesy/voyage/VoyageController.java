@@ -5,6 +5,7 @@ import com.backend.gesy.voyage.dto.VoyagePageDto;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -421,6 +422,7 @@ public class VoyageController {
         return ResponseEntity.ok(voyageService.findVoyagesPassesNonDeclaresPaginated(page, size));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'COMPTABLE')")
     @GetMapping("/avec-client-sans-facture")
     public ResponseEntity<VoyagePageDto> getVoyagesAvecClientSansFacture(
             @RequestParam(defaultValue = "0") int page,
@@ -428,10 +430,19 @@ public class VoyageController {
         return ResponseEntity.ok(voyageService.findVoyagesAvecClientSansFacture(page, size));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'COMPTABLE')")
     @GetMapping("/avec-client-sans-facture/groupes-par-client")
     public ResponseEntity<com.backend.gesy.voyage.dto.VoyagesParClientPageDto> getVoyagesAvecClientSansFactureGroupesParClient(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         return ResponseEntity.ok(voyageService.findVoyagesAvecClientSansFactureGroupesParClient(page, size));
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'COMPTABLE')")
+    @GetMapping("/sans-prix-transport")
+    public ResponseEntity<VoyagePageDto> getVoyagesSansPrixTransport(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(voyageService.findVoyagesSansPrixTransport(page, size));
     }
 }

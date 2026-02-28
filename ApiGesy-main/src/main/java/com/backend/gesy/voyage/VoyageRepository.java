@@ -286,6 +286,7 @@ public interface VoyageRepository extends JpaRepository<Voyage, Long> {
                                    "AND SIZE(v.factures) = 0")
        Page<Voyage> findVoyagesAvecClientSansFacture(Pageable pageable);
 
-       // Note: findVoyagesAvecClientSansFactureGroupesParClient n'est plus utilisé
-       // La logique est maintenant gérée dans VoyageServiceImpl avec ClientVoyageRepository
+       /** Voyages attribués (non cession) sans prix de transport — pour le comptable */
+       @Query("SELECT v FROM Voyage v WHERE v.cession = false AND (v.prixUnitaire IS NULL OR v.prixUnitaire <= 0) ORDER BY v.dateDepart DESC, v.id DESC")
+       Page<Voyage> findVoyagesSansPrixTransport(Pageable pageable);
 }

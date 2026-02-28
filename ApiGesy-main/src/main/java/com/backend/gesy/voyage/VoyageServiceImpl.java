@@ -2695,6 +2695,23 @@ public class VoyageServiceImpl implements VoyageService {
     }
 
     @Override
+    public VoyagePageDto findVoyagesSansPrixTransport(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Voyage> voyagePage = voyageRepository.findVoyagesSansPrixTransport(pageable);
+
+        List<VoyageDTO> voyages = voyagePage.getContent().stream()
+                .map(voyageMapper::toDTO)
+                .collect(Collectors.toList());
+
+        return new VoyagePageDto(
+                voyages,
+                voyagePage.getNumber(),
+                voyagePage.getTotalPages(),
+                voyagePage.getTotalElements(),
+                voyagePage.getSize());
+    }
+
+    @Override
     public VoyagesParClientPageDto findVoyagesAvecClientSansFactureGroupesParClient(
             int page, int size) {
         // Récupérer tous les ClientVoyage avec client mais sans prix d'achat (sans facture)

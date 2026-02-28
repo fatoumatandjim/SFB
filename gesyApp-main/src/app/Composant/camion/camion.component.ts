@@ -16,6 +16,7 @@ import { AlertService } from '../../nativeComp/alert/alert.service';
 import { ToastService } from '../../nativeComp/toast/toast.service';
 import { AuthService } from '../../services/auth.service';
 import { UtilisateursService, Utilisateur } from '../../services/utilisateurs.service';
+import { EditPrixTransportModalComponent, VoyagePrixRef } from '../shared/edit-prix-transport-modal/edit-prix-transport-modal.component';
 
 interface CamionDisplay extends Camion {
   couleur: string;
@@ -26,7 +27,7 @@ interface CamionDisplay extends Camion {
   templateUrl: './camion.component.html',
   styleUrls: ['./camion.component.scss'],
   standalone: true,
-  imports: [CommonModule, FormsModule]
+  imports: [CommonModule, FormsModule, EditPrixTransportModalComponent]
 })
 export class CamionComponent implements OnInit {
   searchTerm: string = '';
@@ -1078,30 +1079,32 @@ export class CamionComponent implements OnInit {
     return this.authService.isComptable();
   }
 
-  // Modal modification prix unitaire (comptable)
-  showEditPrixModal = false;
+  // Modal modification prix unitaire (comptable) — référence stable
   editingVoyage: Voyage | null = null;
-  editingPrixUnitaire: number = 0;
+  voyageRefToPass: VoyagePrixRef | null = null;
 
   openEditPrixModal(voyage: Voyage) {
     this.editingVoyage = voyage;
-    this.editingPrixUnitaire = voyage.prixUnitaire ?? 0;
-    this.showEditPrixModal = true;
+    this.voyageRefToPass = {
+      id: voyage.id!,
+      numeroVoyage: voyage.numeroVoyage,
+      quantite: voyage.quantite,
+      prixUnitaire: voyage.prixUnitaire
+    };
   }
 
   closeEditPrixModal() {
-    this.showEditPrixModal = false;
     this.editingVoyage = null;
-    this.editingPrixUnitaire = 0;
+    this.voyageRefToPass = null;
   }
 
-  savePrixUnitaire() {
-    if (!this.editingVoyage?.id || this.editingPrixUnitaire <= 0) {
+  onSavePrixUnitaire(prixUnitaire: number) {
+    if (!this.editingVoyage?.id || prixUnitaire <= 0) {
       this.toastService.warning('Veuillez saisir un prix valide');
       return;
     }
     this.isLoading = true;
-    const payload = { ...this.editingVoyage, prixUnitaire: this.editingPrixUnitaire };
+    const payload = { ...this.editingVoyage, prixUnitaire };
     this.voyagesService.updateVoyage(this.editingVoyage.id, payload).subscribe({
       next: (updated) => {
         const idx = this.voyages.findIndex(v => v.id === updated.id);

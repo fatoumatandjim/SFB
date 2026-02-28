@@ -265,6 +265,11 @@ export class VoyagesService {
     return this.http.get<VoyagePage>(`${this.apiUrl}/avec-client-sans-facture?page=${page}&size=${size}`);
   }
 
+  /** Voyages attribués (non cession) sans prix de transport — pour le comptable */
+  getVoyagesSansPrixTransport(page: number = 0, size: number = 10): Observable<VoyagePage> {
+    return this.http.get<VoyagePage>(`${this.apiUrl}/sans-prix-transport?page=${page}&size=${size}`);
+  }
+
   getVoyagesAvecClientSansFactureGroupesParClient(page: number = 0, size: number = 10): Observable<VoyagesParClientPage> {
     return this.http.get<VoyagesParClientPage>(`${this.apiUrl}/avec-client-sans-facture/groupes-par-client?page=${page}&size=${size}`);
   }

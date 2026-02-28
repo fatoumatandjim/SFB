@@ -16,6 +16,7 @@ import { ToastService } from '../../nativeComp/toast/toast.service';
 import { PdfService } from '../../services/pdf.service';
 import { ExcelService, CamionExcelData } from '../../services/excel.service';
 import { AuthService } from 'src/app/services/auth.service';
+import { EditPrixTransportModalComponent, VoyagePrixRef } from '../shared/edit-prix-transport-modal/edit-prix-transport-modal.component';
 
 interface VoyageDisplay extends Voyage {
   camionImmatriculation?: string;
@@ -35,12 +36,12 @@ interface VoyageDisplay extends Voyage {
   templateUrl: './suivi-transport.component.html',
   styleUrls: ['./suivi-transport.component.scss'],
   standalone: true,
-  imports: [CommonModule, FormsModule]
+  imports: [CommonModule, FormsModule, EditPrixTransportModalComponent]
 })
 export class SuiviTransportComponent implements OnInit {
-  activeTab: 'actifs' | 'receptionnes' | 'non-declares' | 'archives' | 'sans-prix-achat' | 'partiellement-decharges' | 'en-cours' = 'actifs';
+  activeTab: 'actifs' | 'receptionnes' | 'non-declares' | 'archives' | 'sans-prix-achat' | 'sans-prix-transport' | 'partiellement-decharges' | 'en-cours' = 'actifs';
   /** Valeur affichée par la liste déroulante (quand on est sur onglet Sortie de douane/En cours, on garde la dernière vue liste). */
-  dropdownListView: 'actifs' | 'non-declares' | 'archives' | 'sans-prix-achat' | 'partiellement-decharges' = 'actifs';
+  dropdownListView: 'actifs' | 'non-declares' | 'archives' | 'sans-prix-achat' | 'sans-prix-transport' | 'partiellement-decharges' = 'actifs';
   voyagesNonDeclares: VoyageDisplay[] = [];
   searchTerm: string = '';
   isLoading: boolean = false;
@@ -59,6 +60,10 @@ export class SuiviTransportComponent implements OnInit {
   voyagesSansPrixAchatPage: { voyages: VoyageDisplay[]; currentPage: number; totalPages: number; totalElements: number; size: number } | null = null;
   currentPageSansPrixAchat: number = 0;
   pageSizeSansPrixAchat: number = 10;
+  // Pagination pour voyages sans prix de transport (comptable)
+  voyagesSansPrixTransportPage: { voyages: VoyageDisplay[]; currentPage: number; totalPages: number; totalElements: number; size: number } | null = null;
+  currentPageSansPrixTransport: number = 0;
+  pageSizeSansPrixTransport: number = 10;
   // Pagination pour voyages partiellement déchargés
   voyagesPartiellementDechargesPage: { voyages: VoyageDisplay[]; currentPage: number; totalPages: number; totalElements: number; size: number } | null = null;
   currentPagePartiellementDecharges: number = 0;
@@ -155,9 +160,19 @@ export class SuiviTransportComponent implements OnInit {
     private authService: AuthService
   ) { }
 
+  private readonly COMPTABLE_VIEW_KEY = 'gesy_comptable_suivi_transport_view';
+
   ngOnInit() {
     this.isAdmin = this.authService.hasRole('ADMIN') || this.authService.hasRole('ROLE_ADMIN');
-    this.loadVoyages();
+    if (this.authService.isComptable()) {
+      const saved = localStorage.getItem(this.COMPTABLE_VIEW_KEY) as 'sans-prix-transport' | 'sans-prix-achat' | null;
+      const view = saved && (saved === 'sans-prix-transport' || saved === 'sans-prix-achat') ? saved : 'sans-prix-transport';
+      this.dropdownListView = view;
+      this.activeTab = view;
+      this.setTab(view);
+    } else {
+      this.loadVoyages();
+    }
     this.loadTransitaires();
     this.loadAxes();
     this.loadComptesBancaires();
@@ -581,15 +596,18 @@ export class SuiviTransportComponent implements OnInit {
   }
 
   onListViewChangeByValue(value: string) {
-    const tab = value as 'actifs' | 'non-declares' | 'archives' | 'sans-prix-achat' | 'partiellement-decharges';
+    const tab = value as 'actifs' | 'non-declares' | 'archives' | 'sans-prix-achat' | 'sans-prix-transport' | 'partiellement-decharges';
     this.dropdownListView = tab;
     this.setTab(tab);
+    if (this.authService.isComptable() && (tab === 'sans-prix-transport' || tab === 'sans-prix-achat')) {
+      localStorage.setItem(this.COMPTABLE_VIEW_KEY, tab);
+    }
   }
 
-  setTab(tab: 'actifs' | 'receptionnes' | 'non-declares' | 'archives' | 'sans-prix-achat' | 'partiellement-decharges' | 'en-cours') {
+  setTab(tab: 'actifs' | 'receptionnes' | 'non-declares' | 'archives' | 'sans-prix-achat' | 'sans-prix-transport' | 'partiellement-decharges' | 'en-cours') {
     this.activeTab = tab;
     if (tab !== 'receptionnes' && tab !== 'en-cours') {
-      this.dropdownListView = tab as 'actifs' | 'non-declares' | 'archives' | 'sans-prix-achat' | 'partiellement-decharges';
+      this.dropdownListView = tab as 'actifs' | 'non-declares' | 'archives' | 'sans-prix-achat' | 'sans-prix-transport' | 'partiellement-decharges';
     }
     // Réinitialiser filteredVoyages pour éviter les conflits entre onglets
     this.filteredVoyages = [];
@@ -602,6 +620,10 @@ export class SuiviTransportComponent implements OnInit {
       this.voyagesSansPrixAchatPage = null;
       this.voyagesParClientPage = null;
       this.loadVoyagesSansPrixAchat();
+    } else if (tab === 'sans-prix-transport') {
+      this.currentPageSansPrixTransport = 0;
+      this.voyagesSansPrixTransportPage = null;
+      this.loadVoyagesSansPrixTransport();
     } else if (tab === 'partiellement-decharges') {
       this.currentPagePartiellementDecharges = 0;
       this.voyagesPartiellementDechargesPage = null;
@@ -733,6 +755,47 @@ export class SuiviTransportComponent implements OnInit {
     this.groupByClient = !this.groupByClient;
     this.currentPageSansPrixAchat = 0;
     this.loadVoyagesSansPrixAchat();
+  }
+
+  loadVoyagesSansPrixTransport() {
+    this.isLoading = true;
+    this.filteredVoyages = [];
+    this.voyagesService.getVoyagesSansPrixTransport(this.currentPageSansPrixTransport, this.pageSizeSansPrixTransport).subscribe({
+      next: (data) => {
+        const voyages = this.sortByDateDepartAsc(data.voyages.map(v => ({
+          ...v,
+          camionImmatriculation: (v as any).camionImmatriculation,
+          clientNom: (v as any).clientNom,
+          clientEmail: (v as any).clientEmail,
+          transitaireNom: (v as any).transitaireNom,
+          depotNom: (v as any).depotNom,
+          typeProduit: (v as any).typeProduit || 'Essence',
+          transactions: (v as any).transactions || [],
+          etats: (v as any).etats || [],
+          responsableIdentifiant: (v as any).responsableIdentifiant
+        })));
+        this.voyagesSansPrixTransportPage = {
+          voyages,
+          currentPage: data.currentPage,
+          totalPages: data.totalPages,
+          totalElements: data.totalElements,
+          size: data.size
+        };
+        this.filteredVoyages = voyages;
+        this.isLoading = false;
+      },
+      error: (err) => {
+        console.error('Erreur lors du chargement des voyages sans prix transport:', err);
+        this.isLoading = false;
+      }
+    });
+  }
+
+  changePageSansPrixTransport(page: number) {
+    if (page >= 0 && this.voyagesSansPrixTransportPage && page < this.voyagesSansPrixTransportPage.totalPages) {
+      this.currentPageSansPrixTransport = page;
+      this.loadVoyagesSansPrixTransport();
+    }
   }
 
   // Voyages archives filtrés selon showOnlyDeclaredArchives
@@ -1775,29 +1838,31 @@ export class SuiviTransportComponent implements OnInit {
     return this.authService.isComptable();
   }
 
-  // Modal modification prix unitaire transport (comptable)
-  showEditPrixModal = false;
+  // Modal modification prix unitaire transport (comptable) — référence stable
   editingVoyageForPrix: VoyageDisplay | null = null;
-  editingPrixUnitaireValue = 0;
+  voyageRefToPass: VoyagePrixRef | null = null;
 
   openEditPrixModal(voyage: VoyageDisplay) {
     this.editingVoyageForPrix = voyage;
-    this.editingPrixUnitaireValue = voyage.prixUnitaire ?? 0;
-    this.showEditPrixModal = true;
+    this.voyageRefToPass = {
+      id: voyage.id!,
+      numeroVoyage: voyage.numeroVoyage,
+      quantite: voyage.quantite,
+      prixUnitaire: voyage.prixUnitaire
+    };
   }
 
   closeEditPrixModal() {
-    this.showEditPrixModal = false;
     this.editingVoyageForPrix = null;
-    this.editingPrixUnitaireValue = 0;
+    this.voyageRefToPass = null;
   }
 
-  savePrixUnitaire() {
-    if (!this.editingVoyageForPrix?.id || this.editingPrixUnitaireValue <= 0) {
+  onSavePrixUnitaire(prixUnitaire: number) {
+    if (!this.editingVoyageForPrix?.id || prixUnitaire <= 0) {
       this.toastService.warning('Veuillez saisir un prix valide');
       return;
     }
-    const payload = { ...this.editingVoyageForPrix, prixUnitaire: this.editingPrixUnitaireValue };
+    const payload = { ...this.editingVoyageForPrix, prixUnitaire };
     this.voyagesService.updateVoyage(this.editingVoyageForPrix.id, payload).subscribe({
       next: (updated) => {
         if (this.selectedVoyage?.id === updated.id) {
@@ -1805,6 +1870,9 @@ export class SuiviTransportComponent implements OnInit {
         }
         const idx = this.voyages.findIndex(v => v.id === updated.id);
         if (idx !== -1) this.voyages[idx] = { ...this.voyages[idx], prixUnitaire: updated.prixUnitaire };
+        if (this.activeTab === 'sans-prix-transport' && this.voyagesSansPrixTransportPage) {
+          this.loadVoyagesSansPrixTransport();
+        }
         this.toastService.success('Prix unitaire mis à jour');
         this.closeEditPrixModal();
       },

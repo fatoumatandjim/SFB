@@ -134,4 +134,7 @@ public interface VoyageService {
 
         /** Voyages en cours (non déchargés) avec au moins un client assigné (pour rapport PDF camions/clients) */
         List<VoyageDTO> findVoyagesEnCoursAvecClients();
+
+        /** Voyages attribués (non cession) sans prix de transport — pour le comptable */
+        VoyagePageDto findVoyagesSansPrixTransport(int page, int size);
 }
