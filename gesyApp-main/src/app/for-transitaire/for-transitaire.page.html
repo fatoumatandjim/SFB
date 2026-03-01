@@ -104,6 +104,12 @@
             Tout sélectionner
           </button>
           @if (getSelectedCount() > 0) {
+            <button
+              class="btn-liberer-tous"
+              (click)="libererTous()"
+              [disabled]="isLiberingMultiple || getSelectedLibererCount() === 0">
+              {{ isLiberingMultiple ? 'Libération en cours...' : `Libérer la sélection (${getSelectedLibererCount()})` }}
+            </button>
             @if (voyagesADeclarer.length > 0) {
               <button
                 class="btn-declarer-tous"
@@ -112,12 +118,6 @@
                 {{ isDeclaringMultiple ? 'Déclaration en cours...' : `Déclarer tout (${getSelectedCount()})` }}
               </button>
             }
-            <button
-              class="btn-liberer-tous"
-              (click)="libererTous()"
-              [disabled]="isLiberingMultiple || getSelectedLibererCount() === 0">
-              {{ isLiberingMultiple ? 'Libération en cours...' : `Libérer la sélection (${getSelectedLibererCount()})` }}
-            </button>
           }
         </div>
       }

@@ -437,10 +437,15 @@ export class ForTransitairePage implements OnInit {
     return this.isStatutADeclarer(voyage);
   }
 
-  /** Gestion du clic sur la cellule de statut : tant que non déclaré, on lance la déclaration. */
+  /** Gestion du clic sur la cellule de statut « À déclarer » : met à « Libérer » en premier, puis déclare si déjà prêt. */
   onStatutClick(voyage: VoyageDisplay) {
-    if (this.canDeclarer(voyage)) {
+    if (!this.canDeclarer(voyage)) return;
+    // Si déjà en état Libérer (passer_non_declarer), déclarer (Sortie de douane)
+    if (voyage.passager === 'passer_non_declarer') {
       this.declarerVoyage(voyage);
+    } else {
+      // Sinon, mettre à Libérer en premier (comme Passer non déclaré)
+      this.passerNonDeclarer(voyage);
     }
   }
 
