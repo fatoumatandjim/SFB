@@ -60,6 +60,9 @@ export class PaiementComponent implements OnInit {
   selectedCaisseId?: number;
   compteTypePaiement: 'banque' | 'caisse' = 'banque';
 
+  /** Masquer les boutons de paiement (Nouveau Paiement, Faire le paiement) pour tous les utilisateurs. */
+  showPaiementButtons: boolean = false;
+
   private readonly PAIEMENT_TRANSACTION_TYPE: string = 'VIREMENT_ENTRANT';
 
   /** Type fixé à Virement entrant pour le paiement de facture (pas de sélection). */

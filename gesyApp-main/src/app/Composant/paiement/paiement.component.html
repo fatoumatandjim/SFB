@@ -82,10 +82,12 @@
   </div>
 
   <div class="actions-bar">
+    @if (showPaiementButtons) {
     <button class="btn-new-payment" (click)="nouveauPaiement()">
       <span>+</span>
       Nouveau Paiement
     </button>
+    }
 
     <div class="filters">
       <label class="filter-radio">
@@ -377,9 +379,11 @@
               <button class="action-btn" (click)="viewPaiementDetail(paiement)" title="Voir détails">
                 <span>👁️</span>
               </button>
+              @if (showPaiementButtons) {
               <button class="btn-faire-paiement" (click)="openPaiementModal(paiement)">
                 Faire le paiement
               </button>
+              }
             </div>
           </td>
         </tr>
@@ -695,9 +699,11 @@
         <button type="button" class="btn-cancel" (click)="closeDetailPaiementModal()">
           Fermer
         </button>
+        @if (showPaiementButtons) {
         <button type="button" class="btn-submit" (click)="openPaiementModal(selectedPaiementDetail)">
           Faire le paiement
         </button>
+        }
       </div>
     </div>
   </div>
