@@ -12,7 +12,7 @@
         <label for="list-view-select" class="dropdown-label">Vue liste</label>
         <select id="list-view-select" class="list-view-select" [(ngModel)]="dropdownListView" (ngModelChange)="onListViewChangeByValue($event)">
           @if (isComptable()) {
-          <option value="sans-prix-transport">💰 Attribués sans Prix de Transport</option>
+          <option value="sans-prix-transport">💰 Attribués sans Prix d'Achat</option>
           <option value="sans-prix-achat">💰 Attribués sans Prix d'Achat</option>
           } @else {
           <option value="actifs">🚛 Voyages Actifs</option>
@@ -22,7 +22,7 @@
           @if (isAdmin) {
           <option value="sans-prix-achat">💰 Attribués sans Prix d'Achat</option>
           }
-          <option value="sans-prix-transport">💰 Attribués sans Prix de Transport</option>
+          <option value="sans-prix-transport">💰 Attribués sans Prix d'Achat</option>
           }
         </select>
       </div>

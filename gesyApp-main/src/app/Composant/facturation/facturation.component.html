@@ -743,21 +743,49 @@
                   </div>
 
                   <div class="form-group">
-                    <label for="transaction-compte">Compte bancaire *</label>
-                    <select
-                      id="transaction-compte"
-                      [(ngModel)]="newTransaction.compteId"
-                      name="transactionCompte"
-                      required
-                      class="form-select"
-                    >
-                      <option [value]="undefined">Sélectionner un compte</option>
-                      @for (compte of comptesBancaires; track compte.id) {
-                        <option [value]="compte.id">
-                          {{ compte.banque }} - {{ compte.numero }} ({{ compte.type }})
-                        </option>
-                      }
-                    </select>
+                    <label>Compte bancaire ou Caisse *</label>
+                    <div class="form-radio-group" style="display: flex; gap: 1.5rem; margin-bottom: 0.5rem;">
+                      <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="radio" name="compteTypeTransaction" value="banque" [(ngModel)]="compteTypeTransaction"
+                          (change)="newTransaction.compteId = undefined; newTransaction.caisseId = undefined" />
+                        <span>Compte bancaire</span>
+                      </label>
+                      <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="radio" name="compteTypeTransaction" value="caisse" [(ngModel)]="compteTypeTransaction"
+                          (change)="newTransaction.compteId = undefined; newTransaction.caisseId = undefined" />
+                        <span>Caisse</span>
+                      </label>
+                    </div>
+                    @if (compteTypeTransaction === 'banque') {
+                      <select
+                        id="transaction-compte"
+                        [(ngModel)]="newTransaction.compteId"
+                        name="transactionCompte"
+                        class="form-select"
+                      >
+                        <option [value]="undefined">Sélectionner un compte</option>
+                        @for (compte of comptesBancaires; track compte.id) {
+                          <option [value]="compte.id">
+                            {{ compte.banque }} - {{ compte.numero }} ({{ compte.type }})
+                          </option>
+                        }
+                      </select>
+                    }
+                    @if (compteTypeTransaction === 'caisse') {
+                      <select
+                        id="transaction-caisse"
+                        [(ngModel)]="newTransaction.caisseId"
+                        name="transactionCaisse"
+                        class="form-select"
+                      >
+                        <option [value]="undefined">Sélectionner une caisse</option>
+                        @for (caisse of caisses; track caisse.id) {
+                          <option [value]="caisse.id">
+                            {{ caisse.nom }} ({{ caisse.solde | number }} FCFA)
+                          </option>
+                        }
+                      </select>
+                    }
                   </div>
 
                   <div class="form-row">

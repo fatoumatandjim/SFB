@@ -6,6 +6,7 @@ import { ClientsService, Client } from '../../services/clients.service';
 import { ProduitsService, Produit } from '../../services/produits.service';
 import { TransactionsService, Transaction } from '../../services/transactions.service';
 import { ComptesBancairesService, CompteBancaire } from '../../services/comptes-bancaires.service';
+import { CaissesService, Caisse } from '../../services/caisses.service';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { AlertService } from '../../nativeComp/alert/alert.service';
@@ -33,6 +34,8 @@ export class FacturationComponent implements OnInit {
   factures: Facture[] = [];
   transactions: Transaction[] = [];
   comptesBancaires: CompteBancaire[] = [];
+  caisses: Caisse[] = [];
+  compteTypeTransaction: 'banque' | 'caisse' = 'banque';
 
   private readonly FACTURE_TRANSACTION_TYPE: string = 'VIREMENT_ENTRANT';
 
@@ -82,6 +85,7 @@ export class FacturationComponent implements OnInit {
     reference: '',
     beneficiaire: '',
     compteId: undefined,
+    caisseId: undefined,
     factureId: undefined
   };
 
@@ -111,6 +115,7 @@ export class FacturationComponent implements OnInit {
     private produitsService: ProduitsService,
     private transactionsService: TransactionsService,
     private comptesBancairesService: ComptesBancairesService,
+    private caissesService: CaissesService,
     private alertService: AlertService,
     private toastService: ToastService
   ) { }
@@ -121,6 +126,18 @@ export class FacturationComponent implements OnInit {
     this.loadProduits();
     this.loadStats();
     this.loadComptesBancaires();
+    this.loadCaisses();
+  }
+
+  loadCaisses() {
+    this.caissesService.getAllCaisses().subscribe({
+      next: (data) => {
+        this.caisses = data.filter((c: Caisse) => c.statut === 'ACTIF');
+      },
+      error: (error) => {
+        console.error('Erreur lors du chargement des caisses:', error);
+      }
+    });
   }
 
   loadComptesBancaires() {
@@ -675,6 +692,7 @@ export class FacturationComponent implements OnInit {
   }
 
   resetNewTransaction() {
+    this.compteTypeTransaction = 'banque';
     this.newTransaction = {
       type: this.FACTURE_TRANSACTION_TYPE,
       montant: 0,
@@ -684,6 +702,7 @@ export class FacturationComponent implements OnInit {
       reference: '',
       beneficiaire: '',
       compteId: undefined,
+      caisseId: undefined,
       factureId: this.selectedFacture?.id
     };
   }
@@ -707,7 +726,8 @@ export class FacturationComponent implements OnInit {
       description: this.newTransaction.description || '',
       reference: this.newTransaction.reference || '',
       beneficiaire: this.newTransaction.beneficiaire || '',
-      compteId: this.newTransaction.compteId,
+      compteId: this.compteTypeTransaction === 'banque' ? this.newTransaction.compteId : undefined,
+      caisseId: this.compteTypeTransaction === 'caisse' ? this.newTransaction.caisseId : undefined,
       factureId: this.selectedFacture.id
     };
 
@@ -741,8 +761,12 @@ export class FacturationComponent implements OnInit {
       this.toastService.warning('Veuillez sélectionner un statut');
       return false;
     }
-    if (!this.newTransaction.compteId) {
+    if (this.compteTypeTransaction === 'banque' && !this.newTransaction.compteId) {
       this.toastService.warning('Veuillez sélectionner un compte bancaire');
+      return false;
+    }
+    if (this.compteTypeTransaction === 'caisse' && !this.newTransaction.caisseId) {
+      this.toastService.warning('Veuillez sélectionner une caisse');
       return false;
     }
     if (!this.newTransaction.description || this.newTransaction.description.trim() === '') {

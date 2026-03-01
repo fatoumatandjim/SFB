@@ -144,6 +144,11 @@ export class NavbarComponent implements OnInit {
     if (!hasAccessToClients) {
       this.menuPrincipal = this.menuPrincipal.filter(item => item.id !== 'client-fournisseur');
     }
+
+    // Retirer Axes pour tout le monde sauf l'admin
+    if (!isAdmin) {
+      this.logistique = this.logistique.filter(item => item.id !== 'axes');
+    }
   }
 
   setDefaultSection() {
