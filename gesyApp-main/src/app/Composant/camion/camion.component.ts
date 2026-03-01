@@ -1099,6 +1099,7 @@ export class CamionComponent implements OnInit {
   }
 
   onSavePrixUnitaire(prixUnitaire: number) {
+    if (!this.authService.isComptable()) return;
     if (!this.editingVoyage?.id || prixUnitaire <= 0) {
       this.toastService.warning('Veuillez saisir un prix valide');
       return;

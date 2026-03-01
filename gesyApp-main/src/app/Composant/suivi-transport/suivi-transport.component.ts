@@ -1247,6 +1247,10 @@ export class SuiviTransportComponent implements OnInit {
   }
 
   donnerPrixAchat() {
+    if (!this.authService.isComptable()) {
+      this.toastService.warning('Seul le comptable peut modifier les prix d\'achat');
+      return;
+    }
     if (!this.voyageForPrixAchat || !this.voyageForPrixAchat.id) {
       this.toastService.error('Voyage invalide');
       return;
@@ -1858,6 +1862,7 @@ export class SuiviTransportComponent implements OnInit {
   }
 
   onSavePrixUnitaire(prixUnitaire: number) {
+    if (!this.authService.isComptable()) return;
     if (!this.editingVoyageForPrix?.id || prixUnitaire <= 0) {
       this.toastService.warning('Veuillez saisir un prix valide');
       return;

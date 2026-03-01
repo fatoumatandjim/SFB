@@ -196,6 +196,7 @@ export class CoutComponent implements OnInit {
   }
 
   onSavePrixUnitaire(prixUnitaire: number) {
+    if (!this.authService.isComptable()) return;
     if (!this.editingCout?.id || prixUnitaire <= 0) {
       this.toastService.warning('Veuillez saisir un prix valide');
       return;

@@ -302,6 +302,7 @@ public class VoyageController {
         }
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'COMPTABLE')")
     @PutMapping("/{id}/prix-achat")
     public ResponseEntity<VoyageDTO> donnerPrixAchat(
             @PathVariable Long id,
