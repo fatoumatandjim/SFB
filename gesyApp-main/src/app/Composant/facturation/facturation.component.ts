@@ -40,9 +40,9 @@ export class FacturationComponent implements OnInit {
   private readonly FACTURE_TRANSACTION_TYPE: string = 'VIREMENT_ENTRANT';
 
   readonly transactionTypes: { value: string; label: string }[] = [
+    { value: 'VIREMENT_ENTRANT', label: 'Virement entrant' },
     { value: 'DEPOT', label: 'Dépôt' },
     { value: 'RETRAIT', label: 'Retrait' },
-    { value: 'VIREMENT_ENTRANT', label: 'Virement entrant' },
     { value: 'VIREMENT_SORTANT', label: 'Virement sortant' },
     { value: 'VIREMENT_SIMPLE', label: 'Virement simple' },
     { value: 'FRAIS', label: 'Frais' },

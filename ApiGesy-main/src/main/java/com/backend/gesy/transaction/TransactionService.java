@@ -54,5 +54,11 @@ public interface TransactionService {
      * Retourne les transactions paginées avec le nombre total et le montant total des éléments filtrés.
      */
     TransactionFilterResultDTO filterByCustom(Transaction.TypeTransaction type, LocalDate date, LocalDate startDate, LocalDate endDate, int page, int size);
+
+    /**
+     * Recalcule les soldes de tous les comptes bancaires et caisses à partir des transactions validées.
+     * À utiliser une fois pour corriger les soldes des transactions créées avant la mise à jour automatique.
+     */
+    void recalculerSoldesDepuisTransactions();
 }
 

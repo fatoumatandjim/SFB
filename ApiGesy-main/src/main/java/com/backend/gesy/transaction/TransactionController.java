@@ -225,5 +225,19 @@ public class TransactionController {
         LocalDate end = LocalDate.parse(endDate);
         return ResponseEntity.ok(transactionService.findByDateRangeAll(start, end));
     }
+
+    /**
+     * Recalcule les soldes de tous les comptes bancaires et caisses à partir des transactions validées.
+     * À appeler une fois pour corriger les soldes des transactions créées avant la mise à jour automatique.
+     */
+    @PostMapping("/recalculer-soldes")
+    public ResponseEntity<Void> recalculerSoldes() {
+        try {
+            transactionService.recalculerSoldesDepuisTransactions();
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
 }
 

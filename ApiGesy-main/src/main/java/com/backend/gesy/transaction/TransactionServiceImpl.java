@@ -84,6 +84,13 @@ public class TransactionServiceImpl implements TransactionService {
             .collect(Collectors.toList());
     }
 
+    /**
+     * Indique si le type de transaction correspond à une entrée d'argent (crédit sur compte/caisse).
+     */
+    private boolean isTransactionEntrante(Transaction.TypeTransaction type) {
+        return type == Transaction.TypeTransaction.VIREMENT_ENTRANT || type == Transaction.TypeTransaction.DEPOT;
+    }
+
     @Override
     public TransactionDTO save(TransactionDTO transactionDTO) {
         Transaction transaction = transactionMapper.toEntity(transactionDTO);
@@ -96,6 +103,21 @@ public class TransactionServiceImpl implements TransactionService {
             CompteBancaire compte = compteBancaireRepository.findById(transactionDTO.getCompteId())
                 .orElseThrow(() -> new RuntimeException("Compte bancaire non trouvé avec l'id: " + transactionDTO.getCompteId()));
             transaction.setCompte(compte);
+            // Mettre à jour le solde du compte si la transaction est validée
+            if (transaction.getStatut() == Transaction.StatutTransaction.VALIDE && transaction.getMontant() != null) {
+                if (isTransactionEntrante(transaction.getType())) {
+                    compte.setSolde(compte.getSolde().add(transaction.getMontant()));
+                } else {
+                    if (compte.getStatut() != CompteBancaire.StatutCompte.ACTIF) {
+                        throw new RuntimeException("Le compte bancaire n'est pas actif");
+                    }
+                    if (compte.getSolde().compareTo(transaction.getMontant()) < 0) {
+                        throw new RuntimeException("Solde insuffisant sur le compte bancaire");
+                    }
+                    compte.setSolde(compte.getSolde().subtract(transaction.getMontant()));
+                }
+                compteBancaireRepository.save(compte);
+            }
         }
         if (transactionDTO.getFactureId() != null) {
             Facture facture = factureRepository.findById(transactionDTO.getFactureId())
@@ -113,6 +135,21 @@ public class TransactionServiceImpl implements TransactionService {
             Caisse caisse = caisseRepository.findById(transactionDTO.getCaisseId())
                 .orElseThrow(() -> new RuntimeException("Caisse non trouvée avec l'id: " + transactionDTO.getCaisseId()));
             transaction.setCaisse(caisse);
+            // Mettre à jour le solde de la caisse si la transaction est validée
+            if (transaction.getStatut() == Transaction.StatutTransaction.VALIDE && transaction.getMontant() != null) {
+                if (caisse.getStatut() != Caisse.StatutCaisse.ACTIF) {
+                    throw new RuntimeException("La caisse n'est pas active");
+                }
+                if (isTransactionEntrante(transaction.getType())) {
+                    caisse.setSolde(caisse.getSolde().add(transaction.getMontant()));
+                } else {
+                    if (caisse.getSolde().compareTo(transaction.getMontant()) < 0) {
+                        throw new RuntimeException("Solde insuffisant dans la caisse");
+                    }
+                    caisse.setSolde(caisse.getSolde().subtract(transaction.getMontant()));
+                }
+                caisseRepository.save(caisse);
+            }
         }
         if (transactionDTO.getTransactionLieeId() != null) {
             Transaction transactionLiee = transactionRepository.findById(transactionDTO.getTransactionLieeId())
@@ -927,6 +964,42 @@ public class TransactionServiceImpl implements TransactionService {
         stats.setPaiementsEchec(paiementsEchec);
 
         return stats;
+    }
+
+    @Override
+    public void recalculerSoldesDepuisTransactions() {
+        // Recalculer le solde de chaque compte bancaire à partir des transactions validées
+        for (CompteBancaire compte : compteBancaireRepository.findAll()) {
+            List<Transaction> transactions = transactionRepository.findByCompte(compte).stream()
+                .filter(t -> t.getStatut() == Transaction.StatutTransaction.VALIDE && t.getMontant() != null)
+                .collect(Collectors.toList());
+            BigDecimal solde = BigDecimal.ZERO;
+            for (Transaction t : transactions) {
+                if (isTransactionEntrante(t.getType())) {
+                    solde = solde.add(t.getMontant());
+                } else {
+                    solde = solde.subtract(t.getMontant());
+                }
+            }
+            compte.setSolde(solde);
+            compteBancaireRepository.save(compte);
+        }
+        // Recalculer le solde de chaque caisse à partir des transactions validées
+        for (Caisse caisse : caisseRepository.findAll()) {
+            List<Transaction> transactions = transactionRepository.findByCaisse(caisse).stream()
+                .filter(t -> t.getStatut() == Transaction.StatutTransaction.VALIDE && t.getMontant() != null)
+                .collect(Collectors.toList());
+            BigDecimal solde = BigDecimal.ZERO;
+            for (Transaction t : transactions) {
+                if (isTransactionEntrante(t.getType())) {
+                    solde = solde.add(t.getMontant());
+                } else {
+                    solde = solde.subtract(t.getMontant());
+                }
+            }
+            caisse.setSolde(solde);
+            caisseRepository.save(caisse);
+        }
     }
 }
 

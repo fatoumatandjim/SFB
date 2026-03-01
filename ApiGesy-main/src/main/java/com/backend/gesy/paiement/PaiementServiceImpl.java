@@ -133,15 +133,8 @@ public class PaiementServiceImpl implements PaiementService {
                     compte = compteBancaireRepository.findById(compteId)
                         .orElseThrow(() -> new RuntimeException("Compte bancaire non trouvé avec l'id: " + compteId));
                     transaction.setCompte(compte);
-                    
-                    // Vérifier que le compte est actif
                     if (compte.getStatut() != com.backend.gesy.comptebancaire.CompteBancaire.StatutCompte.ACTIF) {
                         throw new RuntimeException("Le compte bancaire n'est pas actif");
-                    }
-                    
-                    // Vérifier que le solde est suffisant
-                    if (compte.getSolde().compareTo(transaction.getMontant()) < 0) {
-                        throw new RuntimeException("Solde insuffisant dans le compte bancaire. Solde disponible: " + compte.getSolde() + " FCFA, Montant requis: " + transaction.getMontant() + " FCFA");
                     }
                 }
                 
@@ -149,15 +142,8 @@ public class PaiementServiceImpl implements PaiementService {
                     caisse = caisseRepository.findById(caisseId)
                         .orElseThrow(() -> new RuntimeException("Caisse non trouvée avec l'id: " + caisseId));
                     transaction.setCaisse(caisse);
-                    
-                    // Vérifier que la caisse est active
                     if (caisse.getStatut() != com.backend.gesy.caisse.Caisse.StatutCaisse.ACTIF) {
                         throw new RuntimeException("La caisse n'est pas active");
-                    }
-                    
-                    // Vérifier que le solde est suffisant
-                    if (caisse.getSolde().compareTo(transaction.getMontant()) < 0) {
-                        throw new RuntimeException("Solde insuffisant dans la caisse. Solde disponible: " + caisse.getSolde() + " FCFA, Montant requis: " + transaction.getMontant() + " FCFA");
                     }
                 }
                 
@@ -165,14 +151,14 @@ public class PaiementServiceImpl implements PaiementService {
                 transaction.setStatut(com.backend.gesy.transaction.Transaction.StatutTransaction.VALIDE);
                 transactionRepository.save(transaction);
                 
-                // Débiter directement le compte ou la caisse
+                // Créditer le compte ou la caisse (paiement reçu = entrée d'argent)
                 if (compte != null) {
-                    compte.setSolde(compte.getSolde().subtract(transaction.getMontant()));
+                    compte.setSolde(compte.getSolde().add(transaction.getMontant()));
                     compteBancaireRepository.save(compte);
                 }
                 
                 if (caisse != null) {
-                    caisse.setSolde(caisse.getSolde().subtract(transaction.getMontant()));
+                    caisse.setSolde(caisse.getSolde().add(transaction.getMontant()));
                     caisseRepository.save(caisse);
                 }
             }
