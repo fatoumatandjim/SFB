@@ -446,23 +446,24 @@
         </div>
 
         <div class="form-group">
-          <label for="type-compte">Compte à débiter *</label>
-          <select
-            id="type-compte"
-            [(ngModel)]="compteType"
-            name="compteType"
-            (change)="onCompteTypeChange()"
-            required
-            class="type-select"
-          >
-            <option value="banque">Compte bancaire</option>
-            <option value="caisse">Caisse</option>
-          </select>
+          <label>Type de compte *</label>
+          <div class="radio-group" style="display: flex; gap: 1.5rem; margin-bottom: 0.5rem;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+              <input type="radio" name="compteType" value="banque" [(ngModel)]="compteType"
+                (change)="onCompteTypeChange()" />
+              <span>Compte bancaire</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+              <input type="radio" name="compteType" value="caisse" [(ngModel)]="compteType"
+                (change)="onCompteTypeChange()" />
+              <span>Caisse</span>
+            </label>
+          </div>
         </div>
 
         <div class="form-group">
           @if (compteType === 'banque') {
-          <label for="compte-bancaire">Compte bancaire *</label>
+          <label for="compte-bancaire">Compte bancaire</label>
           <select
             id="compte-bancaire"
             [(ngModel)]="newPaiement.compteId"
