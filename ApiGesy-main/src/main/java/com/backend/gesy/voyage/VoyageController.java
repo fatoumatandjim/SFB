@@ -235,8 +235,13 @@ public class VoyageController {
     }
 
     @PostMapping
-    public ResponseEntity<VoyageDTO> createVoyage(@RequestBody VoyageDTO voyageDTO) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(voyageService.save(voyageDTO));
+    public ResponseEntity<?> createVoyage(@RequestBody VoyageDTO voyageDTO) {
+        try {
+            return ResponseEntity.status(HttpStatus.CREATED).body(voyageService.save(voyageDTO));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(java.util.Map.of("message", e.getMessage()));
+        }
     }
 
     @PutMapping("/{id}")

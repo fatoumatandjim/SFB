@@ -524,9 +524,9 @@ export class CamionComponent implements OnInit {
           if (errorMessage) {
             const lowerMessage = errorMessage.toLowerCase();
 
-            // Dépôt vide
+            // Stock insuffisant dans le dépôt - afficher le message exact du backend
             if (lowerMessage.includes('dépôt') && (lowerMessage.includes('vide') || lowerMessage.includes('insuffisant') || lowerMessage.includes('stock'))) {
-              this.voyageErrors['depotId'] = 'Le dépôt sélectionné est vide ou n\'a pas assez de stock';
+              this.voyageErrors['depotId'] = errorMessage;
             }
             // Camion non disponible
             else if (lowerMessage.includes('camion') && (lowerMessage.includes('disponible') || lowerMessage.includes('occupé'))) {
