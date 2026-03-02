@@ -1887,12 +1887,13 @@ export class SuiviTransportComponent implements OnInit {
     });
   }
 
+  /** Affiche le chauffeur : nom + téléphone si disponible */
   getChauffeurDisplay(voyage: Voyage): string {
     const nom = voyage.chauffeur?.trim();
-    const num = voyage.numeroChauffeur?.trim();
-    if (nom && num) return `${nom} (${num})`;
+    const tel = voyage.numeroChauffeur?.trim();
+    if (nom && tel) return `${nom} (${tel})`;
     if (nom) return nom;
-    if (num) return num;
+    if (tel) return tel;
     return '-';
   }
 

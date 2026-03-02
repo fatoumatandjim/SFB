@@ -2,6 +2,9 @@
   padding: 24px;
   background: var(--bg-primary);
   min-height: calc(100vh - 120px);
+  overflow-x: hidden; // Évite le scroll horizontal global
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .suivi-transport-header {
@@ -295,11 +298,14 @@
   background: var(--bg-card);
   border-radius: 12px;
   box-shadow: 0 1px 3px var(--shadow-sm);
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
 }
 
 .voyages-table {
   width: 100%;
+  min-width: 1200px; // Force le scroll horizontal si l'écran est trop étroit (md+)
   border-collapse: collapse;
 
   thead {
@@ -315,6 +321,7 @@
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    white-space: nowrap; // En-têtes sur une seule ligne
 
     &.checkbox-header {
       width: 40px;
@@ -2731,11 +2738,18 @@
     width: 100%;
     justify-content: flex-start;
     gap: 6px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+    flex-wrap: nowrap;
+    min-width: 0;
   }
 
   .filter-radio {
     font-size: 12px;
     padding: 6px 10px;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 
   .filter-date-input,

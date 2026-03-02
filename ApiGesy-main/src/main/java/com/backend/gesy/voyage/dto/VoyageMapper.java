@@ -165,6 +165,7 @@ public class VoyageMapper {
         voyage.setDeclarer(dto.getDeclarer() != null ? dto.getDeclarer() : false);
         voyage.setPassager(dto.getPassager());
         voyage.setChauffeur(dto.getChauffeur());
+        voyage.setNumeroChauffeur(dto.getNumeroChauffeur());
 
         // Mapper le dépôt si fourni
         if (dto.getDepotId() != null && dto.getDepotId() > 0) {
