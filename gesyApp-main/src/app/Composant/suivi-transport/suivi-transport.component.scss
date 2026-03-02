@@ -2898,11 +2898,6 @@
     height: 36px;
   }
 
-  .client-count-badge {
-    font-size: 12px;
-    padding: 4px 8px;
-  }
-
   .modal-overlay {
     padding: 12px;
     align-items: flex-start;
@@ -3461,22 +3456,40 @@
   }
 }
 
-// Badge pour le nombre de clients
+// Badge pour le nombre de clients (colonne Client)
 .client-count-badge {
   display: inline-block;
-  padding: 6px 12px;
+  padding: 4px 10px;
   background: var(--accent-primary);
   color: var(--bg-card);
-  border-radius: 16px;
-  font-size: 13px;
+  border-radius: 12px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
+  white-space: nowrap;
 
   &:hover {
     background: var(--accent-primary);
     transform: translateY(-1px);
     box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+  }
+}
+
+
+@media (max-width: 1024px) {
+  .client-count-badge {
+    padding: 3px 8px;
+    font-size: 11px;
+    border-radius: 10px;
+  }
+}
+
+@media (max-width: 768px) {
+  .client-count-badge {
+    padding: 2px 6px;
+    font-size: 11px;
+    border-radius: 8px;
   }
 }
 
