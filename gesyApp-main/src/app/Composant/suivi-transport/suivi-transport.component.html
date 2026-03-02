@@ -143,6 +143,7 @@
           }
           <th>Numéro Voyage</th>
           <th>Camion</th>
+          <th class="col-chauffeur">Chauffeur</th>
           <th>Client</th>
           <th>Statut</th>
           <th>Déclaré</th>
@@ -156,7 +157,7 @@
       <tbody>
         @if (isLoading) {
         <tr>
-          <td [attr.colspan]="(activeTab === 'actifs' || activeTab === 'non-declares') ? 12 : 11" class="empty-state">
+          <td [attr.colspan]="(activeTab === 'actifs' || activeTab === 'non-declares') ? 13 : 12" class="empty-state">
             <div class="empty-message">Chargement...</div>
           </td>
         </tr>
@@ -167,6 +168,7 @@
             <div class="voyage-numero">{{ voyage.numeroVoyage }}</div>
           </td>
           <td>{{ voyage.camionImmatriculation || 'N/A' }}</td>
+          <td class="col-chauffeur">{{ getChauffeurDisplay(voyage) }}</td>
           <td>
             @if (voyage.clientVoyages && voyage.clientVoyages.length > 0) {
             <div class="client-count-badge" (click)="showClientsList(voyage.clientVoyages, $event)"
@@ -215,6 +217,7 @@
               </div>
             </div>
           </td>
+          <td class="col-chauffeur">{{ getChauffeurDisplay(voyage) }}</td>
           <td>
             @if (voyage.clientVoyages && voyage.clientVoyages.length > 0) {
             <div class="client-count-badge" (click)="showClientsList(voyage.clientVoyages, $event)"
@@ -312,6 +315,7 @@
               </div>
             </div>
           </td>
+          <td class="col-chauffeur">{{ getChauffeurDisplay(voyage) }}</td>
           <td>
             <div class="client-info">
               <div class="client-avatar" [class]="'avatar-' + getClientColor(voyage.clientNom)">
@@ -388,6 +392,7 @@
             <div class="voyage-numero">{{ voyage.numeroVoyage }}</div>
           </td>
           <td>{{ voyage.camionImmatriculation || 'N/A' }}</td>
+          <td class="col-chauffeur">{{ getChauffeurDisplay(voyage) }}</td>
           <td>
             @if (voyage.clientVoyages && voyage.clientVoyages.length > 0) {
             <div class="client-count-badge" (click)="showClientsList(voyage.clientVoyages, $event)"
@@ -456,6 +461,7 @@
             <div class="voyage-numero">{{ voyage.numeroVoyage }}</div>
           </td>
           <td>{{ voyage.camionImmatriculation || 'N/A' }}</td>
+          <td class="col-chauffeur">{{ getChauffeurDisplay(voyage) }}</td>
           <td>
             @if (voyage.clientVoyages && voyage.clientVoyages.length > 0) {
             <div class="client-count-badge" (click)="showClientsList(voyage.clientVoyages, $event)"
@@ -504,7 +510,7 @@
         }
         } @else if (filteredVoyages.length === 0) {
         <tr>
-          <td [attr.colspan]="(activeTab === 'actifs' || activeTab === 'non-declares') ? 12 : 11" class="empty-state">
+          <td [attr.colspan]="(activeTab === 'actifs' || activeTab === 'non-declares') ? 13 : 12" class="empty-state">
             <div class="empty-message">
               @if (activeTab === 'actifs') {
               Aucun voyage actif trouvé
@@ -550,6 +556,7 @@
               </div>
             </div>
           </td>
+          <td class="col-chauffeur">{{ getChauffeurDisplay(voyage) }}</td>
           <td>
             @if (voyage.clientVoyages && voyage.clientVoyages.length > 0) {
             <div class="client-count-badge" (click)="showClientsList(voyage.clientVoyages, $event)"

@@ -1887,6 +1887,15 @@ export class SuiviTransportComponent implements OnInit {
     });
   }
 
+  getChauffeurDisplay(voyage: Voyage): string {
+    const nom = voyage.chauffeur?.trim();
+    const num = voyage.numeroChauffeur?.trim();
+    if (nom && num) return `${nom} (${num})`;
+    if (nom) return nom;
+    if (num) return num;
+    return '-';
+  }
+
   formatDate(dateString: string | undefined): string {
     if (!dateString) return 'N/A';
     try {

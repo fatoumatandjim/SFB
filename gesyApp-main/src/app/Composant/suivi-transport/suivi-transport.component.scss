@@ -720,13 +720,104 @@
   border-width: 0;
 }
 
+// Colonne Chauffeur - responsive
+.col-chauffeur {
+  min-width: 90px;
+  max-width: 160px;
+  white-space: normal;
+  word-break: break-word;
+  font-size: 13px;
+}
+
+// ========== RESPONSIVE - Interface globale ==========
+
+// Tablette (≤1024px)
 @media (max-width: 1024px) {
+  .suivi-transport-container {
+    padding: 20px;
+  }
+
+  .suivi-transport-header {
+    h1 {
+      font-size: 26px;
+    }
+
+    p {
+      font-size: 13px;
+    }
+  }
+
+  .tabs-and-dropdown {
+    gap: 16px;
+  }
+
+  .list-view-select {
+    min-width: 200px;
+  }
+
+  .tab-btn {
+    padding: 10px 18px;
+    font-size: 13px;
+  }
+
+  .actions-bar {
+    gap: 12px;
+  }
+
+  .search-container {
+    min-width: 260px;
+  }
+
+  .filters {
+    gap: 6px;
+  }
+
+  .filter-radio {
+    font-size: 12px;
+    padding: 5px 10px;
+  }
+
   .table-container {
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 10px;
   }
 
   .voyages-table {
     min-width: 1200px;
+
+    th, td {
+      padding: 12px 14px;
+      font-size: 13px;
+    }
+  }
+
+  .col-chauffeur {
+    min-width: 85px;
+  }
+
+  .pagination-container {
+    padding: 16px;
+    margin-top: 20px;
+  }
+
+  .pagination-controls {
+    gap: 6px;
+  }
+
+  .bon-enlevement-actions {
+    flex-wrap: wrap;
+  }
+
+  .btn-generate-bon,
+  .btn-generate-excel,
+  .btn-rapport-pdf-camions {
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+
+  .filter-axe-input .select-input {
+    min-width: 180px;
   }
 }
 
@@ -2534,33 +2625,198 @@
   }
 }
 
+// Mobile (≤768px)
 @media (max-width: 768px) {
   .suivi-transport-container {
-    padding: 16px;
+    padding: 12px 16px;
+    min-height: calc(100vh - 100px);
   }
 
   .suivi-transport-header {
+    margin-bottom: 20px;
+
     h1 {
-      font-size: 24px;
+      font-size: 22px;
+      line-height: 1.2;
+    }
+
+    p {
+      font-size: 12px;
+    }
+  }
+
+  .tabs-container {
+    margin-bottom: 16px;
+  }
+
+  .tabs-and-dropdown {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .list-view-dropdown {
+    width: 100%;
+
+    .list-view-select {
+      flex: 1;
+      min-width: 0;
+      width: 100%;
     }
   }
 
   .tabs {
     flex-wrap: wrap;
+    gap: 6px;
   }
 
   .tab-btn {
-    padding: 10px 16px;
+    padding: 10px 14px;
+    font-size: 12px;
+
+    span {
+      font-size: 16px;
+    }
+  }
+
+  .actions-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    width: 100%;
+    margin-bottom: 16px;
+  }
+
+  .bon-enlevement-actions {
+    flex-direction: column;
+    width: 100%;
+
+    .btn-generate-bon,
+    .btn-generate-excel {
+      width: 100%;
+      justify-content: center;
+      padding: 12px 16px;
+    }
+  }
+
+  .btn-rapport-pdf-camions {
+    width: 100%;
+    justify-content: center;
+    padding: 12px 16px;
     font-size: 13px;
   }
 
   .search-container {
     min-width: 100%;
+    width: 100%;
   }
 
-  .actions-bar {
-    flex-direction: column;
+  .search-input {
+    padding: 10px 36px 10px 36px;
+    font-size: 16px; // évite zoom iOS
+  }
+
+  .group-by-client-filter {
+    margin-right: 0;
     width: 100%;
+
+    .btn-group-client {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+
+  .filters {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 6px;
+  }
+
+  .filter-radio {
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+
+  .filter-date-input,
+  .filter-date-range {
+    width: 100%;
+    flex-wrap: wrap;
+
+    .date-input {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+
+  .filter-date-range {
+    gap: 6px;
+  }
+
+  .filter-axe-input {
+    width: 100%;
+
+    .select-input {
+      width: 100%;
+      min-width: 0;
+    }
+  }
+
+  .table-container {
+    margin: 0 -4px;
+    border-radius: 8px;
+  }
+
+  .voyages-table {
+    min-width: 1100px;
+
+    th, td {
+      padding: 10px 12px;
+      font-size: 12px;
+    }
+
+    th {
+      font-size: 11px;
+    }
+  }
+
+  .col-chauffeur {
+    min-width: 75px;
+    font-size: 12px;
+  }
+
+  .pagination-container {
+    padding: 12px 16px;
+    margin-top: 16px;
+    border-radius: 8px;
+  }
+
+  .pagination-info {
+    font-size: 12px;
+    word-break: break-word;
+  }
+
+  .pagination-controls {
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .pagination-numbers {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px;
+  }
+
+  .pagination-btn {
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+
+  .pagination-number {
+    min-width: 32px !important;
+    height: 32px !important;
+    font-size: 12px !important;
   }
 
   .detail-grid {
@@ -2614,6 +2870,130 @@
         width: 100%;
       }
     }
+  }
+
+  .btn-change-statut,
+  .statut-badge-readonly {
+    min-width: 100px;
+    font-size: 12px;
+    padding: 5px 10px;
+  }
+
+  .action-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .client-count-badge {
+    font-size: 12px;
+    padding: 4px 8px;
+  }
+
+  .modal-overlay {
+    padding: 12px;
+    align-items: flex-start;
+    padding-top: 20px;
+  }
+
+  .modal-content {
+    max-height: 85vh;
+  }
+
+  .modal-header {
+    padding: 16px 20px;
+
+    h2 {
+      font-size: 18px;
+    }
+  }
+
+  .modal-body {
+    padding: 16px 20px;
+    max-height: calc(85vh - 120px);
+  }
+
+  .modal-tabs {
+    padding: 0 16px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .select-modal {
+    width: 95%;
+    max-width: 100%;
+    max-height: 90vh;
+  }
+
+  .archives-filter-row .btn-group-client {
+    width: 100%;
+    padding: 12px;
+    font-size: 13px;
+  }
+}
+
+// Petit mobile (≤480px)
+@media (max-width: 480px) {
+  .suivi-transport-container {
+    padding: 10px 12px;
+  }
+
+  .suivi-transport-header {
+    h1 {
+      font-size: 20px;
+    }
+
+    p {
+      font-size: 11px;
+    }
+  }
+
+  .tab-btn {
+    padding: 8px 12px;
+    font-size: 11px;
+
+    span {
+      font-size: 14px;
+    }
+  }
+
+  .voyages-table {
+    min-width: 1000px;
+
+    th, td {
+      padding: 8px 10px;
+      font-size: 11px;
+    }
+
+    th {
+      font-size: 10px;
+    }
+  }
+
+  .col-chauffeur {
+    min-width: 70px;
+    font-size: 11px;
+  }
+
+  .pagination-container {
+    padding: 10px 12px;
+  }
+
+  .pagination-number {
+    min-width: 32px !important;
+    height: 32px !important;
+    font-size: 12px !important;
+  }
+
+  .modal-overlay {
+    padding: 8px;
+  }
+
+  .modal-header h2 {
+    font-size: 16px;
+  }
+
+  .select-modal .modal-body {
+    padding: 16px;
   }
 }
 
