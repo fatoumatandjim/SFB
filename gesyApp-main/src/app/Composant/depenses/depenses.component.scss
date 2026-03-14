@@ -340,11 +340,13 @@
     display: flex;
     flex-wrap: nowrap;
     align-items: center;
+    justify-content: center;
     gap: 6px;
     min-width: 120px;
     min-height: 40px;
     white-space: nowrap;
     overflow: visible;
+    text-align: center;
   }
 }
 
