@@ -179,8 +179,8 @@
   }
   }
 
-  <!-- Admin et Logisticien : une seule section (statuts du mois + suivi en temps réel) -->
-  @if (isAdmin || isLogisticien) {
+  <!-- Admin, Responsable logistique et Logisticien : section statuts du mois + suivi en temps réel -->
+  @if (showVoyagesSection) {
   <div class="trucks-section">
     <div class="section-header">
       <div>
