@@ -32,7 +32,6 @@
           <option value="RECEPTIONNER">Réceptionné</option>
           <option value="LIVRE">Livré</option>
           <option value="PARTIELLEMENT_DECHARGER">Partiellement déchargé</option>
-          <option value="DECHARGER">Déchargé (non déclarés)</option>
           } @else {
           <option value="DECHARGER">Déchargé</option>
           }
@@ -66,21 +65,11 @@
 
     <div class="actions-bar">
       @if (activeTab === 'en-cours' && voyagesEnChargement.length > 0) {
-      <div class="bon-enlevement-actions">
-        <button class="btn-generate-bon" (click)="generateBonEnlevement()" [disabled]="selectedChargementCount === 0"
-          title="Générer les bons d'enlèvement pour les voyages sélectionnés">
-          <span>📄</span>
-          Générer bon(s) d'enlèvement
-          @if (selectedChargementCount > 0) {
-          <span class="badge-count">({{ selectedChargementCount }})</span>
-          }
-        </button>
-        <button class="btn-generate-excel" (click)="generateListeCamionsExcel()"
-          title="Télécharger la liste Excel des camions par dépôt">
-          <span>📊</span>
-          Liste Excel
-        </button>
-      </div>
+      <button class="btn-generate-excel" (click)="generateListeCamionsExcel()"
+        title="Télécharger la liste Excel des camions par dépôt">
+        <span>📊</span>
+        Liste Excel
+      </button>
       }
       <button class="btn-rapport-pdf-camions" (click)="generateRapportCamionsPdf()"
         [disabled]="rapportPdfGenerating"
@@ -148,12 +137,6 @@
     <table class="voyages-table">
       <thead>
         <tr>
-          @if (activeTab === 'en-cours' && voyagesEnChargement.length > 0) {
-          <th class="checkbox-header">
-            <input type="checkbox" [checked]="allChargementSelected" (change)="toggleSelectAllChargement()"
-              title="Sélectionner tous les voyages en chargement" />
-          </th>
-          }
           <th>Numéro Voyage</th>
           <th>Camion</th>
           <th>Client</th>
@@ -170,21 +153,13 @@
       <tbody>
         @if (isLoading) {
         <tr>
-          <td [attr.colspan]="(activeTab === 'en-cours' && voyagesEnChargement.length > 0) ? 13 : 12" class="empty-state">
+          <td [attr.colspan]="12" class="empty-state">
             <div class="empty-message">Chargement...</div>
           </td>
         </tr>
         } @else if (activeTab === 'en-cours' && voyagesEnCoursPage && voyagesEnCoursPage.voyages.length > 0) {
         @for (voyage of voyagesEnCoursPage.voyages; track voyage.id) {
         <tr>
-          @if (voyagesEnChargement.length > 0) {
-          <td class="checkbox-cell">
-            @if (isVoyageEnChargement(voyage.statut)) {
-            <input type="checkbox" [checked]="isVoyageSelected(voyage.id)" (change)="toggleVoyageSelection(voyage.id)"
-              title="Sélectionner pour générer le bon d'enlèvement" />
-            }
-          </td>
-          }
           <td>
             <div class="voyage-numero">{{ voyage.numeroVoyage }}</div>
           </td>
@@ -318,11 +293,6 @@
               <button class="action-btn btn-view" (click)="viewVoyage(voyage)" title="Détails">
                 <span>👁️</span>
               </button>
-              @if (isVoyageEnChargement(voyage.statut)) {
-              <button class="action-btn btn-bon" (click)="generateBonEnlevement(voyage.id)" title="Bon d'enlèvement">
-                <span>📄</span>
-              </button>
-              }
               @if (canModifyOrDeleteVoyage()) {
               <button class="action-btn btn-edit" (click)="openEditVoyageModal(voyage)" title="Modifier">
                 <span>✏️</span>
