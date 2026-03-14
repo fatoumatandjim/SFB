@@ -1,4 +1,4 @@
-# Documentation technique — GesY
+# Documentation technique - GesY
 
 Document technique du projet GesY, basé sur les configurations du backend (`apiGesy/pom.xml`) et du frontend (`GesY/package.json`).
 
