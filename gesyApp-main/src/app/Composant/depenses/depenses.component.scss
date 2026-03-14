@@ -291,8 +291,11 @@
     padding: 16px 20px;
     font-size: 14px;
     color: var(--text-secondary);
-    border-bottom: 1px solid var(--border-color);
     vertical-align: middle;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border-color);
   }
 
   tbody tr:hover {
@@ -339,7 +342,7 @@
     align-items: center;
     gap: 6px;
     min-width: 120px;
-    min-height: 36px;
+    min-height: 40px;
     white-space: nowrap;
     overflow: visible;
   }
@@ -377,11 +380,14 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 2.5rem;
-  padding: 6px 10px;
+  min-width: 3rem;
+  padding: 8px 14px;
+  background: var(--bg-secondary, rgba(255, 255, 255, 0.06));
+  border-radius: 8px;
   color: var(--text-muted, #9ca3af);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
+  letter-spacing: 0.02em;
   line-height: 1;
   user-select: none;
 }
