@@ -122,6 +122,13 @@
       max-width: 100%;
     }
   }
+
+  .stats-empty {
+    margin: 0;
+    font-size: 13px;
+    color: var(--text-muted);
+    font-style: italic;
+  }
 }
 
 .list-view-dropdown {

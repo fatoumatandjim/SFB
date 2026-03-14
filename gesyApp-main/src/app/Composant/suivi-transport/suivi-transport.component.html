@@ -49,9 +49,10 @@
       }
     </div>
 
-    @if (activeTab === 'en-cours' && statsVoyages.length > 0) {
+    @if (activeTab === 'en-cours') {
     <div class="stats-section">
       <h3 class="stats-title">Statistiques par statut ({{ getStatsFilterLabel() }})</h3>
+      @if (statsVoyages.length > 0) {
       <div class="stats-cards">
         @for (stat of statsVoyages; track stat.statut) {
         <div class="stat-card-mini">
@@ -60,6 +61,9 @@
         </div>
         }
       </div>
+      } @else {
+      <p class="stats-empty">Aucun voyage en cours</p>
+      }
     </div>
     }
 

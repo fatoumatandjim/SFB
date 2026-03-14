@@ -109,17 +109,19 @@ export class NavbarComponent implements OnInit {
       );
       this.rapport = [];
     } else if (isResponsableLogistique) {
-      // Responsable logistique unique : camions, suivi-transport, transitaire, axes, depot, cout, email, stock ; PAS d'accès clients
+      // Responsable logistique : tableau de bord, camions, stock, suivi-transport, transitaire, axes, depot, email
       this.menuPrincipal = this.allMenuPrincipal.filter(item =>
-        ['camion', 'stock'].includes(item.id)
+        ['dashbord', 'camion', 'stock'].includes(item.id)
       );
       this.logistique = this.allLogistique.filter(item =>
         ['suivi-transport', 'transitaire', 'axes', 'depot', 'email'].includes(item.id)
       );
       this.rapport = [];
     } else if (isLogisticien) {
-      // Autres logisticiens : suivi-transport (camions attribués), depot ; PAS d'accès clients
-      this.menuPrincipal = this.allMenuPrincipal.filter(item => item.id === 'stock');
+      // Logisticien (simple) : tableau de bord, stock, suivi-transport, depot, email
+      this.menuPrincipal = this.allMenuPrincipal.filter(item =>
+        ['dashbord', 'stock'].includes(item.id)
+      );
       this.logistique = this.allLogistique.filter(item =>
         ['suivi-transport', 'depot', 'email'].includes(item.id)
       );
