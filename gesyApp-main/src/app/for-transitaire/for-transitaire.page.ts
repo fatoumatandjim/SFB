@@ -135,7 +135,7 @@ export class ForTransitairePage implements OnInit {
     this.voyagesService.getVoyagesNonDeclaresByTransitaireIdentifiant(this.transitaireInfo.identifiant).subscribe({
       next: (data: any) => {
         this.voyages = sortByDateDepartDesc(
-          data.map(v => ({
+          data.map((v: any) => ({
             ...v,
             camionImmatriculation: (v as any).camionImmatriculation,
             clientNom: (v as any).clientNom,

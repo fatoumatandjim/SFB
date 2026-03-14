@@ -681,12 +681,12 @@ export class SuiviTransportComponent implements OnInit {
       // Charger les voyages groupés par client
       this.voyagesService.getVoyagesAvecClientSansFactureGroupesParClient(this.currentPageSansPrixAchat, this.pageSizeSansPrixAchat).subscribe({
         next: (data: any) => {
-          const clientsVoyages = data.clientsVoyages.map(cv => ({
+          const clientsVoyages = data.clientsVoyages.map((cv: any) => ({
             clientId: cv.clientId,
             clientNom: cv.clientNom,
             clientEmail: cv.clientEmail,
             nombreVoyages: cv.nombreVoyages,
-            voyages: cv.voyages.map(v => ({
+            voyages: cv.voyages.map((v: any) => ({
               ...v,
               camionImmatriculation: (v as any).camionImmatriculation,
               clientNom: (v as any).clientNom || cv.clientNom,
@@ -722,7 +722,7 @@ export class SuiviTransportComponent implements OnInit {
       // Charger les voyages normalement
       this.voyagesService.getVoyagesAvecClientSansFacture(this.currentPageSansPrixAchat, this.pageSizeSansPrixAchat).subscribe({
         next: (data: any) => {
-          const voyages = sortByDateDepartDesc(data.voyages.map(v => ({
+          const voyages = sortByDateDepartDesc(data.voyages.map((v: any) => ({
             ...v,
             camionImmatriculation: (v as any).camionImmatriculation,
             clientNom: (v as any).clientNom,
@@ -732,9 +732,9 @@ export class SuiviTransportComponent implements OnInit {
             typeProduit: (v as any).typeProduit || 'Essence',
             transactions: (v as any).transactions || [],
             etats: (v as any).etats || []
-          })));
+          }))) as VoyageDisplay[];
           this.voyagesSansPrixAchatPage = {
-            voyages: voyages,
+            voyages,
             currentPage: data.currentPage,
             totalPages: data.totalPages,
             totalElements: data.totalElements,
@@ -762,7 +762,7 @@ export class SuiviTransportComponent implements OnInit {
     this.filteredVoyages = [];
     this.voyagesService.getVoyagesSansPrixTransport(this.currentPageSansPrixTransport, this.pageSizeSansPrixTransport).subscribe({
       next: (data: any) => {
-        const voyages = sortByDateDepartDesc(data.voyages.map(v => ({
+        const voyages = sortByDateDepartDesc(data.voyages.map((v: any) => ({
           ...v,
           camionImmatriculation: (v as any).camionImmatriculation,
           clientNom: (v as any).clientNom,
@@ -773,7 +773,7 @@ export class SuiviTransportComponent implements OnInit {
           transactions: (v as any).transactions || [],
           etats: (v as any).etats || [],
           responsableIdentifiant: (v as any).responsableIdentifiant
-        })));
+        }))) as VoyageDisplay[];
         this.voyagesSansPrixTransportPage = {
           voyages,
           currentPage: data.currentPage,
