@@ -208,10 +208,10 @@ public interface VoyageRepository extends JpaRepository<Voyage, Long> {
                      @Param("endDate") LocalDateTime endDate,
                      Pageable pageable);
 
-       // Trouver les voyages non déclarés d'un transitaire (ancienne logique, conservée pour compatibilité)
+       /** Voyages non déclarés du transitaire : tous statuts (à déclarer, peu importe déchargé ou non) */
        @Query("SELECT v FROM Voyage v WHERE v.transitaire = :transitaire " +
                      "AND (v.declarer = false OR v.declarer IS NULL) " +
-                     "ORDER BY v.id DESC")
+                     "ORDER BY v.dateDepart DESC, v.id DESC")
        List<Voyage> findVoyagesNonDeclaresByTransitaire(@Param("transitaire") Transitaire transitaire);
 
        /** Voyages actifs du transitaire (non libérés) : tri du plus récent au plus ancien */

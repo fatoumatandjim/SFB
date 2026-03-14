@@ -63,7 +63,7 @@
         class="tab-btn"
         [class.active]="activeTab === 'en-cours'"
         (click)="setTab('en-cours')"
-        title="Uniquement À la douane, non déclarés">
+        title="Tous les voyages non déclarés (tous statuts, peu importe déchargé ou non)">
         <span>📋</span>
         À déclarer
       </button>
@@ -272,9 +272,11 @@
                 <td><div class="date-value">{{ formatDate(voyage.dateDepart) }}</div></td>
                 <td><div class="destination-value">{{ voyage.destination }}</div></td>
                 <td class="col-actions">
-                  <button type="button" class="action-btn voir-btn" (click)="viewVoyage(voyage)" title="Voir le détail du voyage">
-                    <span>👁️</span> Voir
-                  </button>
+                  <div class="action-cell-inner">
+                    <button type="button" class="action-btn voir-btn" (click)="viewVoyage(voyage)" title="Voir le détail du voyage">
+                      <span>👁️</span> Voir
+                    </button>
+                  </div>
                 </td>
               </tr>
             }
@@ -367,7 +369,8 @@
                   <div class="destination-value">{{ voyage.destination }}</div>
                 </td>
                 <td class="col-actions">
-                  <div class="action-buttons">
+                  <div class="action-cell-inner">
+                    <div class="action-buttons">
                     @if (activeTab === 'en-cours') {
                       @if (voyage.liberer) {
                         <span class="status-badge badge-libere" title="Voyage libéré">Liberé</span>
@@ -385,6 +388,7 @@
                         </button>
                       }
                     }
+                    </div>
                   </div>
                 </td>
               </tr>

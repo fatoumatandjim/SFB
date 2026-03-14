@@ -404,19 +404,37 @@
 
 .voyages-table {
   width: 100%;
+  min-width: 700px;
   border-collapse: collapse;
+  table-layout: fixed;
 
   th.col-actions,
   td.col-actions {
-    min-width: 90px;
-    width: 90px;
-    white-space: nowrap;
+    width: 100px;
+    min-width: 100px;
+    max-width: 100px;
+    padding-left: 8px;
+    padding-right: 8px;
     text-align: center;
     vertical-align: middle;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+
+  .action-cell-inner {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    box-sizing: border-box;
   }
 
   td.col-actions .action-btn {
-    margin: 0 auto;
+    margin: 0;
+    flex-shrink: 0;
   }
 
   td.col-actions .action-buttons {
@@ -425,6 +443,7 @@
     gap: 6px;
     justify-content: center;
     min-width: 0;
+    max-width: 100%;
   }
 
   .checkbox-column {
@@ -1441,8 +1460,9 @@
 
     th.col-actions,
     td.col-actions {
-      min-width: 90px;
-      width: 90px;
+      width: 100px;
+      min-width: 100px;
+      max-width: 100px;
     }
   }
 
