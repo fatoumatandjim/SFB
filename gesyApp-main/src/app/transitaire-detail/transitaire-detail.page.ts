@@ -15,6 +15,7 @@ import { IonIcon } from '@ionic/angular/standalone';
 import { AlertService } from '../nativeComp/alert/alert.service';
 import { ToastService } from '../nativeComp/toast/toast.service';
 import { sortByDateDepartDesc } from '../services/voyage-date.utils';
+import { getVoyageStatutLabel, getVoyageStatutClass } from '../services/voyage-statut.utils';
 
 interface VoyageDisplay extends Voyage {
   camionImmatriculation?: string;
@@ -319,20 +320,12 @@ export class TransitaireDetailPage implements OnInit {
     }
   }
 
-  getStatusLabel(statut: string | undefined): string {
-    const labels: { [key: string]: string } = {
-      'CHARGEMENT': 'Chargement', 'CHARGE': 'Chargé', 'DEPART': 'Départ', 'ARRIVER': 'Arrivé',
-      'DOUANE': 'Douane', 'RECEPTIONNER': 'Sortie de douane', 'LIVRE': 'Livré'
-    };
-    return labels[statut || ''] || statut || 'N/A';
+  getStatusLabel(statut: string | undefined, voyage?: { liberer?: boolean }): string {
+    return getVoyageStatutLabel(statut, voyage);
   }
 
-  getStatusClass(statut: string): string {
-    const classes: { [key: string]: string } = {
-      'CHARGEMENT': 'badge-blue', 'CHARGE': 'badge-orange', 'DEPART': 'badge-purple', 'ARRIVER': 'badge-green',
-      'DOUANE': 'badge-yellow', 'RECEPTIONNER': 'badge-teal', 'LIVRE': 'badge-teal'
-    };
-    return classes[statut] || 'badge-gray';
+  getStatusClass(statut: string, voyage?: { liberer?: boolean }): string {
+    return getVoyageStatutClass(statut, voyage);
   }
 
   formatDate(dateString: string | undefined): string {

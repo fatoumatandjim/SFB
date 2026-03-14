@@ -17,6 +17,7 @@ import { IonIcon } from '@ionic/angular/standalone';
 import { AlertService } from '../nativeComp/alert/alert.service';
 import { ToastService } from '../nativeComp/toast/toast.service';
 import { sortByDateDepartDesc } from '../services/voyage-date.utils';
+import { getVoyageStatutLabel, getVoyageStatutClass } from '../services/voyage-statut.utils';
 
 interface VoyageDisplay extends Voyage {
   camionImmatriculation?: string;
@@ -406,31 +407,11 @@ export class ForTransitairePage implements OnInit {
     if (!statut) return 'N/A';
     const v: VoyageDisplay = { statut, declarer, passager } as VoyageDisplay;
     if (this.isStatutADeclarer(v)) return 'À déclarer';
-    const key = (statut || '').toString().toUpperCase();
-    const labels: { [key: string]: string } = {
-      'CHARGEMENT': 'Chargement',
-      'CHARGE': 'Chargé',
-      'DEPART': 'Départ',
-      'ARRIVER': 'Arrivé',
-      'DOUANE': 'Douane',
-      'RECEPTIONNER': 'Sortie de douane',
-      'LIVRE': 'Livré'
-    };
-    return labels[key] || statut;
+    return getVoyageStatutLabel(statut, { liberer: declarer === true });
   }
 
-  getStatusClass(statut: string): string {
-    const key = (statut || '').toString().toUpperCase();
-    const classes: { [key: string]: string } = {
-      'CHARGEMENT': 'badge-blue',
-      'CHARGE': 'badge-orange',
-      'DEPART': 'badge-purple',
-      'ARRIVER': 'badge-green',
-      'DOUANE': 'badge-yellow',
-      'RECEPTIONNER': 'badge-teal',
-      'LIVRE': 'badge-teal'
-    };
-    return classes[key] || 'badge-gray';
+  getStatusClass(statut: string, voyage?: { liberer?: boolean }): string {
+    return getVoyageStatutClass(statut, voyage);
   }
 
   /** True si le statut doit être cliquable pour déclencher la déclaration (même logique que l'affichage "À déclarer"). */

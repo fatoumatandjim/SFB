@@ -36,5 +36,9 @@ public interface FactureRepository extends JpaRepository<Facture, Long> {
     // Récupérer la facture liée à un voyage et un client (pour mise à jour prix d'achat)
     @org.springframework.data.jpa.repository.Query("SELECT f FROM Facture f WHERE f.voyage.id = :voyageId AND f.client.id = :clientId ORDER BY f.id DESC")
     java.util.List<Facture> findByVoyageIdAndClientId(@org.springframework.data.repository.query.Param("voyageId") Long voyageId, @org.springframework.data.repository.query.Param("clientId") Long clientId);
+
+    /** Toutes les factures liées à un voyage (pour libérer la référence avant suppression du voyage). */
+    @org.springframework.data.jpa.repository.Query("SELECT f FROM Facture f WHERE f.voyage.id = :voyageId")
+    java.util.List<Facture> findByVoyageId(@org.springframework.data.repository.query.Param("voyageId") Long voyageId);
 }
 

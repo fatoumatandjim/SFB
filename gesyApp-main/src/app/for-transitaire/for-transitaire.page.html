@@ -251,13 +251,13 @@
                       class="status-cell status-cell--button"
                       (click)="onStatutClick(voyage)"
                       [title]="'Cliquer pour déclarer le voyage ' + (voyage.numeroVoyage || '')">
-                      <span class="status-badge" [class]="getStatusClass(voyage.statut || '')">
+                      <span class="status-badge" [class]="getStatusClass(voyage.statut || '', voyage)">
                         {{ getStatusLabel(voyage.statut, voyage.declarer, voyage.passager) }}
                       </span>
                     </button>
                   } @else {
                     <div class="status-cell">
-                      <span class="status-badge" [class]="getStatusClass(voyage.statut || '')">
+                      <span class="status-badge" [class]="getStatusClass(voyage.statut || '', voyage)">
                         {{ getStatusLabel(voyage.statut, voyage.declarer, voyage.passager) }}
                       </span>
                     </div>
@@ -335,13 +335,13 @@
                       class="status-cell status-cell--button"
                       (click)="onStatutClick(voyage)"
                       [title]="'Cliquer pour déclarer le voyage ' + (voyage.numeroVoyage || '')">
-                      <span class="status-badge" [class]="getStatusClass(voyage.statut || '')">
+                      <span class="status-badge" [class]="getStatusClass(voyage.statut || '', voyage)">
                         {{ getStatusLabel(voyage.statut, voyage.declarer, voyage.passager) }}
                       </span>
                     </button>
                   } @else {
                     <div class="status-cell">
-                      <span class="status-badge" [class]="getStatusClass(voyage.statut || '')">
+                      <span class="status-badge" [class]="getStatusClass(voyage.statut || '', voyage)">
                         {{ getStatusLabel(voyage.statut, voyage.declarer, voyage.passager) }}
                       </span>
                     </div>

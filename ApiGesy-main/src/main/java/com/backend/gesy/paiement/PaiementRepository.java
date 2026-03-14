@@ -22,5 +22,9 @@ public interface PaiementRepository extends JpaRepository<Paiement, Long> {
     /** Paiement du coût de transport pour un voyage (référence PAY-COU-VOY-xxx). */
     @Query("SELECT p FROM Paiement p WHERE p.voyage.id = :voyageId AND p.reference LIKE 'PAY-COU-VOY-%'")
     List<Paiement> findCoutTransportByVoyageId(@Param("voyageId") Long voyageId);
+
+    /** Paiements contenant une transaction donnée (pour libérer la FK avant suppression du voyage). */
+    @Query("SELECT p FROM Paiement p JOIN p.transactions t WHERE t.id = :transactionId")
+    List<Paiement> findByTransactionId(@Param("transactionId") Long transactionId);
 }
 

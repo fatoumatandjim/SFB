@@ -40,7 +40,7 @@ public interface VoyageRepository extends JpaRepository<Voyage, Long> {
 
        // Trouver les voyages d'un dépôt avec des statuts spécifiques
        @Query("SELECT v FROM Voyage v WHERE v.depot = :depot " +
-                     "AND (v.statut = 'CHARGEMENT' OR v.statut = 'CHARGE') " +
+                     "AND (v.statut = 'EN_ATTENTE_CHARGEMENT' OR v.statut = 'CHARGEMENT' OR v.statut = 'CHARGE') " +
                      "ORDER BY v.dateDepart DESC")
        List<Voyage> findByDepotAndStatutsChargement(@Param("depot") Depot depot);
 

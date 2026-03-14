@@ -34,6 +34,8 @@ public class StatutVoyageConverter implements AttributeConverter<Voyage.StatutVo
      */
     private Voyage.StatutVoyage convertOldStatutToNew(String oldStatut) {
         switch (oldStatut) {
+            case "EN_ATTENTE_CHARGEMENT":
+                return Voyage.StatutVoyage.EN_ATTENTE_CHARGEMENT;
             case "ASSIGNE_AU_CHARGEMENT":
             case "EN_CHARGEMENT":
                 return Voyage.StatutVoyage.CHARGEMENT;

@@ -309,9 +309,9 @@ public class VoyageServiceImpl implements VoyageService {
         String numeroVoyage = generateUniqueNumeroVoyage();
         voyage.setNumeroVoyage(numeroVoyage);
 
-        // Statut par défaut: CHARGEMENT
+        // Statut par défaut: EN_ATTENTE_CHARGEMENT (création directe en attente de chargement)
         if (voyage.getStatut() == null) {
-            voyage.setStatut(Voyage.StatutVoyage.CHARGEMENT);
+            voyage.setStatut(Voyage.StatutVoyage.EN_ATTENTE_CHARGEMENT);
         }
 
         // Définir le camion et mettre à jour son statut
@@ -1647,8 +1647,139 @@ public class VoyageServiceImpl implements VoyageService {
     }
 
     @Override
+    @Transactional
     public void deleteById(Long id) {
+        Voyage voyage = voyageRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Voyage non trouvé avec l'id: " + id));
+
+        // 0. Interdire la suppression si le voyage est déjà attribué et déchargé
+        Voyage.StatutVoyage statut = voyage.getStatut();
+        if (statut == Voyage.StatutVoyage.DECHARGER || statut == Voyage.StatutVoyage.PARTIELLEMENT_DECHARGER) {
+            throw new RuntimeException("Impossible de supprimer un voyage déjà attribué et déchargé. Le produit a été livré aux clients.");
+        }
+
+        // 1. Retirer les transactions du voyage des paiements (évite FK paiement_transactions)
+        Set<Long> txIds = voyage.getTransactions() != null
+                ? voyage.getTransactions().stream().map(Transaction::getId).filter(Objects::nonNull).collect(Collectors.toSet())
+                : Collections.emptySet();
+        Set<Paiement> paiementsToUpdate = new HashSet<>();
+        for (Long txId : txIds) {
+            for (Paiement p : paiementRepository.findByTransactionId(txId)) {
+                if (p.getTransactions().removeIf(t -> t != null && Objects.equals(t.getId(), txId))) {
+                    paiementsToUpdate.add(p);
+                }
+            }
+        }
+        for (Paiement p : paiementsToUpdate) {
+            paiementRepository.saveAndFlush(p);
+        }
+
+        // 2. Libérer les références voyage sur les Paiements
+        for (Paiement p : paiementRepository.findByVoyage(voyage)) {
+            p.setVoyage(null);
+            paiementRepository.saveAndFlush(p);
+        }
+
+        // 3. Libérer les références voyage sur les Factures
+        for (Facture f : factureRepository.findByVoyageId(id)) {
+            f.setVoyage(null);
+            factureRepository.saveAndFlush(f);
+        }
+
+        // 4. Supprimer les Manquants (voyage_id NOT NULL)
+        manquantRepository.findByVoyageIdOrderByDateCreationDesc(id).forEach(manquantRepository::delete);
+
+        // 5. Remettre le stock utilisé à son état initial (dépôt)
+        if (statut != null && statut != Voyage.StatutVoyage.EN_ATTENTE_CHARGEMENT && statut != Voyage.StatutVoyage.CHARGEMENT
+                && voyage.getDepot() != null && voyage.getProduit() != null && voyage.getQuantite() != null && voyage.getQuantite() > 0) {
+            double quantiteLivree = 0.0;
+            List<ClientVoyage> clientVoyages = clientVoyageRepository.findByVoyageId(id);
+            for (ClientVoyage cv : clientVoyages) {
+                if (cv.getStatut() == ClientVoyage.StatutLivraison.LIVRER && cv.getQuantite() != null) {
+                    quantiteLivree += cv.getQuantite();
+                }
+            }
+            double quantiteARemettre = voyage.getQuantite() - quantiteLivree;
+            if (quantiteARemettre > 0) {
+                remettreStockCiterneVersDepot(voyage, quantiteARemettre, LocalDateTime.now());
+            }
+        }
+
+        // 6. Remettre le camion en DISPONIBLE (il n'est plus utilisé par ce voyage)
+        Camion camion = voyage.getCamion();
+        if (camion != null && camion.getStatut() != Camion.StatutCamion.EN_MAINTENANCE
+                && camion.getStatut() != Camion.StatutCamion.HORS_SERVICE) {
+            camion.setStatut(Camion.StatutCamion.DISPONIBLE);
+            camionRepository.save(camion);
+        }
+
         voyageRepository.deleteById(id);
+    }
+
+    /**
+     * Remet le stock du voyage dans le dépôt (inverse de retirerDuDepotEtAjouterAuStockCiterne).
+     * Utilisé lors de la suppression d'un voyage pour restaurer le stock à son état initial.
+     */
+    private void remettreStockCiterneVersDepot(Voyage voyage, Double quantiteARemettre, LocalDateTime now) {
+        if (voyage.getDepot() == null || voyage.getProduit() == null) {
+            return;
+        }
+        if (quantiteARemettre == null || quantiteARemettre <= 0) {
+            return;
+        }
+
+        Stock stockCiterne = stockRepository.findByProduitIdAndCiterne(
+                voyage.getProduit().getId(),
+                true)
+                .orElseThrow(() -> new RuntimeException(
+                        "Stock Citerne non trouvé pour le produit avec l'id: " + voyage.getProduit().getId()));
+
+        Double quantiteCiterneActuelle = stockCiterne.getQuantite();
+        if (quantiteCiterneActuelle < quantiteARemettre) {
+            throw new RuntimeException(
+                    "Quantité insuffisante dans le stock citerne pour annulation. Disponible: " + quantiteCiterneActuelle +
+                            ", à remettre: " + quantiteARemettre);
+        }
+
+        stockCiterne.setQuantite(quantiteCiterneActuelle - quantiteARemettre);
+        stockCiterne.setDateDerniereMiseAJour(now);
+        stockRepository.save(stockCiterne);
+
+        MouvementDTO mouvementSortieCiterneDTO = new MouvementDTO();
+        mouvementSortieCiterneDTO.setStockId(stockCiterne.getId());
+        mouvementSortieCiterneDTO.setTypeMouvement("SORTIE");
+        mouvementSortieCiterneDTO.setQuantite(quantiteARemettre);
+        mouvementSortieCiterneDTO.setUnite(stockCiterne.getUnite());
+        mouvementSortieCiterneDTO.setDescription("Annulation voyage " + voyage.getNumeroVoyage() + " - Remise au dépôt");
+        mouvementService.save(mouvementSortieCiterneDTO);
+
+        Optional<Stock> stockDepotOpt = stockRepository.findByDepotIdAndProduitId(
+                voyage.getDepot().getId(),
+                voyage.getProduit().getId());
+
+        if (stockDepotOpt.isEmpty()) {
+            throw new RuntimeException("Stock non trouvé pour le produit " + voyage.getProduit().getNom() +
+                    " dans le dépôt " + voyage.getDepot().getNom());
+        }
+
+        Stock stockDepot = stockDepotOpt.get();
+        Double quantiteDepotActuelle = stockDepot.getQuantite();
+        stockDepot.setQuantite(quantiteDepotActuelle + quantiteARemettre);
+        stockDepot.setDateDerniereMiseAJour(now);
+        stockRepository.save(stockDepot);
+
+        Depot depot = voyage.getDepot();
+        Double capaciteUtilisee = depot.getCapaciteUtilisee() != null ? depot.getCapaciteUtilisee() : 0.0;
+        depot.setCapaciteUtilisee(capaciteUtilisee + quantiteARemettre);
+        depotRepository.save(depot);
+
+        MouvementDTO mouvementEntreeDepotDTO = new MouvementDTO();
+        mouvementEntreeDepotDTO.setStockId(stockDepot.getId());
+        mouvementEntreeDepotDTO.setTypeMouvement("ENTREE");
+        mouvementEntreeDepotDTO.setQuantite(quantiteARemettre);
+        mouvementEntreeDepotDTO.setUnite(stockDepot.getUnite());
+        mouvementEntreeDepotDTO.setDescription("Remise au dépôt " + depot.getNom() + " - Annulation voyage " + voyage.getNumeroVoyage());
+        mouvementService.save(mouvementEntreeDepotDTO);
     }
 
     /**
@@ -1704,6 +1835,7 @@ public class VoyageServiceImpl implements VoyageService {
         }
 
         switch (statutVoyage) {
+            case EN_ATTENTE_CHARGEMENT:
             case CHARGEMENT:
             case CHARGE:
             case DEPART:
@@ -1798,14 +1930,18 @@ public class VoyageServiceImpl implements VoyageService {
                 "Décharger"
         };
 
+        // En EN_ATTENTE_CHARGEMENT : aucun état validé. En CHARGEMENT ou plus : valider "Chargement"
+        boolean validerChargement = voyage.getStatut() != null
+                && voyage.getStatut() != Voyage.StatutVoyage.EN_ATTENTE_CHARGEMENT;
+
         for (String etat : etats) {
             EtatVoyage etatVoyage = new EtatVoyage();
             etatVoyage.setEtat(etat);
             etatVoyage.setDateHeure(now);
             etatVoyage.setValider(false);
             etatVoyage.setVoyage(voyage);
-            if (etat.equals("Chargement")) {
-                etatVoyage.setValider(true); // Le premier état est validé par défaut
+            if (etat.equals("Chargement") && validerChargement) {
+                etatVoyage.setValider(true);
             }
             etatVoyageRepository.save(etatVoyage);
         }
@@ -2815,6 +2951,8 @@ public class VoyageServiceImpl implements VoyageService {
 
         // Mapping des anciens statuts vers les nouveaux
         switch (statut) {
+            case "EN_ATTENTE_CHARGEMENT":
+                return Voyage.StatutVoyage.EN_ATTENTE_CHARGEMENT;
             case "ASSIGNE_AU_CHARGEMENT":
             case "EN_CHARGEMENT":
                 return Voyage.StatutVoyage.CHARGEMENT;

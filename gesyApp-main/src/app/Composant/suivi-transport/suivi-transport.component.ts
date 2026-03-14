@@ -17,7 +17,14 @@ import { PdfService } from '../../services/pdf.service';
 import { ExcelService, CamionExcelData } from '../../services/excel.service';
 import { AuthService } from 'src/app/services/auth.service';
 import { EditPrixTransportModalComponent, VoyagePrixRef } from '../shared/edit-prix-transport-modal/edit-prix-transport-modal.component';
-import { getVoyageStatutLabel, getVoyageStatutClass, isSortieDouane } from '../../services/voyage-statut.utils';
+import {
+  getVoyageStatutLabel,
+  getVoyageStatutClass,
+  isSortieDouane,
+  isVoyageEnChargement,
+  STATUTS_VOYAGE_ORDER,
+  STATUTS_EN_COURS
+} from '../../services/voyage-statut.utils';
 import { sortByDateDepartDesc } from '../../services/voyage-date.utils';
 
 /** Valeur du champ passager pour les voyages à la douane (non déclarés) */
@@ -634,11 +641,10 @@ export class SuiviTransportComponent implements OnInit {
   get statsVoyages(): Array<{ statut: string; count: number }> {
     const source = this.getVoyagesForCurrentView();
     const counts = new Map<string, number>();
-    const statutsEnCours = ['CHARGEMENT', 'CHARGE', 'DEPART', 'ARRIVER', 'DOUANE', 'RECEPTIONNER', 'LIVRE', 'PARTIELLEMENT_DECHARGER', 'DECHARGER'];
-    statutsEnCours.forEach(s => counts.set(s, 0));
+    STATUTS_VOYAGE_ORDER.forEach(s => counts.set(s, 0));
     source.forEach(v => {
       const s = v.statut || '';
-      if (statutsEnCours.includes(s)) {
+      if (STATUTS_VOYAGE_ORDER.includes(s)) {
         if (s === 'RECEPTIONNER' && !v.liberer) return;
         counts.set(s, (counts.get(s) || 0) + 1);
       }
@@ -1882,7 +1888,7 @@ export class SuiviTransportComponent implements OnInit {
   }
 
   /** Statuts que le logisticien peut mettre à jour (jusqu'à Douane ; le transitaire fait le reste). */
-  private static readonly STATUTS_LOGISTICIEN_MAX = ['CHARGEMENT', 'CHARGE', 'DEPART', 'ARRIVER', 'DOUANE'] as const;
+  private static readonly STATUTS_LOGISTICIEN_MAX: readonly string[] = STATUTS_EN_COURS;
 
   /** États visibles/sélectionnables par le logisticien (jusqu'à Douane inclus). */
   private static readonly ETATS_LOGISTICIEN = ['Chargement', 'Chargé', 'Départ', 'Arrivé', 'Douane'];
@@ -2022,6 +2028,14 @@ export class SuiviTransportComponent implements OnInit {
       return defaultMessage;
     }
 
+    // Message dans l'en-tête X-Error-Message (réponses 400 du backend, ex. suppression refusée)
+    if (error.headers && typeof error.headers.get === 'function') {
+      const headerMsg = error.headers.get('X-Error-Message');
+      if (headerMsg) {
+        return headerMsg;
+      }
+    }
+
     // Essayer d'extraire le message depuis différentes propriétés
     // Spring Boot peut retourner les erreurs dans différentes structures
 
@@ -2121,6 +2135,30 @@ export class SuiviTransportComponent implements OnInit {
     this.showAddFraisForm = false;
     this.selectedTransitaireId = undefined;
     this.resetNewFrais();
+  }
+
+  /** Ouvre le modal de détail du voyage (équivalent modification pour l’instant). */
+  openEditVoyageModal(voyage: VoyageDisplay) {
+    this.viewVoyage(voyage);
+  }
+
+  /** Demande confirmation puis supprime le voyage. */
+  confirmDeleteVoyage(voyage: VoyageDisplay) {
+    if (!voyage.id) return;
+    const msg = `Êtes-vous sûr de vouloir supprimer le voyage ${voyage.numeroVoyage || voyage.id} ? Cette action est irréversible.`;
+    this.alertService.confirm(msg, 'Confirmer la suppression').subscribe(confirmed => {
+      if (!confirmed) return;
+      this.voyagesService.deleteVoyage(voyage.id!).subscribe({
+        next: () => {
+          this.toastService.success('Voyage supprimé');
+          if (this.activeTab === 'en-cours') this.loadVoyagesEnCours();
+          else if (this.activeTab === 'archives') this.loadVoyagesArchives();
+        },
+        error: (error) => {
+          this.toastService.error(this.getErrorMessage(error, 'Erreur lors de la suppression du voyage'));
+        }
+      });
+    });
   }
 
   setDetailTab(tab: 'details' | 'frais') {
@@ -2495,7 +2533,7 @@ export class SuiviTransportComponent implements OnInit {
       },
       error: (err) => {
         this.isLoading = false;
-        this.toastService.error(err?.error?.message || 'Erreur lors de la déclaration');
+        this.toastService.error(this.getErrorMessage(err, 'Erreur lors de la déclaration'));
       }
     });
   }
@@ -2513,7 +2551,7 @@ export class SuiviTransportComponent implements OnInit {
       },
       error: (err) => {
         this.isLoading = false;
-        this.toastService.error(err?.error?.message || 'Erreur lors de la libération');
+        this.toastService.error(this.getErrorMessage(err, 'Erreur lors de la libération'));
       }
     });
   }
@@ -2531,7 +2569,7 @@ export class SuiviTransportComponent implements OnInit {
       },
       error: (err) => {
         this.isLoading = false;
-        this.toastService.error(err?.error?.message || 'Erreur');
+        this.toastService.error(this.getErrorMessage(err, 'Erreur lors du passage en non déclaré'));
       }
     });
   }
@@ -2539,7 +2577,12 @@ export class SuiviTransportComponent implements OnInit {
   // Méthodes pour les bons d'enlèvement
   get voyagesEnChargement(): VoyageDisplay[] {
     const source = this.getVoyagesForCurrentView();
-    return source.filter(v => v.statut === 'CHARGEMENT');
+    return source.filter(v => isVoyageEnChargement(v.statut));
+  }
+
+  /** Exposé au template : vrai si le voyage est en (attente de) chargement. */
+  isVoyageEnChargement(statut: string | undefined): boolean {
+    return isVoyageEnChargement(statut);
   }
 
   toggleVoyageSelection(voyageId: number | undefined): void {
@@ -2591,7 +2634,7 @@ export class SuiviTransportComponent implements OnInit {
     if (voyageId) {
       // Générer pour un seul voyage
       const voyage = this.voyages.find(v => v.id === voyageId);
-      if (voyage && voyage.statut === 'CHARGEMENT') {
+      if (voyage && isVoyageEnChargement(voyage.statut)) {
         voyagesToGenerate = [voyage];
       } else {
         this.toastService.warning('Ce voyage n\'est pas en chargement');
@@ -2604,7 +2647,7 @@ export class SuiviTransportComponent implements OnInit {
         return;
       }
       voyagesToGenerate = this.voyages.filter(v =>
-        v.id && this.selectedVoyagesForBon.has(v.id) && v.statut === 'CHARGEMENT'
+        v.id && this.selectedVoyagesForBon.has(v.id) && isVoyageEnChargement(v.statut)
       );
     }
 
@@ -2663,7 +2706,7 @@ export class SuiviTransportComponent implements OnInit {
    */
   async generateListeCamionsExcel(): Promise<void> {
     // Filtrer les voyages en chargement
-    const voyagesChargement = this.voyages.filter(v => v.statut === 'CHARGEMENT');
+    const voyagesChargement = this.voyages.filter(v => isVoyageEnChargement(v.statut));
 
     if (voyagesChargement.length === 0) {
       this.toastService.warning('Aucun voyage en chargement trouvé');

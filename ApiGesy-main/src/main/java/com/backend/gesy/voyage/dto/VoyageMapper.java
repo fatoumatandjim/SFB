@@ -198,6 +198,8 @@ public class VoyageMapper {
 
         // Mapping des anciens statuts vers les nouveaux
         switch (statut) {
+            case "EN_ATTENTE_CHARGEMENT":
+                return Voyage.StatutVoyage.EN_ATTENTE_CHARGEMENT;
             case "ASSIGNE_AU_CHARGEMENT":
             case "EN_CHARGEMENT":
                 return Voyage.StatutVoyage.CHARGEMENT;

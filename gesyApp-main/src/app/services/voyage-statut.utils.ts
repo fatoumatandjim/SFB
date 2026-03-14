@@ -5,6 +5,7 @@
 
 /** Ordre d'affichage des statuts (aligné backend). */
 export const STATUTS_VOYAGE_ORDER: readonly string[] = [
+  'EN_ATTENTE_CHARGEMENT',
   'CHARGEMENT',
   'CHARGE',
   'DEPART',
@@ -17,6 +18,7 @@ export const STATUTS_VOYAGE_ORDER: readonly string[] = [
 ];
 
 export const STATUT_VOYAGE_LABELS: Readonly<Record<string, string>> = {
+  EN_ATTENTE_CHARGEMENT: 'En route (chargement)',
   CHARGEMENT: 'Chargement',
   CHARGE: 'Chargé',
   DEPART: 'Départ',
@@ -29,6 +31,7 @@ export const STATUT_VOYAGE_LABELS: Readonly<Record<string, string>> = {
 } as const;
 
 export const STATUT_VOYAGE_CLASSES: Readonly<Record<string, string>> = {
+  EN_ATTENTE_CHARGEMENT: 'badge-gray',
   CHARGEMENT: 'badge-blue',
   CHARGE: 'badge-orange',
   DEPART: 'badge-purple',
@@ -46,6 +49,29 @@ const DEFAULT_CLASS = 'badge-gray';
 
 export interface VoyageLiberer {
   liberer?: boolean;
+}
+
+/** Statuts considérés "en chargement" (bon d'enlèvement, Excel, etc.). */
+export const STATUTS_EN_CHARGEMENT: readonly string[] = ['EN_ATTENTE_CHARGEMENT', 'CHARGEMENT'];
+
+/** Statuts considérés "en cours" pour les indicateurs (dashboard, camion). */
+export const STATUTS_EN_COURS: readonly string[] = [
+  'EN_ATTENTE_CHARGEMENT',
+  'CHARGEMENT',
+  'CHARGE',
+  'DEPART',
+  'ARRIVER',
+  'DOUANE'
+];
+
+/** True si le statut correspond à un voyage en (attente de) chargement. */
+export function isVoyageEnChargement(statut: string | undefined): boolean {
+  return statut != null && STATUTS_EN_CHARGEMENT.includes(statut);
+}
+
+/** True si le statut correspond à un voyage "en cours" (avant réception/décharge). */
+export function isVoyageEnCours(statut: string | undefined): boolean {
+  return statut != null && STATUTS_EN_COURS.includes(statut);
 }
 
 /** True si le voyage est en "sortie de douane" (RECEPTIONNER ou DOUANE + libéré). */

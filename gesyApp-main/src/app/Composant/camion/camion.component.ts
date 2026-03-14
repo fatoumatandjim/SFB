@@ -17,7 +17,7 @@ import { ToastService } from '../../nativeComp/toast/toast.service';
 import { AuthService } from '../../services/auth.service';
 import { UtilisateursService, Utilisateur } from '../../services/utilisateurs.service';
 import { EditPrixTransportModalComponent, VoyagePrixRef } from '../shared/edit-prix-transport-modal/edit-prix-transport-modal.component';
-import { getVoyageStatutLabel, getVoyageStatutClass } from '../../services/voyage-statut.utils';
+import { getVoyageStatutLabel, getVoyageStatutClass, isVoyageEnCours } from '../../services/voyage-statut.utils';
 
 interface CamionDisplay extends Camion {
   couleur: string;
@@ -356,12 +356,7 @@ export class CamionComponent implements OnInit {
 
   updateStats() {
     // Compter les voyages par statut
-    this.stats.enCours = this.allVoyages.filter(v =>
-      v.statut === 'CHARGEMENT' ||
-      v.statut === 'CHARGE' ||
-      v.statut === 'DEPART' ||
-      v.statut === 'ARRIVER'
-    ).length;
+    this.stats.enCours = this.allVoyages.filter(v => isVoyageEnCours(v.statut)).length;
 
     this.stats.arrive = this.allVoyages.filter(v => v.statut === 'ARRIVER').length;
     this.stats.douane = this.allVoyages.filter(v => v.statut === 'DOUANE').length;

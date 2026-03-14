@@ -236,8 +236,8 @@
                   }
                 </td>
                 <td>
-                  <span class="status-badge" [class]="getStatusClass(voyage.statut || '')">
-                    {{ getStatusLabel(voyage.statut) }}
+                  <span class="status-badge" [class]="getStatusClass(voyage.statut || '', voyage)">
+                    {{ getStatusLabel(voyage.statut, voyage) }}
                   </span>
                 </td>
                 <td><div class="produit-type">{{ voyage.typeProduit || 'Essence' }}</div></td>
@@ -315,8 +315,8 @@
                       Déclarer
                     </button>
                   } @else {
-                    <span class="status-badge" [class]="getStatusClass(voyage.statut || '')">
-                      {{ getStatusLabel(voyage.statut) }}
+                    <span class="status-badge" [class]="getStatusClass(voyage.statut || '', voyage)">
+                      {{ getStatusLabel(voyage.statut, voyage) }}
                     </span>
                   }
                 </div>

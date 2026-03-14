@@ -373,9 +373,15 @@ public class VoyageController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteVoyage(@PathVariable Long id) {
-        voyageService.deleteById(id);
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<?> deleteVoyage(@PathVariable Long id) {
+        try {
+            voyageService.deleteById(id);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .header("X-Error-Message", e.getMessage() != null ? e.getMessage() : "Erreur lors de la suppression")
+                    .body(null);
+        }
     }
 
     @GetMapping("/{id}/marge")

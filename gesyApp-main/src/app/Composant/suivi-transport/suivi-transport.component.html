@@ -23,6 +23,7 @@
         <select id="filter-statut-select" class="list-view-select" [(ngModel)]="filterStatut" (ngModelChange)="onFilterStatutChange()">
           <option value="">Tous les statuts</option>
           @if (activeTab === 'en-cours') {
+          <option value="EN_ATTENTE_CHARGEMENT">En route (chargement)</option>
           <option value="CHARGEMENT">Chargement</option>
           <option value="CHARGE">Chargé</option>
           <option value="DEPART">Départ</option>
@@ -178,7 +179,7 @@
         <tr>
           @if (voyagesEnChargement.length > 0) {
           <td class="checkbox-cell">
-            @if (voyage.statut === 'CHARGEMENT') {
+            @if (isVoyageEnChargement(voyage.statut)) {
             <input type="checkbox" [checked]="isVoyageSelected(voyage.id)" (change)="toggleVoyageSelection(voyage.id)"
               title="Sélectionner pour générer le bon d'enlèvement" />
             }
@@ -317,7 +318,7 @@
               <button class="action-btn btn-view" (click)="viewVoyage(voyage)" title="Détails">
                 <span>👁️</span>
               </button>
-              @if (voyage.statut === 'CHARGEMENT') {
+              @if (isVoyageEnChargement(voyage.statut)) {
               <button class="action-btn btn-bon" (click)="generateBonEnlevement(voyage.id)" title="Bon d'enlèvement">
                 <span>📄</span>
               </button>
@@ -493,7 +494,6 @@
             </div>
           </td>
         </tr>
-        }
         }
       </tbody>
     </table>

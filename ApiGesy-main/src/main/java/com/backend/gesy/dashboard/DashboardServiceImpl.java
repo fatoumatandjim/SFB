@@ -314,9 +314,10 @@ public class DashboardServiceImpl implements DashboardService {
                                 .filter(v -> !v.isCession())
                                 .collect(Collectors.toList());
 
-                // Voyages en cours : CHARGEMENT, CHARGE, DEPART, ARRIVER, DOUANE
+                // Voyages en cours : EN_ATTENTE_CHARGEMENT, CHARGEMENT, CHARGE, DEPART, ARRIVER, DOUANE
                 long voyagesEnCours = allVoyages.stream()
-                                .filter(v -> v.getStatut() == Voyage.StatutVoyage.CHARGEMENT ||
+                                .filter(v -> v.getStatut() == Voyage.StatutVoyage.EN_ATTENTE_CHARGEMENT ||
+                                                v.getStatut() == Voyage.StatutVoyage.CHARGEMENT ||
                                                 v.getStatut() == Voyage.StatutVoyage.CHARGE ||
                                                 v.getStatut() == Voyage.StatutVoyage.DEPART ||
                                                 v.getStatut() == Voyage.StatutVoyage.ARRIVER ||
