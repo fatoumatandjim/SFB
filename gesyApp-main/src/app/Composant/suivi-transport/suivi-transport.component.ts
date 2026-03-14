@@ -1251,8 +1251,7 @@ export class SuiviTransportComponent implements OnInit {
     if (voyage.id) {
       this.voyagesService.getVoyageById(voyage.id).subscribe({
         next: (updatedVoyage) => {
-          // Synchroniser le voyage affiché avec le backend (liste = même référence que voyageForStatutChange)
-          // pour que la colonne Statut affiche le même libellé que le modal (aligné djikineholding).
+          // Source unique pour le modal : mettre à jour uniquement voyageForStatutChange (données backend).
           if (this.voyageForStatutChange) {
             if (updatedVoyage.statut !== undefined && updatedVoyage.statut !== null) {
               this.voyageForStatutChange.statut = updatedVoyage.statut as any;
@@ -1263,9 +1262,19 @@ export class SuiviTransportComponent implements OnInit {
             if (updatedVoyage.clientVoyages) {
               this.voyageForStatutChange.clientVoyages = updatedVoyage.clientVoyages;
             }
+            if (updatedVoyage.etats) {
+              this.voyageForStatutChange.etats = updatedVoyage.etats;
+            }
           }
 
-          // Mettre à jour les ClientVoyage depuis la réponse
+          // Rafraîchir la liste depuis le serveur (source de vérité) pour que la colonne Statut soit cohérente.
+          if (this.activeTab === 'en-cours') {
+            this.loadVoyagesEnCours();
+          } else if (this.activeTab === 'archives') {
+            this.loadVoyagesArchives();
+          }
+
+          // Mettre à jour les ClientVoyage depuis la réponse (pour le formulaire du modal)
           if (this.voyageForStatutChange && updatedVoyage.clientVoyages) {
             this.dechargerManquants = {};
             this.dechargerClientLivres = {};
