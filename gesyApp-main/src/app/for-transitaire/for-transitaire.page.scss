@@ -408,6 +408,10 @@
   border-collapse: collapse;
   table-layout: fixed;
 
+  col.col-actions {
+    width: 100px;
+  }
+
   th.col-actions,
   td.col-actions {
     width: 100px;
@@ -419,6 +423,25 @@
     vertical-align: middle;
     overflow: hidden;
     box-sizing: border-box;
+  }
+
+  /* Onglet Voyages en cours : colonne Actions strictement contrainte */
+  &.table-voyages-en-cours {
+    th.col-actions,
+    td.col-actions {
+      width: 100px !important;
+      min-width: 100px !important;
+      max-width: 100px !important;
+    }
+    td.col-actions .action-cell-inner {
+      overflow: hidden;
+    }
+    td.col-actions .voir-btn {
+      max-width: 100%;
+      padding-left: 6px;
+      padding-right: 6px;
+      font-size: 12px;
+    }
   }
 
   .action-cell-inner {

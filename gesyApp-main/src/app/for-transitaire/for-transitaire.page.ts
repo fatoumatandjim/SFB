@@ -432,20 +432,25 @@ export class ForTransitairePage implements OnInit {
     return getVoyageStatutClass(statut, voyage);
   }
 
-  /** True si le statut doit être cliquable pour déclencher la déclaration (même logique que l'affichage "À déclarer"). */
+  /** True si le statut doit être cliquable pour déclencher la déclaration. Dans l'onglet À déclarer : tout voyage non déclaré. */
   canDeclarer(voyage: VoyageDisplay): boolean {
+    if (!voyage) return false;
+    if (this.activeTab === 'en-cours') return !this.isDeclared(voyage);
     return this.isStatutADeclarer(voyage);
   }
 
-  /** Gestion du clic sur la cellule de statut « À déclarer » : met à « Libérer » en premier, puis déclare si déjà prêt. */
+  /** Gestion du clic sur la cellule de statut « À déclarer » : déclarer ou passer non déclaré selon le statut. */
   onStatutClick(voyage: VoyageDisplay) {
     if (!this.canDeclarer(voyage)) return;
-    // Si déjà en état Libérer (passer_non_declarer), déclarer (Sortie de douane)
-    if (voyage.passager === 'passer_non_declarer') {
-      this.declarerVoyage(voyage);
+    if (this.isStatutADeclarer(voyage)) {
+      if (voyage.passager === 'passer_non_declarer') {
+        this.declarerVoyage(voyage);
+      } else {
+        this.passerNonDeclarer(voyage);
+      }
     } else {
-      // Sinon, mettre à Libérer en premier (comme Passer non déclaré)
-      this.passerNonDeclarer(voyage);
+      // Onglet À déclarer : voyage non déclaré mais pas encore à la douane → tenter de déclarer (backend valide)
+      this.declarerVoyage(voyage);
     }
   }
 

@@ -182,7 +182,13 @@
 
   @if (activeTab !== 'axes') {
   <div class="table-container">
-    <table class="voyages-table">
+    <table class="voyages-table" [class.table-voyages-en-cours]="activeTab === 'voyages-en-cours'">
+      @if (activeTab === 'voyages-en-cours') {
+        <colgroup>
+          <col span="9">
+          <col class="col-actions">
+        </colgroup>
+      }
       <thead>
         <tr>
           @if (activeTab === 'en-cours') {
@@ -233,6 +239,7 @@
                     </div>
                   </div>
                 </td>
+                <td><div class="chauffeur-info">{{ getChauffeurDisplay(voyage) }}</div></td>
                 <td>
                   @if (voyage.clientNom) {
                     <div class="client-info">
