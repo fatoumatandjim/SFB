@@ -99,20 +99,6 @@ export function getVoyageStatutLabel(
 }
 
 /**
- * Libellé pour la colonne Statut de la liste (suivi transport).
- * Quand le statut est RECEPTIONNER, on affiche "À décharger" pour être cohérent
- * avec le modal "Changer le statut" où la prochaine étape à valider est Décharger.
- */
-export function getVoyageStatutLabelForList(
-  statut: string | undefined,
-  voyage?: VoyageLiberer
-): string {
-  if (!statut) return 'N/A';
-  if (statut === 'RECEPTIONNER') return 'À décharger';
-  return getVoyageStatutLabel(statut, voyage);
-}
-
-/**
  * Classe CSS pour le badge du statut.
  * DOUANE + liberer → même style que RECEPTIONNER.
  */
