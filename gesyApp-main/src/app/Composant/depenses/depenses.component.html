@@ -158,15 +158,15 @@
                     <span class="description">Voyage {{ ligne.numeroVoyage }}</span>
                   }
                 </td>
-                <td>
+                <td class="categorie-cell">
                   <span class="badge-categorie" [style.background-color]="getCategorieColor(ligne.categorieNom || '')">
                     {{ ligne.categorieNom || '-' }}
                   </span>
                 </td>
-                <td>{{ getSourceLabelLigne(ligne) }}</td>
-                <td>{{ ligne.reference || '-' }}</td>
+                <td class="source-cell">{{ getSourceLabelLigne(ligne) }}</td>
+                <td class="reference-cell">{{ ligne.reference || '-' }}</td>
                 <td class="montant-cell">{{ formatMontant(ligne.montant) }}</td>
-                <td class="actions-cell">
+                <td class="actions-cell" role="cell">
                   @if (ligne.type === 'DEPENSE') {
                     <button class="action-btn edit" (click)="openEditDepenseModal(ligne)" title="Modifier">
                       ✏️

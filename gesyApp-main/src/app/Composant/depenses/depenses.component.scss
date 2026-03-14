@@ -260,7 +260,8 @@
 .table-container {
   background: var(--bg-card);
   border-radius: 16px;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: visible;
   box-shadow: var(--shadow-card);
   border: 1px solid var(--border-color);
 }
@@ -268,6 +269,7 @@
 .data-table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: auto;
 
   th {
     text-align: left;
@@ -279,13 +281,18 @@
     text-transform: uppercase;
     letter-spacing: 0.5px;
     border-bottom: 1px solid var(--border-color);
+    white-space: nowrap;
   }
+
+  th:nth-child(4) { min-width: 120px; } /* Catégorie */
+  th:last-child { min-width: 100px; }  /* Actions */
 
   td {
     padding: 16px 20px;
     font-size: 14px;
     color: var(--text-secondary);
     border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
   }
 
   tbody tr:hover {
@@ -293,10 +300,12 @@
   }
 
   .libelle-cell {
+    min-width: 140px;
     .libelle {
       display: block;
       font-weight: 500;
       color: var(--text-primary);
+      word-break: break-word;
     }
 
     .description {
@@ -307,23 +316,45 @@
     }
   }
 
+  .categorie-cell {
+    min-width: 120px;
+    max-width: 200px;
+    overflow: visible;
+  }
+
+  .source-cell,
+  .reference-cell {
+    word-break: break-word;
+  }
+
   .montant-cell {
     font-weight: 600;
     color: var(--danger-color);
+    white-space: nowrap;
   }
 
   .actions-cell {
     display: flex;
+    flex-wrap: nowrap;
     gap: 8px;
+    min-width: 100px;
+    white-space: nowrap;
+    overflow: visible;
   }
 }
 
 .badge-categorie {
-  padding: 4px 12px;
+  display: inline-block;
+  padding: 6px 12px;
   border-radius: 20px;
   font-size: 12px;
   font-weight: 500;
   color: white;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.35;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .badge-type {
