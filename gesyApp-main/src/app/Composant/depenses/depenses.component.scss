@@ -340,7 +340,9 @@
     display: flex;
     flex-wrap: nowrap;
     align-items: center;
+    justify-content: center;
     gap: 6px;
+    width: 100%;
     min-width: 120px;
     min-height: 40px;
     white-space: nowrap;
