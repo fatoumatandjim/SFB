@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { forkJoin, of } from 'rxjs';
@@ -19,6 +19,12 @@ import { AuthService } from 'src/app/services/auth.service';
 import { EditPrixTransportModalComponent, VoyagePrixRef } from '../shared/edit-prix-transport-modal/edit-prix-transport-modal.component';
 import { getVoyageStatutLabel, getVoyageStatutClass, isSortieDouane } from '../../services/voyage-statut.utils';
 import { sortByDateDepartDesc } from '../../services/voyage-date.utils';
+
+/** Valeur du champ passager pour les voyages à la douane (non déclarés) */
+const PASSAGER_NON_DECLARER = 'passer_non_declarer';
+
+/** Filtres douane : état de déclaration */
+type FilterDouaneDeclaration = '' | 'a_declarer' | 'non_declarer';
 
 interface VoyageDisplay extends Voyage {
   camionImmatriculation?: string;
@@ -41,11 +47,16 @@ interface VoyageDisplay extends Voyage {
   imports: [CommonModule, FormsModule, EditPrixTransportModalComponent]
 })
 export class SuiviTransportComponent implements OnInit {
-  activeTab: 'actifs' | 'receptionnes' | 'non-declares' | 'archives' | 'sans-prix-achat' | 'sans-prix-transport' | 'partiellement-decharges' | 'en-cours' = 'actifs';
-  /** Valeur affichée par la liste déroulante (quand on est sur onglet Sortie de douane/En cours, on garde la dernière vue liste). */
-  dropdownListView: 'actifs' | 'non-declares' | 'archives' | 'sans-prix-achat' | 'sans-prix-transport' | 'partiellement-decharges' = 'actifs';
-  voyagesNonDeclares: VoyageDisplay[] = [];
+  activeTab: 'en-cours' | 'archives' = 'en-cours';
+  /** Filtre par statut (liste déroulante) */
+  filterStatut: string = '';
+  /** Filtre douane : déclaration (visible quand filterStatut === 'DOUANE') */
+  filterDouaneDeclaration: FilterDouaneDeclaration = '';
   searchTerm: string = '';
+  /** Liste complète des archives filtrées (avant pagination et filtre déclarés) */
+  private _allArchivesFiltered: VoyageDisplay[] = [];
+  /** Archives : n'afficher que les voyages déclarés */
+  showOnlyDeclaredArchives: boolean = false;
   isLoading: boolean = false;
   voyages: VoyageDisplay[] = [];
   filteredVoyages: VoyageDisplay[] = [];
@@ -143,6 +154,8 @@ export class SuiviTransportComponent implements OnInit {
   showQuantiteModal: boolean = false;
   selectedClientForAdd: Client | null = null;
   quantiteToAdd: number | undefined;
+  /** ID du voyage pour lequel le menu Déclarer/Libérer est ouvert */
+  openDeclarationMenuVoyageId: number | null = null;
 
   constructor(
     private voyagesService: VoyagesService,
@@ -160,24 +173,14 @@ export class SuiviTransportComponent implements OnInit {
     private authService: AuthService
   ) { }
 
-  private readonly COMPTABLE_VIEW_KEY = 'gesy_comptable_suivi_transport_view';
-
   ngOnInit() {
     this.isAdmin = this.authService.hasRole('ADMIN') || this.authService.hasRole('ROLE_ADMIN');
-    if (this.authService.isComptable()) {
-      const saved = localStorage.getItem(this.COMPTABLE_VIEW_KEY) as 'sans-prix-transport' | 'sans-prix-achat' | null;
-      const view = saved && (saved === 'sans-prix-transport' || saved === 'sans-prix-achat') ? saved : 'sans-prix-transport';
-      this.dropdownListView = view;
-      this.activeTab = view;
-      this.setTab(view);
-    } else {
-      this.loadVoyages();
-    }
     this.loadTransitaires();
     this.loadAxes();
     this.loadComptesBancaires();
     this.loadCaisses();
     this.loadClients();
+    this.setTab('en-cours');
   }
 
   loadComptesBancaires() {
@@ -595,62 +598,106 @@ export class SuiviTransportComponent implements OnInit {
     });
   }
 
-  onListViewChangeByValue(value: string) {
-    const tab = value as 'actifs' | 'non-declares' | 'archives' | 'sans-prix-achat' | 'sans-prix-transport' | 'partiellement-decharges';
-    this.dropdownListView = tab;
-    this.setTab(tab);
-    if (this.authService.isComptable() && (tab === 'sans-prix-transport' || tab === 'sans-prix-achat')) {
-      localStorage.setItem(this.COMPTABLE_VIEW_KEY, tab);
+  onFilterStatutChange() {
+    this.currentPageEnCours = 0;
+    this.currentPageArchives = 0;
+    if (this.activeTab === 'en-cours') {
+      this.loadVoyagesEnCours();
+    } else {
+      this.loadVoyagesArchives();
     }
   }
 
-  setTab(tab: 'actifs' | 'receptionnes' | 'non-declares' | 'archives' | 'sans-prix-achat' | 'sans-prix-transport' | 'partiellement-decharges' | 'en-cours') {
+  onFilterDouaneDeclarationChange() {
+    this.currentPageEnCours = 0;
+    this.loadVoyagesEnCours();
+  }
+
+  setTab(tab: 'en-cours' | 'archives') {
     this.activeTab = tab;
-    if (tab !== 'receptionnes' && tab !== 'en-cours') {
-      this.dropdownListView = tab as 'actifs' | 'non-declares' | 'archives' | 'sans-prix-achat' | 'sans-prix-transport' | 'partiellement-decharges';
-    }
-    // Réinitialiser filteredVoyages pour éviter les conflits entre onglets
+    this.filterStatut = '';
+    this.filterDouaneDeclaration = '';
     this.filteredVoyages = [];
 
-    if (tab === 'non-declares') {
-      this.voyagesNonDeclares = [];
-      this.loadVoyagesPassesNonDeclares();
-    } else if (tab === 'sans-prix-achat') {
-      this.currentPageSansPrixAchat = 0;
-      this.voyagesSansPrixAchatPage = null;
-      this.voyagesParClientPage = null;
-      this.loadVoyagesSansPrixAchat();
-    } else if (tab === 'sans-prix-transport') {
-      this.currentPageSansPrixTransport = 0;
-      this.voyagesSansPrixTransportPage = null;
-      this.loadVoyagesSansPrixTransport();
-    } else if (tab === 'partiellement-decharges') {
-      this.currentPagePartiellementDecharges = 0;
-      this.voyagesPartiellementDechargesPage = null;
-      this.loadVoyagesPartiellementDecharges();
-    } else if (tab === 'en-cours') {
+    if (tab === 'en-cours') {
       this.currentPageEnCours = 0;
       this.voyagesEnCoursPage = null;
       this.loadVoyagesEnCours();
-    } else if (tab === 'archives') {
+    } else {
       this.currentPageArchives = 0;
       this.voyagesArchivesPage = null;
       this.loadVoyagesArchives();
-    } else if (this.filterType === 'axe' && this.filterAxeId) {
-      this.currentPageAxe = 0;
-      this.voyagesAxePage = null;
-      this.loadVoyagesByAxe();
-    } else {
-      // Pour actifs et réceptionnes, charger les voyages et filtrer
-      this.loadVoyages();
     }
+  }
+
+  /** Statistiques par statut pour les voyages affichés (en-cours uniquement) */
+  get statsVoyages(): Array<{ statut: string; count: number }> {
+    const source = this.getVoyagesForCurrentView();
+    const counts = new Map<string, number>();
+    const statutsEnCours = ['CHARGEMENT', 'CHARGE', 'DEPART', 'ARRIVER', 'DOUANE', 'RECEPTIONNER', 'LIVRE', 'PARTIELLEMENT_DECHARGER', 'DECHARGER'];
+    statutsEnCours.forEach(s => counts.set(s, 0));
+    source.forEach(v => {
+      const s = v.statut || '';
+      if (statutsEnCours.includes(s)) {
+        if (s === 'RECEPTIONNER' && !v.liberer) return;
+        counts.set(s, (counts.get(s) || 0) + 1);
+      }
+    });
+    return Array.from(counts.entries())
+      .filter(([, c]) => c > 0)
+      .map(([statut, count]) => ({ statut, count }))
+      .sort((a, b) => b.count - a.count);
+  }
+
+  getStatsFilterLabel(): string {
+    if (this.filterType === 'date' && this.filterDate) return `Date: ${this.filterDate}`;
+    if (this.filterType === 'range' && this.filterStartDate && this.filterEndDate) return `${this.filterStartDate} - ${this.filterEndDate}`;
+    if (this.filterType === 'axe' && this.filterAxeId != null) {
+      const axe = this.axes.find(a => a.id === this.filterAxeId);
+      return axe ? `Axe: ${axe.nom}` : '';
+    }
+    return 'Tous';
+  }
+
+  /** Retourne la liste des voyages pour la vue courante (page courante) */
+  getVoyagesForCurrentView(): VoyageDisplay[] {
+    if (this.activeTab === 'en-cours' && this.voyagesEnCoursPage) {
+      return this.voyagesEnCoursPage.voyages || [];
+    }
+    if (this.activeTab === 'archives' && this.voyagesArchivesPage) {
+      return this.voyagesArchivesPage.voyages || [];
+    }
+    return this.filteredVoyages;
+  }
+
+  /** Archives : liste complète filtrée par showOnlyDeclaredArchives (pour pagination) */
+  get voyagesArchivesFiltered(): VoyageDisplay[] {
+    return this.showOnlyDeclaredArchives
+      ? this._allArchivesFiltered.filter(v => v.declarer)
+      : this._allArchivesFiltered;
+  }
+
+  /** Réappliquer la pagination des archives après changement showOnlyDeclaredArchives */
+  private applyArchivesPagination() {
+    const filtered = this.voyagesArchivesFiltered;
+    const totalElements = filtered.length;
+    const totalPages = Math.ceil(totalElements / this.pageSizeArchives) || 1;
+    const start = this.currentPageArchives * this.pageSizeArchives;
+    const voyages = (sortByDateDepartDesc(filtered) as VoyageDisplay[]).slice(start, start + this.pageSizeArchives);
+    this.voyagesArchivesPage = {
+      voyages,
+      currentPage: this.currentPageArchives,
+      totalPages,
+      totalElements,
+      size: this.pageSizeArchives
+    };
   }
 
   loadVoyagesPassesNonDeclares() {
     this.isLoading = true;
     this.voyagesService.getVoyagesPassesNonDeclares().subscribe({
       next: (data) => {
-        this.voyagesNonDeclares = sortByDateDepartDesc(data.map(v => ({
+        const _nonDeclares = sortByDateDepartDesc(data.map((v: any) => ({
           ...v,
           camionImmatriculation: (v as any).camionImmatriculation,
           clientNom: (v as any).clientNom,
@@ -661,7 +708,6 @@ export class SuiviTransportComponent implements OnInit {
           transactions: (v as any).transactions || [],
           etats: (v as any).etats || []
         })));
-        // Réinitialiser filteredVoyages pour cet onglet
         this.filteredVoyages = [];
         this.isLoading = false;
       },
@@ -798,14 +844,6 @@ export class SuiviTransportComponent implements OnInit {
     }
   }
 
-  // Voyages archives : n'afficher que les voyages déclarés (déchargé non déclaré enlevé du filtre)
-  get voyagesArchivesFiltered(): VoyageDisplay[] {
-    if (!this.voyagesArchivesPage || !this.voyagesArchivesPage.voyages) {
-      return [];
-    }
-    return (this.voyagesArchivesPage.voyages as VoyageDisplay[]).filter(v => v.declarer);
-  }
-
   changePageSansPrixAchat(page: number) {
     if (page >= 0 && this.voyagesSansPrixAchatPage && page < this.voyagesSansPrixAchatPage.totalPages) {
       this.currentPageSansPrixAchat = page;
@@ -845,19 +883,80 @@ export class SuiviTransportComponent implements OnInit {
 
   loadVoyagesEnCours() {
     this.isLoading = true;
-    this.voyagesService.getVoyagesEnCours(this.currentPageEnCours, this.pageSizeEnCours).subscribe({
+    this.voyagesService.getAllVoyages().subscribe({
       next: (data) => {
-        let voyages = data.voyages || [];
+        let list = data.map((v: any) => ({
+          ...v,
+          camionImmatriculation: v.camionImmatriculation,
+          clientNom: v.clientNom,
+          clientEmail: v.clientEmail,
+          transitaireNom: v.transitaireNom,
+          depotNom: v.depotNom,
+          typeProduit: v.typeProduit || 'Essence',
+          transactions: v.transactions || [],
+          etats: v.etats || [],
+          responsableIdentifiant: v.responsableIdentifiant
+        }));
         if (this.isLogisticienOnly()) {
           const identifiant = this.authService.getIdentifiant();
-          voyages = voyages.filter((v: any) => v.responsableIdentifiant === identifiant);
+          list = list.filter((v: any) => v.responsableIdentifiant === identifiant);
         }
+        let filtered = list.filter((v: VoyageDisplay) => v.statut !== 'DECHARGER' || !v.declarer);
+        if (this.filterStatut) {
+          filtered = filtered.filter((v: VoyageDisplay) => {
+            if (this.filterStatut === 'RECEPTIONNER') {
+              if (!isSortieDouane(v.statut, v)) return false;
+            } else if (v.statut !== this.filterStatut) {
+              return false;
+            }
+            if (this.filterStatut === 'DOUANE' && this.filterDouaneDeclaration) {
+              const isPasseNonDeclarer = v.passager === PASSAGER_NON_DECLARER;
+              if (this.filterDouaneDeclaration === 'a_declarer') return !isPasseNonDeclarer;
+              if (this.filterDouaneDeclaration === 'non_declarer') return isPasseNonDeclarer;
+            }
+            return true;
+          });
+        }
+        if (this.filterType === 'date' && this.filterDate) {
+          filtered = filtered.filter((v: VoyageDisplay) => {
+            if (!v.dateDepart) return false;
+            return new Date(v.dateDepart).toDateString() === new Date(this.filterDate).toDateString();
+          });
+        } else if (this.filterType === 'range' && this.filterStartDate && this.filterEndDate) {
+          const start = new Date(this.filterStartDate);
+          const end = new Date(this.filterEndDate);
+          end.setHours(23, 59, 59, 999);
+          filtered = filtered.filter((v: VoyageDisplay) => {
+            if (!v.dateDepart) return false;
+            const d = new Date(v.dateDepart);
+            return d >= start && d <= end;
+          });
+        } else if (this.filterType === 'axe' && this.filterAxeId != null) {
+          const axeIdNum = Number(this.filterAxeId);
+          filtered = filtered.filter((v: VoyageDisplay) => v.axeId != null && Number(v.axeId) === axeIdNum);
+        }
+        if (this.searchTerm) {
+          const term = this.searchTerm.toLowerCase();
+          filtered = filtered.filter((v: VoyageDisplay) =>
+            (v.numeroVoyage?.toLowerCase().includes(term)) ||
+            (v.clientNom?.toLowerCase().includes(term)) ||
+            (v.destination?.toLowerCase().includes(term)) ||
+            (v.lieuDepart?.toLowerCase().includes(term)) ||
+            (v.camionImmatriculation?.toLowerCase().includes(term))
+          );
+        }
+        const sorted = sortByDateDepartDesc(filtered) as VoyageDisplay[];
+        this.voyages = sorted;
+        const totalElements = sorted.length;
+        const totalPages = Math.ceil(totalElements / this.pageSizeEnCours) || 1;
+        const start = this.currentPageEnCours * this.pageSizeEnCours;
+        const voyages = sorted.slice(start, start + this.pageSizeEnCours);
         this.voyagesEnCoursPage = {
-          voyages: sortByDateDepartDesc(voyages),
-          currentPage: data.currentPage || 0,
-          totalPages: data.totalPages || 0,
-          totalElements: data.totalElements || 0,
-          size: data.size || 10
+          voyages,
+          currentPage: this.currentPageEnCours,
+          totalPages,
+          totalElements,
+          size: this.pageSizeEnCours
         };
         this.filteredVoyages = [];
         this.isLoading = false;
@@ -879,26 +978,60 @@ export class SuiviTransportComponent implements OnInit {
 
   loadVoyagesArchives() {
     this.isLoading = true;
-    // Réinitialiser filteredVoyages pour cet onglet
     this.filteredVoyages = [];
-    this.voyagesService.getArchivedVoyages(this.currentPageArchives, this.pageSizeArchives).subscribe({
+    const pageSize = 10000;
+    const obs = this.filterType === 'date' && this.filterDate
+      ? this.voyagesService.getArchivedVoyagesByDate(this.filterDate, 0, pageSize)
+      : this.filterType === 'range' && this.filterStartDate && this.filterEndDate
+        ? this.voyagesService.getArchivedVoyagesByDateRange(this.filterStartDate, this.filterEndDate, 0, pageSize)
+        : this.voyagesService.getArchivedVoyages(0, pageSize);
+    obs.subscribe({
       next: (data) => {
-        let voyages = data.voyages || [];
+        let voyages = (data.voyages || []).map((v: any) => ({
+          ...v,
+          camionImmatriculation: v.camionImmatriculation,
+          clientNom: v.clientNom,
+          depotNom: v.depotNom,
+          typeProduit: v.typeProduit || 'Essence',
+          etats: v.etats || []
+        }));
         if (this.isLogisticienOnly()) {
           const identifiant = this.authService.getIdentifiant();
           voyages = voyages.filter((v: any) => v.responsableIdentifiant === identifiant);
         }
-        this.voyagesArchivesPage = {
-          voyages: sortByDateDepartDesc(voyages),
-          currentPage: data.currentPage || 0,
-          totalPages: data.totalPages || 0,
-          totalElements: data.totalElements || 0,
-          size: data.size || 10
-        };
+        let filtered = sortByDateDepartDesc(voyages) as VoyageDisplay[];
+        if (this.filterStatut) {
+          filtered = filtered.filter((v: VoyageDisplay) => {
+            if (this.filterStatut === 'RECEPTIONNER') {
+              if (!isSortieDouane(v.statut, v)) return false;
+            } else if (v.statut !== this.filterStatut) {
+              return false;
+            }
+            return true;
+          });
+        }
+        if (this.filterType === 'axe' && this.filterAxeId != null) {
+          const axeIdNum = Number(this.filterAxeId);
+          filtered = filtered.filter((v: VoyageDisplay) => v.axeId != null && Number(v.axeId) === axeIdNum);
+        }
+        if (this.searchTerm) {
+          const term = this.searchTerm.toLowerCase();
+          filtered = filtered.filter((v: VoyageDisplay) =>
+            (v.numeroVoyage?.toLowerCase().includes(term)) ||
+            (v.clientNom?.toLowerCase().includes(term)) ||
+            (v.destination?.toLowerCase().includes(term)) ||
+            (v.camionImmatriculation?.toLowerCase().includes(term))
+          );
+        }
+        this._allArchivesFiltered = filtered;
+        this.currentPageArchives = 0;
+        this.applyArchivesPagination();
         this.isLoading = false;
       },
       error: (error) => {
         this.isLoading = false;
+        this._allArchivesFiltered = [];
+        this.voyagesArchivesPage = null;
         const errorMessage = this.getErrorMessage(error, 'Erreur lors du chargement des archives');
         this.toastService.error(errorMessage);
       }
@@ -906,64 +1039,26 @@ export class SuiviTransportComponent implements OnInit {
   }
 
   changePageArchives(page: number) {
-    if (page >= 0 && this.voyagesArchivesPage && page < this.voyagesArchivesPage.totalPages) {
+    const filtered = this.voyagesArchivesFiltered;
+    const totalPages = Math.ceil(filtered.length / this.pageSizeArchives) || 1;
+    if (page >= 0 && page < totalPages) {
       this.currentPageArchives = page;
-      this.loadVoyagesArchives();
+      this.applyArchivesPagination();
     }
   }
 
+  toggleShowOnlyDeclaredArchives() {
+    this.showOnlyDeclaredArchives = !this.showOnlyDeclaredArchives;
+    this.currentPageArchives = 0;
+    this.applyArchivesPagination();
+  }
+
   updateFilteredVoyages() {
-    let filtered = this.voyages;
-
-    // Filtrer par onglet (actifs vs sortie de douane)
-    if (this.activeTab === 'actifs') {
-      filtered = filtered.filter(v =>
-        v.statut !== 'LIVRE' &&
-        v.statut !== 'RECEPTIONNER' &&
-        v.statut !== 'DECHARGER' &&
-        v.passager !== 'passer_non_declarer'
-      );
-    } else if (this.activeTab === 'receptionnes') {
-      filtered = filtered.filter(v => isSortieDouane(v.statut, v));
+    if (this.activeTab === 'en-cours') {
+      this.loadVoyagesEnCours();
+    } else if (this.activeTab === 'archives') {
+      this.loadVoyagesArchives();
     }
-
-    // Filtrer par date
-    if (this.filterType === 'date' && this.filterDate) {
-      filtered = filtered.filter(v => {
-        if (!v.dateDepart) return false;
-        const voyageDate = new Date(v.dateDepart);
-        const filterDate = new Date(this.filterDate);
-        return voyageDate.toDateString() === filterDate.toDateString();
-      });
-    } else if (this.filterType === 'range' && this.filterStartDate && this.filterEndDate) {
-      filtered = filtered.filter(v => {
-        if (!v.dateDepart) return false;
-        const voyageDate = new Date(v.dateDepart);
-        const startDate = new Date(this.filterStartDate);
-        const endDate = new Date(this.filterEndDate);
-        // Définir l'heure à minuit pour la comparaison
-        startDate.setHours(0, 0, 0, 0);
-        endDate.setHours(23, 59, 59, 999);
-        voyageDate.setHours(0, 0, 0, 0);
-        return voyageDate >= startDate && voyageDate <= endDate;
-      });
-    } else if (this.filterType === 'axe' && this.filterAxeId) {
-      filtered = filtered.filter(v => v.axeId === this.filterAxeId);
-    }
-
-    // Filtrer par recherche
-    if (this.searchTerm) {
-      const term = this.searchTerm.toLowerCase();
-      filtered = filtered.filter(v =>
-        (v.numeroVoyage && v.numeroVoyage.toLowerCase().includes(term)) ||
-        (v.clientNom && v.clientNom.toLowerCase().includes(term)) ||
-        (v.destination && v.destination.toLowerCase().includes(term)) ||
-        (v.lieuDepart && v.lieuDepart.toLowerCase().includes(term)) ||
-        (v.camionImmatriculation && v.camionImmatriculation.toLowerCase().includes(term))
-      );
-    }
-
-    this.filteredVoyages = filtered;
   }
 
   /** Met à jour un voyage dans toutes les listes affichées (pour mise à jour immédiate après changement de statut). */
@@ -985,39 +1080,21 @@ export class SuiviTransportComponent implements OnInit {
   }
 
   onSearchChange() {
-    if (this.filterType === 'axe' && this.filterAxeId) {
-      // Pour le filtrage par axe, on recharge avec pagination
-      // Le filtrage par recherche se fait côté client dans loadVoyagesByAxe
-      this.currentPageAxe = 0;
-      this.loadVoyagesByAxe();
-    } else {
-      this.updateFilteredVoyages();
-    }
+    this.currentPageEnCours = 0;
+    this.currentPageArchives = 0;
+    this.updateFilteredVoyages();
   }
 
   onFilterChange() {
-    // Réinitialiser les filtres selon le type sélectionné
-    if (this.filterType !== 'date') {
-      this.filterDate = '';
-    }
+    if (this.filterType !== 'date') this.filterDate = '';
     if (this.filterType !== 'range') {
       this.filterStartDate = '';
       this.filterEndDate = '';
     }
-    if (this.filterType !== 'axe') {
-      this.filterAxeId = undefined;
-      this.voyagesAxePage = null;
-      this.currentPageAxe = 0;
-    } else {
-      // Réinitialiser la page si on change de filtre axe
-      this.currentPageAxe = 0;
-    }
-
-    if (this.filterType === 'axe' && this.filterAxeId) {
-      this.loadVoyagesByAxe();
-    } else {
-      this.updateFilteredVoyages();
-    }
+    if (this.filterType !== 'axe') this.filterAxeId = undefined;
+    this.currentPageEnCours = 0;
+    this.currentPageArchives = 0;
+    this.updateFilteredVoyages();
   }
 
   loadVoyagesByAxe() {
@@ -1049,15 +1126,8 @@ export class SuiviTransportComponent implements OnInit {
 
         // Filtrer par onglet
         let filtered = voyages;
-        if (this.activeTab === 'actifs') {
-          filtered = filtered.filter(v =>
-            v.statut !== 'LIVRE' &&
-            v.statut !== 'RECEPTIONNER' &&
-            v.statut !== 'DECHARGER' &&
-            v.passager !== 'passer_non_declarer'
-          );
-        } else if (this.activeTab === 'receptionnes') {
-          filtered = filtered.filter(v => isSortieDouane(v.statut, v));
+        if (this.activeTab === 'en-cours') {
+          filtered = filtered.filter(v => v.statut !== 'DECHARGER' || !v.declarer);
         } else if (this.activeTab === 'archives') {
           filtered = filtered.filter(v => v.statut === 'DECHARGER');
         }
@@ -1244,8 +1314,8 @@ export class SuiviTransportComponent implements OnInit {
       this.prixAchatValue = this.clientVoyageForPrixAchat.prixAchat ? Number(this.clientVoyageForPrixAchat.prixAchat) : undefined;
     }
 
-    // Vérifier que le voyage est déchargé (pour les voyages actifs) ou qu'on est dans l'onglet sans-prix-achat
-    if (this.activeTab !== 'sans-prix-achat' && voyage.statut !== 'DECHARGER' && voyage.statut !== 'PARTIELLEMENT_DECHARGER') {
+    // Vérifier que le voyage est déchargé
+    if (voyage.statut !== 'DECHARGER' && voyage.statut !== 'PARTIELLEMENT_DECHARGER') {
       this.toastService.warning('Le voyage doit être déchargé avant de pouvoir donner le prix d\'achat');
       return;
     }
@@ -1297,12 +1367,8 @@ export class SuiviTransportComponent implements OnInit {
           });
         }
 
-        // Recharger les voyages
-        if (this.activeTab === 'sans-prix-achat') {
-          this.loadVoyagesSansPrixAchat();
-        } else {
-          this.loadVoyages();
-        }
+        // Recharger la vue courante
+        if (this.activeTab === 'en-cours') this.loadVoyagesEnCours(); else if (this.activeTab === 'archives') this.loadVoyagesArchives();
       },
       error: (error) => {
         this.isLoading = false;
@@ -1891,8 +1957,10 @@ export class SuiviTransportComponent implements OnInit {
         }
         const idx = this.voyages.findIndex(v => v.id === updated.id);
         if (idx !== -1) this.voyages[idx] = { ...this.voyages[idx], prixUnitaire: updated.prixUnitaire };
-        if (this.activeTab === 'sans-prix-transport' && this.voyagesSansPrixTransportPage) {
-          this.loadVoyagesSansPrixTransport();
+        if (this.activeTab === 'en-cours') {
+          this.loadVoyagesEnCours();
+        } else if (this.activeTab === 'archives') {
+          this.loadVoyagesArchives();
         }
         this.toastService.success('Prix unitaire mis à jour');
         this.closeEditPrixModal();
@@ -2204,7 +2272,7 @@ export class SuiviTransportComponent implements OnInit {
         this.isLoading = false;
         this.toastService.success('Transitaire assigné avec succès!');
         this.showAddTransitaireForm = false;
-        this.loadVoyages();
+        if (this.activeTab === 'en-cours') this.loadVoyagesEnCours(); else if (this.activeTab === 'archives') this.loadVoyagesArchives();
         // Mettre à jour le voyage sélectionné
         const updatedDisplay: VoyageDisplay = {
           ...updated,
@@ -2337,9 +2405,141 @@ export class SuiviTransportComponent implements OnInit {
     });
   }
 
+  getVoyageDisplayDate(voyage: VoyageDisplay): string | undefined {
+    if (voyage.dateDepart) return voyage.dateDepart;
+    if (voyage.dateArrivee) return voyage.dateArrivee;
+    const etats = voyage.etats || [];
+    const sorted = [...etats].sort((a, b) => new Date(b.dateHeure || 0).getTime() - new Date(a.dateHeure || 0).getTime());
+    return sorted[0]?.dateHeure;
+  }
+
+  getAxeNom(axeId?: number | null): string {
+    if (axeId == null) return '';
+    const axe = this.axes.find(a => a.id === axeId);
+    return axe?.nom ?? '';
+  }
+
+  canModifyOrDeleteVoyage(): boolean {
+    return this.authService.isAdmin() || this.authService.isComptable();
+  }
+
+  canDeleteVoyage(voyage: VoyageDisplay): boolean {
+    if (!this.canModifyOrDeleteVoyage()) return false;
+    const statut = voyage.statut;
+    return statut !== 'DECHARGER' && statut !== 'PARTIELLEMENT_DECHARGER';
+  }
+
+  canDeclareOrLiberate(): boolean {
+    return this.authService.isAdmin();
+  }
+
+  canDeclarerVoyage(voyage: Voyage): boolean {
+    if (!this.canDeclareOrLiberate()) return false;
+    if (voyage.declarer) return false;
+    const isDouane = voyage.statut === 'DOUANE';
+    const isPasseNonDeclarer = voyage.passager === PASSAGER_NON_DECLARER;
+    if (!isDouane && !isPasseNonDeclarer) return false;
+    const etatsObligatoires = ['Chargé', 'Départ', 'Arrivé', 'Douane'];
+    const etats = voyage.etats || [];
+    return etatsObligatoires.every(nom =>
+      etats.some((e: EtatVoyage) => e.etat === nom && e.valider === true)
+    );
+  }
+
+  toggleDeclarationMenu(voyageId: number) {
+    this.openDeclarationMenuVoyageId = this.openDeclarationMenuVoyageId === voyageId ? null : voyageId;
+  }
+
+  closeDeclarationMenu() {
+    this.openDeclarationMenuVoyageId = null;
+  }
+
+  @HostListener('document:click')
+  onDocumentClick() {
+    if (this.openDeclarationMenuVoyageId !== null) {
+      this.closeDeclarationMenu();
+    }
+  }
+
+  getDeclarationActions(voyage: VoyageDisplay): Array<{ key: string; label: string; fn: () => void }> {
+    const actions: Array<{ key: string; label: string; fn: () => void }> = [];
+    if (!this.canDeclareOrLiberate()) return actions;
+    if (voyage.declarer && !voyage.liberer) {
+      actions.push({ key: 'liberer', label: 'Libérer', fn: () => this.libererVoyage(voyage.id!) });
+    } else if (voyage.passager === PASSAGER_NON_DECLARER) {
+      if (this.canDeclarerVoyage(voyage)) {
+        actions.push({ key: 'declarer', label: 'Déclarer', fn: () => this.declarerVoyage(voyage.id!) });
+      }
+      if (!voyage.liberer) {
+        actions.push({ key: 'liberer', label: 'Libérer', fn: () => this.libererVoyage(voyage.id!) });
+      }
+    } else if (voyage.statut === 'DOUANE') {
+      if (this.canDeclarerVoyage(voyage)) {
+        actions.push({ key: 'declarer', label: 'Déclarer', fn: () => this.declarerVoyage(voyage.id!) });
+      }
+      actions.push({ key: 'passer', label: 'Passer non déclaré', fn: () => this.passerNonDeclarer(voyage.id!) });
+    }
+    return actions;
+  }
+
+  declarerVoyage(voyageId: number) {
+    if (!this.canDeclareOrLiberate()) return;
+    this.isLoading = true;
+    this.voyagesService.declarerVoyage(voyageId).subscribe({
+      next: () => {
+        this.updateVoyageInLists(voyageId, { declarer: true, passager: undefined });
+        this.closeDeclarationMenu();
+        if (this.activeTab === 'en-cours') this.loadVoyagesEnCours(); else if (this.activeTab === 'archives') this.loadVoyagesArchives();
+        this.isLoading = false;
+        this.toastService.success('Voyage déclaré');
+      },
+      error: (err) => {
+        this.isLoading = false;
+        this.toastService.error(err?.error?.message || 'Erreur lors de la déclaration');
+      }
+    });
+  }
+
+  libererVoyage(voyageId: number) {
+    if (!this.canDeclareOrLiberate()) return;
+    this.isLoading = true;
+    this.voyagesService.libererVoyage(voyageId).subscribe({
+      next: () => {
+        this.updateVoyageInLists(voyageId, { liberer: true });
+        this.closeDeclarationMenu();
+        if (this.activeTab === 'en-cours') this.loadVoyagesEnCours(); else if (this.activeTab === 'archives') this.loadVoyagesArchives();
+        this.isLoading = false;
+        this.toastService.success('Voyage libéré');
+      },
+      error: (err) => {
+        this.isLoading = false;
+        this.toastService.error(err?.error?.message || 'Erreur lors de la libération');
+      }
+    });
+  }
+
+  passerNonDeclarer(voyageId: number) {
+    if (!this.canDeclareOrLiberate()) return;
+    this.isLoading = true;
+    this.voyagesService.passerNonDeclarer(voyageId).subscribe({
+      next: () => {
+        this.updateVoyageInLists(voyageId, { passager: PASSAGER_NON_DECLARER });
+        this.closeDeclarationMenu();
+        if (this.activeTab === 'en-cours') this.loadVoyagesEnCours(); else if (this.activeTab === 'archives') this.loadVoyagesArchives();
+        this.isLoading = false;
+        this.toastService.success('Voyage passé non déclaré');
+      },
+      error: (err) => {
+        this.isLoading = false;
+        this.toastService.error(err?.error?.message || 'Erreur');
+      }
+    });
+  }
+
   // Méthodes pour les bons d'enlèvement
   get voyagesEnChargement(): VoyageDisplay[] {
-    return this.filteredVoyages.filter(v => v.statut === 'CHARGEMENT');
+    const source = this.getVoyagesForCurrentView();
+    return source.filter(v => v.statut === 'CHARGEMENT');
   }
 
   toggleVoyageSelection(voyageId: number | undefined): void {
@@ -2447,8 +2647,7 @@ export class SuiviTransportComponent implements OnInit {
       this.toastService.success(`${voyagesToGenerate.length} bon(s) d'enlèvement généré(s) avec succès`);
       // Réinitialiser la sélection après génération
       this.selectedVoyagesForBon.clear();
-      // Recharger les voyages pour avoir les numéros mis à jour
-      this.loadVoyages();
+      this.loadVoyagesEnCours();
       this.isLoading = false;
     } catch (error: any) {
       console.error('Erreur lors de la génération du bon d\'enlèvement:', error);
@@ -2540,8 +2739,6 @@ export class SuiviTransportComponent implements OnInit {
 
       this.toastService.success(`Liste Excel générée pour le dépôt: ${depotNom}`);
     }
-
-    // Recharger les voyages pour avoir les numéros mis à jour
-    this.loadVoyages();
+    this.loadVoyagesEnCours();
   }
 }

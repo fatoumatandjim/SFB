@@ -8,40 +8,63 @@
 
   <div class="tabs-container">
     <div class="tabs-and-dropdown">
-      <div class="list-view-dropdown">
-        <label for="list-view-select" class="dropdown-label">Vue liste</label>
-        <select id="list-view-select" class="list-view-select" [(ngModel)]="dropdownListView" (ngModelChange)="onListViewChangeByValue($event)">
-          @if (isComptable()) {
-          <option value="sans-prix-transport">💰 Attribués sans Prix d'Achat</option>
-          <option value="sans-prix-achat">💰 Attribués sans Prix d'Achat</option>
-          } @else {
-          <option value="actifs">🚛 Voyages Actifs</option>
-          <option value="non-declares">⏭️ Non Déclarés</option>
-          <option value="archives">📦 Archives</option>
-          <option value="partiellement-decharges">⚠️ Partiellement Déchargés</option>
-          @if (isAdmin) {
-          <option value="sans-prix-achat">💰 Attribués sans Prix d'Achat</option>
-          }
-          <option value="sans-prix-transport">💰 Attribués sans Prix d'Achat</option>
-          }
-        </select>
-      </div>
-      @if (!isComptable()) {
-      <div class="tabs">
-        <button class="tab-btn" [class.active]="activeTab === 'receptionnes'" (click)="setTab('receptionnes')">
-          <span>✅</span>
-          Sortie de douane
-        </button>
+      <div class="main-menu-tabs">
         <button class="tab-btn" [class.active]="activeTab === 'en-cours'" (click)="setTab('en-cours')">
           <span>🔄</span>
           Voyage en cours
         </button>
+        <button class="tab-btn" [class.active]="activeTab === 'archives'" (click)="setTab('archives')">
+          <span>📦</span>
+          Archives
+        </button>
+      </div>
+      <div class="filter-statut-dropdown">
+        <label for="filter-statut-select" class="dropdown-label">Statut</label>
+        <select id="filter-statut-select" class="list-view-select" [(ngModel)]="filterStatut" (ngModelChange)="onFilterStatutChange()">
+          <option value="">Tous les statuts</option>
+          @if (activeTab === 'en-cours') {
+          <option value="CHARGEMENT">Chargement</option>
+          <option value="CHARGE">Chargé</option>
+          <option value="DEPART">Départ</option>
+          <option value="ARRIVER">Arriver à la frontière</option>
+          <option value="DOUANE">À la douane</option>
+          <option value="RECEPTIONNER">Réceptionné</option>
+          <option value="LIVRE">Livré</option>
+          <option value="PARTIELLEMENT_DECHARGER">Partiellement déchargé</option>
+          <option value="DECHARGER">Déchargé (non déclarés)</option>
+          } @else {
+          <option value="DECHARGER">Déchargé</option>
+          }
+        </select>
+      </div>
+      @if (activeTab === 'en-cours' && filterStatut === 'DOUANE') {
+      <div class="filter-statut-dropdown filter-douane-declaration">
+        <label for="filter-douane-select" class="dropdown-label">Douane</label>
+        <select id="filter-douane-select" class="list-view-select" [(ngModel)]="filterDouaneDeclaration" (ngModelChange)="onFilterDouaneDeclarationChange()">
+          <option value="">Tous</option>
+          <option value="a_declarer">À déclarer</option>
+          <option value="non_declarer">Non déclaré</option>
+        </select>
       </div>
       }
     </div>
 
+    @if (activeTab === 'en-cours' && statsVoyages.length > 0) {
+    <div class="stats-section">
+      <h3 class="stats-title">Statistiques par statut ({{ getStatsFilterLabel() }})</h3>
+      <div class="stats-cards">
+        @for (stat of statsVoyages; track stat.statut) {
+        <div class="stat-card-mini">
+          <span class="stat-value">{{ stat.count }}</span>
+          <span class="stat-label">{{ getStatutLabel(stat.statut) }}</span>
+        </div>
+        }
+      </div>
+    </div>
+    }
+
     <div class="actions-bar">
-      @if (activeTab === 'actifs' && voyagesEnChargement.length > 0) {
+      @if (activeTab === 'en-cours' && voyagesEnChargement.length > 0) {
       <div class="bon-enlevement-actions">
         <button class="btn-generate-bon" (click)="generateBonEnlevement()" [disabled]="selectedChargementCount === 0"
           title="Générer les bons d'enlèvement pour les voyages sélectionnés">
@@ -72,15 +95,6 @@
         <span class="search-icon">🔍</span>
       </div>
 
-      @if (activeTab === 'sans-prix-achat') {
-      <div class="group-by-client-filter">
-        <button class="btn-group-client" [class.active]="groupByClient" (click)="toggleGroupByClient()"
-          title="Regrouper les voyages par client">
-          <span>{{ groupByClient ? '📋' : '📄' }}</span>
-          {{ groupByClient ? 'Par client' : 'Liste' }}
-        </button>
-      </div>
-      }
       <div class="filters">
         <label class="filter-radio">
           <input type="radio" name="filterType" value="tous" [(ngModel)]="filterType" (change)="onFilterChange()" />
@@ -133,403 +147,38 @@
     <table class="voyages-table">
       <thead>
         <tr>
-          @if (activeTab === 'actifs' || activeTab === 'non-declares') {
+          @if (activeTab === 'en-cours' && voyagesEnChargement.length > 0) {
           <th class="checkbox-header">
-            @if (activeTab === 'actifs' && voyagesEnChargement.length > 0) {
             <input type="checkbox" [checked]="allChargementSelected" (change)="toggleSelectAllChargement()"
               title="Sélectionner tous les voyages en chargement" />
-            }
           </th>
           }
           <th>Numéro Voyage</th>
           <th>Camion</th>
-          <th class="col-chauffeur">Chauffeur</th>
           <th>Client</th>
           <th>Statut</th>
-          <th>Déclaré</th>
+          <th class="col-declaration">Déclaré</th>
           <th>Type Produit</th>
           <th>Quantité restante</th>
           <th>Départ</th>
           <th>Dépôt</th>
-          <th>Actions</th>
+          <th>Axe</th>
+          <th class="col-actions">Actions</th>
         </tr>
       </thead>
       <tbody>
         @if (isLoading) {
         <tr>
-          <td [attr.colspan]="(activeTab === 'actifs' || activeTab === 'non-declares') ? 13 : 12" class="empty-state">
+          <td [attr.colspan]="(activeTab === 'en-cours' && voyagesEnChargement.length > 0) ? 13 : 12" class="empty-state">
             <div class="empty-message">Chargement...</div>
           </td>
         </tr>
-        } @else if (activeTab === 'partiellement-decharges' && voyagesPartiellementDechargesPage) {
-        @for (voyage of voyagesPartiellementDechargesPage.voyages; track voyage.id) {
-        <tr>
-          <td>
-            <div class="voyage-numero">{{ voyage.numeroVoyage }}</div>
-          </td>
-          <td>{{ voyage.camionImmatriculation || 'N/A' }}</td>
-          <td class="col-chauffeur">{{ getChauffeurDisplay(voyage) }}</td>
-          <td>
-            @if (voyage.clientVoyages && voyage.clientVoyages.length > 0) {
-            <div class="client-count-badge" (click)="showClientsList(voyage.clientVoyages, $event)"
-                 [title]="voyage.clientVoyages.length + ' client(s)'">
-              {{ voyage.clientVoyages.length }} client{{ voyage.clientVoyages.length > 1 ? 's' : '' }}
-            </div>
-            } @else {
-            <span class="no-client">-</span>
-            }
-          </td>
-          <td>{{ voyage.transitaireNom || 'N/A' }}</td>
-          <td>{{ voyage.destination || 'N/A' }}</td>
-          <td>{{ formatDate(voyage.dateDepart) }}</td>
-          <td>{{ getQuantiteRestanteNonAttribuee(voyage) }} L</td>
-          <td>
-            <span class="statut-badge statut-partiellement-decharge">Partiellement Déchargé</span>
-          </td>
-          <td>
-            <div class="action-buttons">
-              <button class="action-btn btn-view" (click)="viewVoyage(voyage)" title="Voir les détails">
-                <span>👁️</span>
-              </button>
-              @if (canUpdateVoyageStatus(voyage)) {
-              <button class="action-btn btn-statut" (click)="openStatutModal(voyage)" title="Changer le statut">
-                <span>🔄</span>
-              </button>
-              }
-            </div>
-          </td>
-        </tr>
-        }
-        } @else if (activeTab === 'non-declares' && voyagesNonDeclares.length > 0) {
-        @for (voyage of voyagesNonDeclares; track voyage.id) {
-        <tr>
-          <td class="checkbox-cell">
-            <!-- Pas de checkbox pour non-declares -->
-          </td>
-          <td>
-            <div class="voyage-numero">{{ voyage.numeroVoyage }}</div>
-          </td>
-          <td>
-            <div class="camion-info">
-              <div class="truck-icon">🚛</div>
-              <div class="camion-details">
-                <div class="camion-id">{{ voyage.camionImmatriculation || 'N/A' }}</div>
-              </div>
-            </div>
-          </td>
-          <td class="col-chauffeur">{{ getChauffeurDisplay(voyage) }}</td>
-          <td>
-            @if (voyage.clientVoyages && voyage.clientVoyages.length > 0) {
-            <div class="client-count-badge" (click)="showClientsList(voyage.clientVoyages, $event)"
-                 [title]="voyage.clientVoyages.length + ' client(s)'">
-              {{ voyage.clientVoyages.length }} client{{ voyage.clientVoyages.length > 1 ? 's' : '' }}
-            </div>
-            } @else if (voyage.clientNom) {
-            <div class="client-count-badge" title="1 client">
-              1 client
-            </div>
-            } @else {
-            <div class="no-client">-</div>
-            }
-          </td>
-          <td>
-            @if (canUpdateVoyageStatus(voyage)) {
-            <button class="btn-change-statut" (click)="openStatutModal(voyage)" [class]="getStatutClass(voyage.statut, voyage)"
-              title="Changer le statut">
-              {{ getStatutLabel(voyage.statut, voyage) }}
-            </button>
-            } @else {
-            <span class="statut-badge-readonly" [class]="getStatutClass(voyage.statut, voyage)">{{ getStatutLabel(voyage.statut, voyage) }}</span>
-            }
-          </td>
-          <td>
-            <div class="declaration-status">
-              @if (voyage.declarer) {
-              <span class="badge-declared">Déclaré</span>
-              } @else if (voyage.passager === 'passer_non_declarer') {
-              <span class="badge-skipped">Passé Non Déclaré</span>
-              } @else {
-              <span class="badge-not-declared">-</span>
-              }
-            </div>
-          </td>
-          <td>
-            <div class="type-produit">{{ voyage.produitNom || voyage.typeProduit || 'N/A' }}</div>
-            @if (voyage.typeProduit) {
-            <div class="type-produit-badge">{{ voyage.typeProduit }}</div>
-            }
-          </td>
-          <td>
-            <div class="quantite-value">{{ voyage.quantite | number }} L</div>
-          </td>
-          <td>
-            <div class="date-info">
-              <div class="date-value">{{ formatDate(voyage.dateDepart) }}</div>
-              <div class="lieu-value">{{ voyage.lieuDepart }}</div>
-            </div>
-          </td>
-          <td>
-            <div class="destination-value">{{ voyage.depotNom }}</div>
-            @if (voyage.dateArrivee) {
-            <div class="date-arrivee">Arrivé: {{ formatDate(voyage.dateArrivee) }}</div>
-            }
-          </td>
-          <td>
-            <div class="actions">
-              <button class="action-btn" (click)="viewVoyage(voyage)" title="Voir détails">
-                <span>👁️</span>
-              </button>
-            </div>
-          </td>
-        </tr>
-        }
-        } @else if (activeTab === 'sans-prix-achat' && groupByClient && voyagesParClientPage) {
-        @for (clientVoyages of voyagesParClientPage.clientsVoyages; track clientVoyages.clientId) {
-        <tr class="client-group-header">
-          <td [attr.colspan]="11" class="client-header-cell">
-            <div class="client-group-info">
-              <div class="client-avatar" [class]="'avatar-' + getClientColor(clientVoyages.clientNom)">
-                {{ getClientInitiales(clientVoyages.clientNom) }}
-              </div>
-              <div class="client-group-details">
-                <div class="client-group-name">{{ clientVoyages.clientNom }}</div>
-                @if (clientVoyages.clientEmail) {
-                <div class="client-group-email">{{ clientVoyages.clientEmail }}</div>
-                }
-                <div class="client-group-count">{{ clientVoyages.nombreVoyages }} voyage{{ clientVoyages.nombreVoyages >
-                  1 ? 's' : '' }}</div>
-              </div>
-            </div>
-          </td>
-        </tr>
-        @for (voyage of clientVoyages.voyages; track voyage.id) {
-        <tr class="voyage-row-grouped">
-          <td>
-            <div class="voyage-numero">{{ voyage.numeroVoyage }}</div>
-          </td>
-          <td>
-            <div class="camion-info">
-              <div class="truck-icon">🚛</div>
-              <div class="camion-details">
-                <div class="camion-id">{{ voyage.camionImmatriculation || 'N/A' }}</div>
-              </div>
-            </div>
-          </td>
-          <td class="col-chauffeur">{{ getChauffeurDisplay(voyage) }}</td>
-          <td>
-            <div class="client-info">
-              <div class="client-avatar" [class]="'avatar-' + getClientColor(voyage.clientNom)">
-                {{ getClientInitiales(voyage.clientNom) }}
-              </div>
-              <div class="client-details">
-                <div class="client-nom">{{ voyage.clientNom }}</div>
-                <div class="client-email">{{ voyage.clientEmail || '' }}</div>
-              </div>
-            </div>
-          </td>
-          <td>
-            @if (canUpdateVoyageStatus(voyage)) {
-            <button class="btn-change-statut" (click)="openStatutModal(voyage)" [class]="getStatutClass(voyage.statut, voyage)"
-              title="Changer le statut">
-              {{ getStatutLabel(voyage.statut, voyage) }}
-            </button>
-            } @else {
-            <span class="statut-badge-readonly" [class]="getStatutClass(voyage.statut, voyage)">{{ getStatutLabel(voyage.statut, voyage) }}</span>
-            }
-          </td>
-          <td>
-            <div class="declaration-status">
-              @if (voyage.declarer) {
-              <span class="badge-declared">Déclaré</span>
-              } @else if (voyage.passager === 'passer_non_declarer') {
-              <span class="badge-skipped">Passé Non Déclaré</span>
-              } @else {
-              <span class="badge-not-declared">-</span>
-              }
-            </div>
-          </td>
-          <td>
-            <div class="type-produit">{{ voyage.produitNom || voyage.typeProduit || 'N/A' }}</div>
-            @if (voyage.typeProduit) {
-            <div class="type-produit-badge">{{ voyage.typeProduit }}</div>
-            }
-          </td>
-          <td>
-            <div class="quantite-value">{{ voyage.quantite | number }} L</div>
-          </td>
-          <td>
-            <div class="date-info">
-              <div class="date-value">{{ formatDate(voyage.dateDepart) }}</div>
-              <div class="lieu-value">{{ voyage.lieuDepart }}</div>
-            </div>
-          </td>
-          <td>
-            <div class="destination-value">{{ voyage.depotNom }}</div>
-            @if (voyage.dateArrivee) {
-            <div class="date-arrivee">Arrivé: {{ formatDate(voyage.dateArrivee) }}</div>
-            }
-          </td>
-          <td>
-            <div class="actions">
-              <button class="action-btn" (click)="viewVoyage(voyage)" title="Voir détails">
-                <span>👁️</span>
-              </button>
-              <!-- @if (voyage.clientId && !voyage.factureId) {
-              <button class="action-btn btn-prix-achat" (click)="openPrixAchatModal(voyage)"
-                title="Donner le prix d'achat">
-                <span>💰</span>
-              </button>
-              } -->
-            </div>
-          </td>
-        </tr>
-        }
-        }
-        } @else if (activeTab === 'en-cours' && voyagesEnCoursPage) {
+        } @else if (activeTab === 'en-cours' && voyagesEnCoursPage && voyagesEnCoursPage.voyages.length > 0) {
         @for (voyage of voyagesEnCoursPage.voyages; track voyage.id) {
         <tr>
-          <td>
-            <div class="voyage-numero">{{ voyage.numeroVoyage }}</div>
-          </td>
-          <td>{{ voyage.camionImmatriculation || 'N/A' }}</td>
-          <td class="col-chauffeur">{{ getChauffeurDisplay(voyage) }}</td>
-          <td>
-            @if (voyage.clientVoyages && voyage.clientVoyages.length > 0) {
-            <div class="client-count-badge" (click)="showClientsList(voyage.clientVoyages, $event)"
-                 [title]="voyage.clientVoyages.length + ' client(s)'">
-              {{ voyage.clientVoyages.length }} client{{ voyage.clientVoyages.length > 1 ? 's' : '' }}
-            </div>
-            } @else {
-            <span class="no-client">-</span>
-            }
-          </td>
-          <td>
-            @if (canUpdateVoyageStatus(voyage)) {
-            <button class="btn-change-statut" (click)="openStatutModal(voyage)" [class]="getStatutClass(voyage.statut, voyage)"
-              title="Changer le statut">
-              {{ getStatutLabel(voyage.statut, voyage) }}
-            </button>
-            } @else {
-            <span class="statut-badge-readonly" [class]="getStatutClass(voyage.statut, voyage)">{{ getStatutLabel(voyage.statut, voyage) }}</span>
-            }
-          </td>
-          <td>
-            <div class="declaration-status">
-              @if (voyage.declarer) {
-              <span class="badge-declared">Déclaré</span>
-              } @else if (voyage.passager === 'passer_non_declarer') {
-              <span class="badge-skipped">Passé Non Déclaré</span>
-              } @else {
-              <span class="badge-not-declared">-</span>
-              }
-            </div>
-          </td>
-          <td>
-            <div class="type-produit">{{ voyage.produitNom || voyage.typeProduit || 'N/A' }}</div>
-          </td>
-          <td>{{ voyage.quantite }} L</td>
-          <td>{{ formatDate(voyage.dateDepart) }}</td>
-          <td>{{ voyage.depotNom }}</td>
-          <td>
-            <div class="action-buttons">
-              <button class="action-btn btn-view" (click)="viewVoyage(voyage)" title="Voir les détails">
-                <span>👁️</span>
-              </button>
-              @if (canUpdateVoyageStatus(voyage)) {
-              <button class="action-btn btn-statut" (click)="openStatutModal(voyage)" title="Changer le statut">
-                <span>🔄</span>
-              </button>
-              }
-            </div>
-          </td>
-        </tr>
-        }
-        } @else if (activeTab === 'archives' && voyagesArchivesPage) {
-        @for (voyage of voyagesArchivesFiltered; track voyage.id) {
-        <tr>
-          <td>
-            <div class="voyage-numero">{{ voyage.numeroVoyage }}</div>
-          </td>
-          <td>{{ voyage.camionImmatriculation || 'N/A' }}</td>
-          <td class="col-chauffeur">{{ getChauffeurDisplay(voyage) }}</td>
-          <td>
-            @if (voyage.clientVoyages && voyage.clientVoyages.length > 0) {
-            <div class="client-count-badge" (click)="showClientsList(voyage.clientVoyages, $event)"
-                 [title]="voyage.clientVoyages.length + ' client(s)'">
-              {{ voyage.clientVoyages.length }} client{{ voyage.clientVoyages.length > 1 ? 's' : '' }}
-            </div>
-            } @else {
-            <span class="no-client">-</span>
-            }
-          </td>
-          <td>
-            @if (canUpdateVoyageStatus(voyage)) {
-            <button class="btn-change-statut" (click)="openStatutModal(voyage)" [class]="getStatutClass(voyage.statut, voyage)"
-              title="Changer le statut">
-              {{ getStatutLabel(voyage.statut, voyage) }}
-            </button>
-            } @else {
-            <span class="statut-badge-readonly" [class]="getStatutClass(voyage.statut, voyage)">{{ getStatutLabel(voyage.statut, voyage) }}</span>
-            }
-          </td>
-          <td>
-            <div class="declaration-status">
-              @if (voyage.declarer) {
-              <span class="badge-declared">Déclaré</span>
-              } @else if (voyage.passager === 'passer_non_declarer') {
-              <span class="badge-skipped">Passé Non Déclaré</span>
-              } @else {
-              <span class="badge-not-declared">-</span>
-              }
-            </div>
-          </td>
-          <td>
-            <div class="type-produit">{{ voyage.produitNom || voyage.typeProduit || 'N/A' }}</div>
-          </td>
-          <td>{{ voyage.quantite }} L</td>
-          <td>{{ formatDate(voyage.dateDepart) }}</td>
-          <td>{{ voyage.depotNom }}</td>
-          <td>
-            <div class="action-buttons">
-              <button class="action-btn btn-view" (click)="viewVoyage(voyage)" title="Voir les détails">
-                <span>👁️</span>
-              </button>
-            </div>
-          </td>
-        </tr>
-        }
-        } @else if (filteredVoyages.length === 0) {
-        <tr>
-          <td [attr.colspan]="(activeTab === 'actifs' || activeTab === 'non-declares') ? 13 : 12" class="empty-state">
-            <div class="empty-message">
-              @if (activeTab === 'actifs') {
-              Aucun voyage actif trouvé
-              } @else if (activeTab === 'receptionnes') {
-              Aucun voyage en sortie de douane trouvé
-              } @else if (activeTab === 'non-declares') {
-              Aucun voyage non déclaré trouvé
-              } @else if (activeTab === 'partiellement-decharges') {
-              Aucun voyage partiellement déchargé trouvé
-              } @else if (activeTab === 'en-cours') {
-              Aucun voyage en cours trouvé
-              } @else if (activeTab === 'archives') {
-              Aucune archive trouvée
-              } @else if (activeTab === 'sans-prix-achat') {
-              Aucun voyage sans prix d'achat trouvé
-              } @else if (activeTab === 'sans-prix-transport') {
-              Aucun voyage sans prix de transport trouvé
-              } @else {
-              Aucun voyage trouvé
-              }
-            </div>
-          </td>
-        </tr>
-        } @else {
-        @for (voyage of filteredVoyages; track voyage.id) {
-        <tr>
-          @if (activeTab === 'actifs') {
+          @if (voyagesEnChargement.length > 0) {
           <td class="checkbox-cell">
-            @if (activeTab === 'actifs' && voyage.statut === 'CHARGEMENT') {
+            @if (voyage.statut === 'CHARGEMENT') {
             <input type="checkbox" [checked]="isVoyageSelected(voyage.id)" (change)="toggleVoyageSelection(voyage.id)"
               title="Sélectionner pour générer le bon d'enlèvement" />
             }
@@ -546,7 +195,6 @@
               </div>
             </div>
           </td>
-          <td class="col-chauffeur">{{ getChauffeurDisplay(voyage) }}</td>
           <td>
             @if (voyage.clientVoyages && voyage.clientVoyages.length > 0) {
             <div class="client-count-badge" (click)="showClientsList(voyage.clientVoyages, $event)"
@@ -571,12 +219,70 @@
             <span class="statut-badge-readonly" [class]="getStatutClass(voyage.statut, voyage)">{{ getStatutLabel(voyage.statut, voyage) }}</span>
             }
           </td>
-          <td>
+          <td class="col-declaration">
             <div class="declaration-status">
               @if (voyage.declarer) {
               <span class="badge-declared">Déclaré</span>
+              @if (voyage.liberer) {
+              <span class="badge-libere">Libéré</span>
+              } @else {
+              <span class="badge-non-libere">Non libéré</span>
+              @if (canDeclareOrLiberate()) {
+              <button class="btn-action-sm btn-liberer" (click)="libererVoyage(voyage.id!)" title="Libérer">Libérer</button>
+              }
+              }
               } @else if (voyage.passager === 'passer_non_declarer') {
-              <span class="badge-skipped">Passé Non Déclaré</span>
+              <span class="badge-skipped">Non déclaré</span>
+              @if (voyage.liberer) {
+              <span class="badge-libere">Libéré</span>
+              } @else {
+              <span class="badge-non-libere">Non libéré</span>
+              }
+              @if (canDeclareOrLiberate() && getDeclarationActions(voyage).length > 0) {
+              @if (getDeclarationActions(voyage).length === 1) {
+              @if (getDeclarationActions(voyage)[0].key === 'liberer') {
+              <button class="btn-action-sm btn-liberer" (click)="libererVoyage(voyage.id!)" title="Libérer">Libérer</button>
+              } @else {
+              <button class="btn-action-sm btn-declarer" (click)="declarerVoyage(voyage.id!)" title="Déclarer">Déclarer</button>
+              }
+              } @else {
+              <div class="declaration-dropdown">
+                <button class="btn-action-sm btn-dropdown-trigger" (click)="toggleDeclarationMenu(voyage.id!); $event.stopPropagation()" title="Actions"
+                  [class.active]="openDeclarationMenuVoyageId === voyage.id">
+                  ⋮
+                </button>
+                @if (openDeclarationMenuVoyageId === voyage.id) {
+                <div class="declaration-dropdown-menu" (click)="$event.stopPropagation()">
+                  @for (action of getDeclarationActions(voyage); track action.key) {
+                  <button type="button" (click)="action.fn(); closeDeclarationMenu()">{{ action.label }}</button>
+                  }
+                </div>
+                }
+              </div>
+              }
+              }
+              } @else if (canDeclareOrLiberate() && voyage.statut === 'DOUANE') {
+              <span class="badge-douane">À la douane</span>
+              @if (!canDeclarerVoyage(voyage)) {
+              <span class="badge-etapes" title="Complétez les étapes Chargé, Départ, Arriver à la frontière, Douane">Étapes à valider</span>
+              }
+              @if (getDeclarationActions(voyage).length === 1) {
+              <button class="btn-action-sm btn-passer" (click)="passerNonDeclarer(voyage.id!)" title="Passer non déclaré">Passer</button>
+              } @else if (getDeclarationActions(voyage).length >= 2) {
+              <div class="declaration-dropdown">
+                <button class="btn-action-sm btn-dropdown-trigger" (click)="toggleDeclarationMenu(voyage.id!); $event.stopPropagation()" title="Actions"
+                  [class.active]="openDeclarationMenuVoyageId === voyage.id">
+                  ⋮
+                </button>
+                @if (openDeclarationMenuVoyageId === voyage.id) {
+                <div class="declaration-dropdown-menu" (click)="$event.stopPropagation()">
+                  @for (action of getDeclarationActions(voyage); track action.key) {
+                  <button type="button" (click)="action.fn(); closeDeclarationMenu()">{{ action.label }}</button>
+                  }
+                </div>
+                }
+              </div>
+              }
               } @else {
               <span class="badge-not-declared">-</span>
               }
@@ -593,26 +299,196 @@
           </td>
           <td>
             <div class="date-info">
-              <div class="date-value">{{ formatDate(voyage.dateDepart) }}</div>
+              <div class="date-value">{{ formatDate(getVoyageDisplayDate(voyage)) }}</div>
               <div class="lieu-value">{{ voyage.lieuDepart }}</div>
             </div>
           </td>
           <td>
             <div class="destination-value">{{ voyage.depotNom }}</div>
             @if (voyage.dateArrivee) {
-            <div class="date-arrivee">Arrivé: {{ formatDate(voyage.dateArrivee) }}</div>
+            <div class="date-arrivee">Arriver à la frontière: {{ formatDate(voyage.dateArrivee) }}</div>
             }
           </td>
           <td>
-            <div class="actions">
-              <button class="action-btn" (click)="viewVoyage(voyage)" title="Voir détails">
+            <div class="axe-value">{{ voyage.axeNom || getAxeNom(voyage.axeId) || '-' }}</div>
+          </td>
+          <td class="col-actions">
+            <div class="action-buttons">
+              <button class="action-btn btn-view" (click)="viewVoyage(voyage)" title="Détails">
                 <span>👁️</span>
               </button>
-              @if (activeTab === 'actifs' && voyage.statut === 'CHARGEMENT') {
-              <button class="action-btn btn-bon" (click)="generateBonEnlevement(voyage.id)"
-                title="Générer le bon d'enlèvement">
+              @if (voyage.statut === 'CHARGEMENT') {
+              <button class="action-btn btn-bon" (click)="generateBonEnlevement(voyage.id)" title="Bon d'enlèvement">
                 <span>📄</span>
               </button>
+              }
+              @if (canModifyOrDeleteVoyage()) {
+              <button class="action-btn btn-edit" (click)="openEditVoyageModal(voyage)" title="Modifier">
+                <span>✏️</span>
+              </button>
+              }
+              @if (canDeleteVoyage(voyage)) {
+              <button class="action-btn btn-delete" (click)="confirmDeleteVoyage(voyage)" title="Supprimer">
+                <span>🗑️</span>
+              </button>
+              }
+            </div>
+          </td>
+        </tr>
+        }
+        } @else if (activeTab === 'archives' && voyagesArchivesPage) {
+        <tr>
+          <td [attr.colspan]="12" class="archives-filter-row">
+            <button
+              class="btn-group-client"
+              [class.active]="showOnlyDeclaredArchives"
+              (click)="toggleShowOnlyDeclaredArchives()">
+              {{ showOnlyDeclaredArchives ? 'Afficher tous les voyages' : 'Afficher uniquement les voyages déclarés' }}
+            </button>
+          </td>
+        </tr>
+        @for (voyage of voyagesArchivesPage.voyages; track voyage.id) {
+        <tr>
+          <td>
+            <div class="voyage-numero">{{ voyage.numeroVoyage }}</div>
+          </td>
+          <td>
+            <div class="camion-info">
+              <div class="truck-icon">🚛</div>
+              <div class="camion-details">
+                <div class="camion-id">{{ voyage.camionImmatriculation || 'N/A' }}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            @if (voyage.clientVoyages && voyage.clientVoyages.length > 0) {
+            <div class="client-count-badge" (click)="showClientsList(voyage.clientVoyages, $event)"
+                 [title]="voyage.clientVoyages.length + ' client(s)'">
+              {{ voyage.clientVoyages.length }} client{{ voyage.clientVoyages.length > 1 ? 's' : '' }}
+            </div>
+            } @else if (voyage.clientNom) {
+            <div class="client-count-badge" title="1 client">
+              1 client
+            </div>
+            } @else {
+            <span class="no-client">-</span>
+            }
+          </td>
+          <td>
+            @if (canUpdateVoyageStatus(voyage)) {
+            <button class="btn-change-statut" (click)="openStatutModal(voyage)" [class]="getStatutClass(voyage.statut, voyage)"
+              title="Changer le statut">
+              {{ getStatutLabel(voyage.statut, voyage) }}
+            </button>
+            } @else {
+            <span class="statut-badge-readonly" [class]="getStatutClass(voyage.statut, voyage)">{{ getStatutLabel(voyage.statut, voyage) }}</span>
+            }
+          </td>
+          <td class="col-declaration">
+            <div class="declaration-status">
+              @if (voyage.declarer) {
+              <span class="badge-declared">Déclaré</span>
+              @if (voyage.liberer) {
+              <span class="badge-libere">Libéré</span>
+              } @else {
+              <span class="badge-non-libere">Non libéré</span>
+              @if (canDeclareOrLiberate()) {
+              <button class="btn-action-sm btn-liberer" (click)="libererVoyage(voyage.id!)" title="Libérer">Libérer</button>
+              }
+              }
+              } @else if (voyage.passager === 'passer_non_declarer') {
+              <span class="badge-skipped">Non déclaré</span>
+              @if (voyage.liberer) {
+              <span class="badge-libere">Libéré</span>
+              } @else {
+              <span class="badge-non-libere">Non libéré</span>
+              }
+              @if (canDeclareOrLiberate() && getDeclarationActions(voyage).length > 0) {
+              @if (getDeclarationActions(voyage).length === 1) {
+              @if (getDeclarationActions(voyage)[0].key === 'liberer') {
+              <button class="btn-action-sm btn-liberer" (click)="libererVoyage(voyage.id!)" title="Libérer">Libérer</button>
+              } @else {
+              <button class="btn-action-sm btn-declarer" (click)="declarerVoyage(voyage.id!)" title="Déclarer">Déclarer</button>
+              }
+              } @else {
+              <div class="declaration-dropdown">
+                <button class="btn-action-sm btn-dropdown-trigger" (click)="toggleDeclarationMenu(voyage.id!); $event.stopPropagation()" title="Actions"
+                  [class.active]="openDeclarationMenuVoyageId === voyage.id">
+                  ⋮
+                </button>
+                @if (openDeclarationMenuVoyageId === voyage.id) {
+                <div class="declaration-dropdown-menu" (click)="$event.stopPropagation()">
+                  @for (action of getDeclarationActions(voyage); track action.key) {
+                  <button type="button" (click)="action.fn(); closeDeclarationMenu()">{{ action.label }}</button>
+                  }
+                </div>
+                }
+              </div>
+              }
+              }
+              } @else if (canDeclareOrLiberate() && voyage.statut === 'DOUANE') {
+              <span class="badge-douane">À la douane</span>
+              @if (!canDeclarerVoyage(voyage)) {
+              <span class="badge-etapes" title="Complétez les étapes Chargé, Départ, Arriver à la frontière, Douane">Étapes à valider</span>
+              }
+              @if (getDeclarationActions(voyage).length === 1) {
+              <button class="btn-action-sm btn-passer" (click)="passerNonDeclarer(voyage.id!)" title="Passer non déclaré">Passer</button>
+              } @else if (getDeclarationActions(voyage).length >= 2) {
+              <div class="declaration-dropdown">
+                <button class="btn-action-sm btn-dropdown-trigger" (click)="toggleDeclarationMenu(voyage.id!); $event.stopPropagation()" title="Actions"
+                  [class.active]="openDeclarationMenuVoyageId === voyage.id">
+                  ⋮
+                </button>
+                @if (openDeclarationMenuVoyageId === voyage.id) {
+                <div class="declaration-dropdown-menu" (click)="$event.stopPropagation()">
+                  @for (action of getDeclarationActions(voyage); track action.key) {
+                  <button type="button" (click)="action.fn(); closeDeclarationMenu()">{{ action.label }}</button>
+                  }
+                </div>
+                }
+              </div>
+              }
+              } @else {
+              <span class="badge-not-declared">-</span>
+              }
+            </div>
+          </td>
+          <td>
+            <div class="type-produit">{{ voyage.produitNom || voyage.typeProduit || 'N/A' }}</div>
+          </td>
+          <td>{{ voyage.quantite }} L</td>
+          <td>{{ formatDate(getVoyageDisplayDate(voyage)) }}</td>
+          <td>{{ voyage.depotNom }}</td>
+          <td>{{ voyage.axeNom || getAxeNom(voyage.axeId) || '-' }}</td>
+          <td class="col-actions">
+            <div class="action-buttons">
+              <button class="action-btn btn-view" (click)="viewVoyage(voyage)" title="Détails">
+                <span>👁️</span>
+              </button>
+              @if (canModifyOrDeleteVoyage()) {
+              <button class="action-btn btn-edit" (click)="openEditVoyageModal(voyage)" title="Modifier">
+                <span>✏️</span>
+              </button>
+              }
+              @if (canDeleteVoyage(voyage)) {
+              <button class="action-btn btn-delete" (click)="confirmDeleteVoyage(voyage)" title="Supprimer">
+                <span>🗑️</span>
+              </button>
+              }
+            </div>
+          </td>
+        </tr>
+        }
+        } @else {
+        <tr>
+          <td [attr.colspan]="(activeTab === 'en-cours' && voyagesEnChargement.length > 0) ? 13 : 12" class="empty-state">
+            <div class="empty-message">
+              @if (activeTab === 'en-cours') {
+              Aucun voyage en cours trouvé
+              } @else if (activeTab === 'archives') {
+              Aucune archive trouvée
+              } @else {
+              Aucun voyage trouvé
               }
             </div>
           </td>
@@ -623,227 +499,68 @@
     </table>
   </div>
 
-  @if (filterType === 'axe' && voyagesAxePage && voyagesAxePage.totalPages > 1) {
+  @if (activeTab === 'en-cours' && voyagesEnCoursPage && voyagesEnCoursPage.totalPages > 1) {
   <div class="pagination-container">
     <div class="pagination-info">
-      Page {{ voyagesAxePage.currentPage + 1 }} sur {{ voyagesAxePage.totalPages }}
-      ({{ voyagesAxePage.totalElements }} voyage{{ voyagesAxePage.totalElements > 1 ? 's' : '' }})
+      Page {{ voyagesEnCoursPage.currentPage + 1 }} sur {{ voyagesEnCoursPage.totalPages }}
+      ({{ voyagesEnCoursPage.totalElements }} voyage{{ voyagesEnCoursPage.totalElements > 1 ? 's' : '' }})
     </div>
     <div class="pagination-controls">
-      <button class="pagination-btn" (click)="changePageAxe(voyagesAxePage.currentPage - 1)"
-        [disabled]="voyagesAxePage.currentPage === 0 || isLoading" title="Page précédente">
+      <button class="pagination-btn" (click)="changePageEnCours(voyagesEnCoursPage.currentPage - 1)"
+        [disabled]="voyagesEnCoursPage.currentPage === 0 || isLoading" title="Page précédente">
         ‹ Précédent
       </button>
       <div class="pagination-numbers">
-        @for (page of getPageNumbers(voyagesAxePage.currentPage, voyagesAxePage.totalPages); track page) {
+        @for (page of getPageNumbers(voyagesEnCoursPage.currentPage, voyagesEnCoursPage.totalPages); track page) {
         @if (page === '...') {
         <span class="pagination-ellipsis">...</span>
         } @else if (typeof page === 'number') {
-        <button class="pagination-number" [class.active]="page === voyagesAxePage.currentPage"
-          (click)="changePageAxe(page)" [disabled]="isLoading">
+        <button class="pagination-number" [class.active]="page === voyagesEnCoursPage.currentPage"
+          (click)="changePageEnCours(page)" [disabled]="isLoading">
           {{ page + 1 }}
         </button>
         }
         }
       </div>
-      <button class="pagination-btn" (click)="changePageAxe(voyagesAxePage.currentPage + 1)"
-        [disabled]="voyagesAxePage.currentPage >= voyagesAxePage.totalPages - 1 || isLoading" title="Page suivante">
+      <button class="pagination-btn" (click)="changePageEnCours(voyagesEnCoursPage.currentPage + 1)"
+        [disabled]="voyagesEnCoursPage.currentPage >= voyagesEnCoursPage.totalPages - 1 || isLoading" title="Page suivante">
         Suivant ›
       </button>
     </div>
   </div>
   }
 
-  @if (activeTab === 'partiellement-decharges' && voyagesPartiellementDechargesPage && voyagesPartiellementDechargesPage.totalPages > 1) {
+  @if (activeTab === 'archives' && voyagesArchivesPage && voyagesArchivesPage.totalPages > 1) {
   <div class="pagination-container">
     <div class="pagination-info">
-      Page {{ voyagesPartiellementDechargesPage.currentPage + 1 }} sur {{ voyagesPartiellementDechargesPage.totalPages }}
-      ({{ voyagesPartiellementDechargesPage.totalElements }} voyage{{ voyagesPartiellementDechargesPage.totalElements > 1 ? 's' : '' }})
+      Page {{ voyagesArchivesPage.currentPage + 1 }} sur {{ voyagesArchivesPage.totalPages }}
+      ({{ voyagesArchivesPage.totalElements }} voyage{{ voyagesArchivesPage.totalElements > 1 ? 's' : '' }})
     </div>
     <div class="pagination-controls">
-      <button class="pagination-btn" (click)="changePagePartiellementDecharges(voyagesPartiellementDechargesPage.currentPage - 1)"
-        [disabled]="voyagesPartiellementDechargesPage.currentPage === 0 || isLoading" title="Page précédente">
+      <button class="pagination-btn" (click)="changePageArchives(voyagesArchivesPage.currentPage - 1)"
+        [disabled]="voyagesArchivesPage.currentPage === 0 || isLoading" title="Page précédente">
         ‹ Précédent
       </button>
       <div class="pagination-numbers">
-        @for (page of getPageNumbers(voyagesPartiellementDechargesPage.currentPage, voyagesPartiellementDechargesPage.totalPages); track page) {
+        @for (page of getPageNumbers(voyagesArchivesPage.currentPage, voyagesArchivesPage.totalPages); track page) {
         @if (page === '...') {
         <span class="pagination-ellipsis">...</span>
         } @else if (typeof page === 'number') {
-        <button class="pagination-number" [class.active]="page === voyagesPartiellementDechargesPage.currentPage"
-          (click)="changePagePartiellementDecharges(page)" [disabled]="isLoading">
+        <button class="pagination-number" [class.active]="page === voyagesArchivesPage.currentPage"
+          (click)="changePageArchives(page)" [disabled]="isLoading">
           {{ page + 1 }}
         </button>
         }
         }
       </div>
-      <button class="pagination-btn" (click)="changePagePartiellementDecharges(voyagesPartiellementDechargesPage.currentPage + 1)"
-        [disabled]="voyagesPartiellementDechargesPage.currentPage >= voyagesPartiellementDechargesPage.totalPages - 1 || isLoading" title="Page suivante">
-        Suivant ›
-      </button>
-    </div>
-  </div>
-  }
-
-  @if (activeTab === 'sans-prix-achat') {
-  @if (groupByClient && voyagesParClientPage && voyagesParClientPage.totalPages > 1) {
-  <div class="pagination-container">
-    <div class="pagination-info">
-      Page {{ voyagesParClientPage.currentPage + 1 }} sur {{ voyagesParClientPage.totalPages }}
-      ({{ voyagesParClientPage.totalElements }} client{{ voyagesParClientPage.totalElements > 1 ? 's' : '' }})
-    </div>
-    <div class="pagination-controls">
-      <button class="pagination-btn" (click)="changePageSansPrixAchat(voyagesParClientPage.currentPage - 1)"
-        [disabled]="voyagesParClientPage.currentPage === 0 || isLoading" title="Page précédente">
-        ‹ Précédent
-      </button>
-      <div class="pagination-numbers">
-        @for (page of getPageNumbers(voyagesParClientPage.currentPage, voyagesParClientPage.totalPages); track page) {
-        @if (page === '...') {
-        <span class="pagination-ellipsis">...</span>
-        } @else if (typeof page === 'number') {
-        <button class="pagination-number" [class.active]="page === voyagesParClientPage.currentPage"
-          (click)="changePageSansPrixAchat(page)" [disabled]="isLoading">
-          {{ page + 1 }}
-        </button>
-        }
-        }
-      </div>
-      <button class="pagination-btn" (click)="changePageSansPrixAchat(voyagesParClientPage.currentPage + 1)"
-        [disabled]="voyagesParClientPage.currentPage >= voyagesParClientPage.totalPages - 1 || isLoading"
-        title="Page suivante">
-        Suivant ›
-      </button>
-    </div>
-  </div>
-  } @else if (!groupByClient && voyagesSansPrixAchatPage && voyagesSansPrixAchatPage.totalPages > 1) {
-  <div class="pagination-container">
-    <div class="pagination-info">
-      Page {{ voyagesSansPrixAchatPage.currentPage + 1 }} sur {{ voyagesSansPrixAchatPage.totalPages }}
-      ({{ voyagesSansPrixAchatPage.totalElements }} voyage{{ voyagesSansPrixAchatPage.totalElements > 1 ? 's' : '' }})
-    </div>
-    <div class="pagination-controls">
-      <button class="pagination-btn" (click)="changePageSansPrixAchat(voyagesSansPrixAchatPage.currentPage - 1)"
-        [disabled]="voyagesSansPrixAchatPage.currentPage === 0 || isLoading" title="Page précédente">
-        ‹ Précédent
-      </button>
-      <div class="pagination-numbers">
-        @for (page of getPageNumbers(voyagesSansPrixAchatPage.currentPage, voyagesSansPrixAchatPage.totalPages); track
-        page) {
-        @if (page === '...') {
-        <span class="pagination-ellipsis">...</span>
-        } @else if (typeof page === 'number') {
-        <button class="pagination-number" [class.active]="page === voyagesSansPrixAchatPage.currentPage"
-          (click)="changePageSansPrixAchat(page)" [disabled]="isLoading">
-          {{ page + 1 }}
-        </button>
-        }
-        }
-      </div>
-      <button class="pagination-btn" (click)="changePageSansPrixAchat(voyagesSansPrixAchatPage.currentPage + 1)"
-        [disabled]="voyagesSansPrixAchatPage.currentPage >= voyagesSansPrixAchatPage.totalPages - 1 || isLoading"
-        title="Page suivante">
-        Suivant ›
-      </button>
-    </div>
-  </div>
-  }
-  }
-
-  @if (activeTab === 'sans-prix-transport' && voyagesSansPrixTransportPage && voyagesSansPrixTransportPage.totalPages > 1) {
-  <div class="pagination-container">
-    <div class="pagination-info">
-      Page {{ voyagesSansPrixTransportPage.currentPage + 1 }} sur {{ voyagesSansPrixTransportPage.totalPages }}
-      ({{ voyagesSansPrixTransportPage.totalElements }} voyage{{ voyagesSansPrixTransportPage.totalElements > 1 ? 's' : '' }})
-    </div>
-    <div class="pagination-controls">
-      <button class="pagination-btn" (click)="changePageSansPrixTransport(voyagesSansPrixTransportPage.currentPage - 1)"
-        [disabled]="voyagesSansPrixTransportPage.currentPage === 0 || isLoading" title="Page précédente">
-        ‹ Précédent
-      </button>
-      <div class="pagination-numbers">
-        @for (page of getPageNumbers(voyagesSansPrixTransportPage.currentPage, voyagesSansPrixTransportPage.totalPages); track page) {
-        @if (page === '...') {
-        <span class="pagination-ellipsis">...</span>
-        } @else if (typeof page === 'number') {
-        <button class="pagination-number" [class.active]="page === voyagesSansPrixTransportPage.currentPage"
-          (click)="changePageSansPrixTransport(page)" [disabled]="isLoading">
-          {{ page + 1 }}
-        </button>
-        }
-        }
-      </div>
-      <button class="pagination-btn" (click)="changePageSansPrixTransport(voyagesSansPrixTransportPage.currentPage + 1)"
-        [disabled]="voyagesSansPrixTransportPage.currentPage >= voyagesSansPrixTransportPage.totalPages - 1 || isLoading"
-        title="Page suivante">
+      <button class="pagination-btn" (click)="changePageArchives(voyagesArchivesPage.currentPage + 1)"
+        [disabled]="voyagesArchivesPage.currentPage >= voyagesArchivesPage.totalPages - 1 || isLoading" title="Page suivante">
         Suivant ›
       </button>
     </div>
   </div>
   }
 </div>
-
-@if (activeTab === 'en-cours' && voyagesEnCoursPage && voyagesEnCoursPage.totalPages > 1) {
-<div class="pagination-container">
-  <div class="pagination-info">
-    Page {{ voyagesEnCoursPage.currentPage + 1 }} sur {{ voyagesEnCoursPage.totalPages }}
-    ({{ voyagesEnCoursPage.totalElements }} voyage{{ voyagesEnCoursPage.totalElements > 1 ? 's' : '' }})
-  </div>
-  <div class="pagination-controls">
-    <button class="pagination-btn" (click)="changePageEnCours(voyagesEnCoursPage.currentPage - 1)"
-      [disabled]="voyagesEnCoursPage.currentPage === 0 || isLoading" title="Page précédente">
-      ‹ Précédent
-    </button>
-    <div class="pagination-numbers">
-      @for (page of getPageNumbers(voyagesEnCoursPage.currentPage, voyagesEnCoursPage.totalPages); track page) {
-      @if (page === '...') {
-      <span class="pagination-ellipsis">...</span>
-      } @else if (typeof page === 'number') {
-      <button class="pagination-number" [class.active]="page === voyagesEnCoursPage.currentPage"
-        (click)="changePageEnCours(page)" [disabled]="isLoading">
-        {{ page + 1 }}
-      </button>
-      }
-      }
-    </div>
-    <button class="pagination-btn" (click)="changePageEnCours(voyagesEnCoursPage.currentPage + 1)"
-      [disabled]="voyagesEnCoursPage.currentPage >= voyagesEnCoursPage.totalPages - 1 || isLoading" title="Page suivante">
-      Suivant ›
-    </button>
-  </div>
-</div>
-}
-
-@if (activeTab === 'archives' && voyagesArchivesPage && voyagesArchivesPage.totalPages > 1) {
-<div class="pagination-container">
-  <div class="pagination-info">
-    Page {{ voyagesArchivesPage.currentPage + 1 }} sur {{ voyagesArchivesPage.totalPages }}
-    ({{ voyagesArchivesPage.totalElements }} voyage{{ voyagesArchivesPage.totalElements > 1 ? 's' : '' }})
-  </div>
-  <div class="pagination-controls">
-    <button class="pagination-btn" (click)="changePageArchives(voyagesArchivesPage.currentPage - 1)"
-      [disabled]="voyagesArchivesPage.currentPage === 0 || isLoading" title="Page précédente">
-      ‹ Précédent
-    </button>
-    <div class="pagination-numbers">
-      @for (page of getPageNumbers(voyagesArchivesPage.currentPage, voyagesArchivesPage.totalPages); track page) {
-      @if (page === '...') {
-      <span class="pagination-ellipsis">...</span>
-      } @else if (typeof page === 'number') {
-      <button class="pagination-number" [class.active]="page === voyagesArchivesPage.currentPage"
-        (click)="changePageArchives(page)" [disabled]="isLoading">
-        {{ page + 1 }}
-      </button>
-      }
-      }
-    </div>
-    <button class="pagination-btn" (click)="changePageArchives(voyagesArchivesPage.currentPage + 1)"
-      [disabled]="voyagesArchivesPage.currentPage >= voyagesArchivesPage.totalPages - 1 || isLoading" title="Page suivante">
-      Suivant ›
-    </button>
-  </div>
-</div>
-}
 
 @if (showDetailModal && selectedVoyage) {
 <div class="modal-overlay" (click)="closeDetailModal()">
