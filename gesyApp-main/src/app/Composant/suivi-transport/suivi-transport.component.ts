@@ -2168,9 +2168,14 @@ export class SuiviTransportComponent implements OnInit {
     this.activeDetailTab = tab;
   }
 
+  /**
+   * Attribution (ajouter/modifier des clients) : possible dès qu'il reste de la quantité à attribuer
+   * et que le voyage n'est pas encore déchargé. Peu importe déclaré ou non (rôles inchangés).
+   */
   canAssignClient(voyage: VoyageDisplay | null): boolean {
-    return !!voyage &&
-      (this.getQuantiteTotaleAttribuee() < (voyage.quantite ?? 0));
+    if (!voyage) return false;
+    if (voyage.statut === 'DECHARGER' || voyage.statut === 'PARTIELLEMENT_DECHARGER') return false;
+    return this.getQuantiteTotaleAttribuee() < (voyage.quantite ?? 0);
   }
 
   // getQuantiteTotaleAttribuee(voyage: VoyageDisplay): number {
