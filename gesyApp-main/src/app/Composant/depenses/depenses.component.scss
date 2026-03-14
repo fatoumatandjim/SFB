@@ -336,8 +336,10 @@
   .actions-cell {
     display: flex;
     flex-wrap: nowrap;
+    align-items: center;
     gap: 6px;
     min-width: 120px;
+    min-height: 36px;
     white-space: nowrap;
     overflow: visible;
   }
@@ -372,8 +374,16 @@
 }
 
 .action-hint {
-  color: var(--text-secondary);
-  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.5rem;
+  padding: 6px 10px;
+  color: var(--text-muted, #9ca3af);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+  user-select: none;
 }
 
 .action-btn {
