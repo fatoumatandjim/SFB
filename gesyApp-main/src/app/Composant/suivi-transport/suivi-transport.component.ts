@@ -1251,30 +1251,38 @@ export class SuiviTransportComponent implements OnInit {
     if (voyage.id) {
       this.voyagesService.getVoyageById(voyage.id).subscribe({
         next: (updatedVoyage) => {
+          // Synchroniser le voyage affiché avec le backend (liste = même référence que voyageForStatutChange)
+          // pour que la colonne Statut affiche le même libellé que le modal (aligné djikineholding).
+          if (this.voyageForStatutChange) {
+            if (updatedVoyage.statut !== undefined && updatedVoyage.statut !== null) {
+              this.voyageForStatutChange.statut = updatedVoyage.statut as any;
+            }
+            if (updatedVoyage.liberer !== undefined) {
+              this.voyageForStatutChange.liberer = updatedVoyage.liberer;
+            }
+            if (updatedVoyage.clientVoyages) {
+              this.voyageForStatutChange.clientVoyages = updatedVoyage.clientVoyages;
+            }
+          }
+
           // Mettre à jour les ClientVoyage depuis la réponse
           if (this.voyageForStatutChange && updatedVoyage.clientVoyages) {
-            this.voyageForStatutChange.clientVoyages = updatedVoyage.clientVoyages;
-            // Réinitialiser dechargerManquants et dechargerClientLivres avec les nouvelles données
             this.dechargerManquants = {};
             this.dechargerClientLivres = {};
             updatedVoyage.clientVoyages.forEach(cv => {
               if (cv.id) {
-                // Garder la valeur existante de manquant, même si elle vaut 0
                 if (cv.manquant !== undefined && cv.manquant !== null) {
                   this.dechargerManquants[cv.id] = cv.manquant;
                 }
-                // Initialiser l'état de livraison basé sur le statut existant
                 this.dechargerClientLivres[cv.id] = cv.statut === 'LIVRER';
               }
             });
           }
 
           this.etatsVoyage = updatedVoyage.etats || [];
-          // Si pas d'états, créer la liste des 5 états par défaut
           if (this.etatsVoyage.length === 0) {
             this.etatsVoyage = this.getDefaultEtats();
           } else {
-            // S'assurer que tous les états par défaut sont présents
             const defaultEtats = this.getDefaultEtats();
             const existingEtats = new Map(this.etatsVoyage.map(e => [e.etat, e]));
             this.etatsVoyage = defaultEtats.map(defaultEtat => {
@@ -1282,6 +1290,9 @@ export class SuiviTransportComponent implements OnInit {
               return existing || defaultEtat;
             });
           }
+
+          // Pré-sélectionner le statut courant dans le modal (cohérent avec le backend).
+          this.selectedStatut = (updatedVoyage.statut as string) || '';
           this.showStatutModal = true;
         },
         error: (error) => {

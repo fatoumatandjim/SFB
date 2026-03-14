@@ -149,7 +149,7 @@
           <th>Camion</th>
           <th class="col-chauffeur">Chauffeur</th>
           <th>Client</th>
-          <th>Statut</th>
+          <th class="col-statut">Statut</th>
           <th class="col-declaration">Déclaré</th>
           <th>Type Produit</th>
           <th>Quantité restante</th>
@@ -197,7 +197,7 @@
             <div class="no-client">-</div>
             }
           </td>
-          <td>
+          <td class="col-statut">
             @if (canUpdateVoyageStatus(voyage)) {
             <button class="btn-change-statut" (click)="openStatutModal(voyage)" [class]="getStatutClass(voyage.statut, voyage)"
               title="Changer le statut">
@@ -360,7 +360,7 @@
             <span class="no-client">-</span>
             }
           </td>
-          <td>
+          <td class="col-statut">
             @if (canUpdateVoyageStatus(voyage)) {
             <button class="btn-change-statut" (click)="openStatutModal(voyage)" [class]="getStatutClass(voyage.statut, voyage)"
               title="Changer le statut">
