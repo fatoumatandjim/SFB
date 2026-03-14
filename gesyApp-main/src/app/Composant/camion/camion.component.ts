@@ -17,6 +17,7 @@ import { ToastService } from '../../nativeComp/toast/toast.service';
 import { AuthService } from '../../services/auth.service';
 import { UtilisateursService, Utilisateur } from '../../services/utilisateurs.service';
 import { EditPrixTransportModalComponent, VoyagePrixRef } from '../shared/edit-prix-transport-modal/edit-prix-transport-modal.component';
+import { getVoyageStatutLabel, getVoyageStatutClass } from '../../services/voyage-statut.utils';
 
 interface CamionDisplay extends Camion {
   couleur: string;
@@ -789,29 +790,11 @@ export class CamionComponent implements OnInit {
   }
 
   getStatutLabel(statut: string): string {
-    const statuts: { [key: string]: string } = {
-      'CHARGEMENT': 'Chargement',
-      'CHARGE': 'Chargé',
-      'DEPART': 'Départ',
-      'ARRIVER': 'Arrivé',
-      'DOUANE': 'Douane',
-      'RECEPTIONNER': 'Réceptionné',
-      'LIVRE': 'Livré'
-    };
-    return statuts[statut] || statut;
+    return getVoyageStatutLabel(statut);
   }
 
   getStatutClass(statut: string): string {
-    const classes: { [key: string]: string } = {
-      'CHARGEMENT': 'status-chargement',
-      'CHARGE': 'status-charge',
-      'DEPART': 'status-depart',
-      'ARRIVER': 'status-arriver',
-      'DOUANE': 'status-douane',
-      'RECEPTIONNER': 'status-receptionner',
-      'LIVRE': 'status-livre'
-    };
-    return classes[statut] || '';
+    return getVoyageStatutClass(statut);
   }
 
   openAddFraisModal() {

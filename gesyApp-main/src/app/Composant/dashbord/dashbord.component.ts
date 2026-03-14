@@ -16,6 +16,7 @@ export class DashbordComponent implements OnInit {
   isLoading = true;
   error: string | null = null;
   isAdmin: boolean = false;
+  isLogisticien: boolean = false;
 
   constructor(
     private dashboardService: DashboardService,
@@ -24,6 +25,7 @@ export class DashbordComponent implements OnInit {
 
   ngOnInit() {
     this.isAdmin = this.authService.hasRole('ROLE_ADMIN');
+    this.isLogisticien = this.authService.isLogisticien();
     this.loadDashboardStats();
   }
 

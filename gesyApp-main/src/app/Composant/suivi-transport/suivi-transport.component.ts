@@ -18,6 +18,7 @@ import { ExcelService, CamionExcelData } from '../../services/excel.service';
 import { AuthService } from 'src/app/services/auth.service';
 import { EditPrixTransportModalComponent, VoyagePrixRef } from '../shared/edit-prix-transport-modal/edit-prix-transport-modal.component';
 import { getVoyageStatutLabel, getVoyageStatutClass, isSortieDouane } from '../../services/voyage-statut.utils';
+import { sortByDateDepartDesc } from '../../services/voyage-date.utils';
 
 interface VoyageDisplay extends Voyage {
   camionImmatriculation?: string;
@@ -294,7 +295,7 @@ export class SuiviTransportComponent implements OnInit {
   generateRapportCamionsPdf() {
     this.rapportPdfGenerating = true;
     this.voyagesService.getVoyagesEnCoursAvecClients().subscribe({
-      next: (data) => {
+      next: (data: any) => {
         this.rapportPdfGenerating = false;
         this.pdfService.exportRapportCamionsClients(data);
         this.toastService.success(`Rapport PDF généré (${data.length} voyage(s) en cours)`);
@@ -367,21 +368,21 @@ export class SuiviTransportComponent implements OnInit {
 
     this.isLoading = true;
     this.voyagesService.updateStatut(this.selectedVoyage.id, 'LIVRE', params).subscribe({
-      next: (updatedVoyage) => {
+      next: (updatedVoyage: any) => {
         this.isLoading = false;
         this.toastService.success(`Client ${client.nom} ajouté avec succès (${quantite} L)`);
         this.closeQuantiteModal();
         // Recharger le voyage pour avoir les données à jour
         this.voyagesService.getVoyageById(this.selectedVoyage!.id!).subscribe({
-          next: (reloadedVoyage) => {
+          next: (reloadedVoyage: any) => {
             this.selectedVoyage = { ...this.selectedVoyage!, ...reloadedVoyage };
           },
-          error: (error) => {
+          error: (error: any) => {
             console.error('Erreur lors du rechargement:', error);
           }
         });
       },
-      error: (error) => {
+      error: (error: any) => {
         this.isLoading = false;
         const errorMessage = this.getErrorMessage(error, 'Erreur lors de l\'ajout du client');
         this.toastService.error(errorMessage);
@@ -583,7 +584,7 @@ export class SuiviTransportComponent implements OnInit {
           const identifiant = this.authService.getIdentifiant();
           list = list.filter(v => (v as any).responsableIdentifiant === identifiant);
         }
-        this.voyages = this.sortByDateDepartAsc(list);
+        this.voyages = sortByDateDepartDesc(list);
         this.updateFilteredVoyages();
         this.isLoading = false;
       },
@@ -649,7 +650,7 @@ export class SuiviTransportComponent implements OnInit {
     this.isLoading = true;
     this.voyagesService.getVoyagesPassesNonDeclares().subscribe({
       next: (data) => {
-        this.voyagesNonDeclares = this.sortByDateDepartAsc(data.map(v => ({
+        this.voyagesNonDeclares = sortByDateDepartDesc(data.map(v => ({
           ...v,
           camionImmatriculation: (v as any).camionImmatriculation,
           clientNom: (v as any).clientNom,
@@ -679,7 +680,7 @@ export class SuiviTransportComponent implements OnInit {
     if (this.groupByClient) {
       // Charger les voyages groupés par client
       this.voyagesService.getVoyagesAvecClientSansFactureGroupesParClient(this.currentPageSansPrixAchat, this.pageSizeSansPrixAchat).subscribe({
-        next: (data) => {
+        next: (data: any) => {
           const clientsVoyages = data.clientsVoyages.map(cv => ({
             clientId: cv.clientId,
             clientNom: cv.clientNom,
@@ -712,7 +713,7 @@ export class SuiviTransportComponent implements OnInit {
           }, []);
           this.isLoading = false;
         },
-        error: (error) => {
+        error: (error: any) => {
           console.error('Erreur lors du chargement des voyages sans prix d\'achat groupés:', error);
           this.isLoading = false;
         }
@@ -720,8 +721,8 @@ export class SuiviTransportComponent implements OnInit {
     } else {
       // Charger les voyages normalement
       this.voyagesService.getVoyagesAvecClientSansFacture(this.currentPageSansPrixAchat, this.pageSizeSansPrixAchat).subscribe({
-        next: (data) => {
-          const voyages = this.sortByDateDepartAsc(data.voyages.map(v => ({
+        next: (data: any) => {
+          const voyages = sortByDateDepartDesc(data.voyages.map(v => ({
             ...v,
             camionImmatriculation: (v as any).camionImmatriculation,
             clientNom: (v as any).clientNom,
@@ -760,8 +761,8 @@ export class SuiviTransportComponent implements OnInit {
     this.isLoading = true;
     this.filteredVoyages = [];
     this.voyagesService.getVoyagesSansPrixTransport(this.currentPageSansPrixTransport, this.pageSizeSansPrixTransport).subscribe({
-      next: (data) => {
-        const voyages = this.sortByDateDepartAsc(data.voyages.map(v => ({
+      next: (data: any) => {
+        const voyages = sortByDateDepartDesc(data.voyages.map(v => ({
           ...v,
           camionImmatriculation: (v as any).camionImmatriculation,
           clientNom: (v as any).clientNom,
@@ -817,9 +818,9 @@ export class SuiviTransportComponent implements OnInit {
     // Réinitialiser filteredVoyages pour cet onglet
     this.filteredVoyages = [];
     this.voyagesService.getVoyagesPartiellementDecharges(this.currentPagePartiellementDecharges, this.pageSizePartiellementDecharges).subscribe({
-      next: (data) => {
+      next: (data: any) => {
         this.voyagesPartiellementDechargesPage = {
-          voyages: this.sortByDateDepartAsc(data.voyages || []),
+          voyages: sortByDateDepartDesc(data.voyages || []),
           currentPage: data.currentPage || 0,
           totalPages: data.totalPages || 0,
           totalElements: data.totalElements || 0,
@@ -852,7 +853,7 @@ export class SuiviTransportComponent implements OnInit {
           voyages = voyages.filter((v: any) => v.responsableIdentifiant === identifiant);
         }
         this.voyagesEnCoursPage = {
-          voyages: this.sortByDateDepartAsc(voyages),
+          voyages: sortByDateDepartDesc(voyages),
           currentPage: data.currentPage || 0,
           totalPages: data.totalPages || 0,
           totalElements: data.totalElements || 0,
@@ -888,7 +889,7 @@ export class SuiviTransportComponent implements OnInit {
           voyages = voyages.filter((v: any) => v.responsableIdentifiant === identifiant);
         }
         this.voyagesArchivesPage = {
-          voyages: this.sortByDateDepartAsc(voyages),
+          voyages: sortByDateDepartDesc(voyages),
           currentPage: data.currentPage || 0,
           totalPages: data.totalPages || 0,
           totalElements: data.totalElements || 0,
@@ -1073,7 +1074,7 @@ export class SuiviTransportComponent implements OnInit {
           );
         }
 
-        this.filteredVoyages = this.sortByDateDepartAsc(filtered);
+        this.filteredVoyages = sortByDateDepartDesc(filtered);
         this.voyagesAxePage = {
           voyages: this.filteredVoyages,
           currentPage: page.currentPage,
@@ -1523,6 +1524,7 @@ export class SuiviTransportComponent implements OnInit {
     ];
   }
 
+  /** Correspondance état (libellé modal) → statut API (aligné backend getEtatTexteFromStatut). */
   getStatutFromEtat(etat: string): string {
     const mapping: { [key: string]: string } = {
       'Chargement': 'CHARGEMENT',
@@ -1532,7 +1534,8 @@ export class SuiviTransportComponent implements OnInit {
       'Douane': 'DOUANE',
       'Réceptionné': 'RECEPTIONNER',
       'Livré': 'LIVRE',
-      'Décharger': 'DECHARGER'
+      'Décharger': 'DECHARGER',
+      'Partiellement Déchargé': 'PARTIELLEMENT_DECHARGER'
     };
     return mapping[etat] || '';
   }
@@ -1580,10 +1583,14 @@ export class SuiviTransportComponent implements OnInit {
       result = etatsTries.filter(e => e.etat !== 'Livré');
     }
 
-    // Responsable = identifiant connecté === voyage.responsableIdentifiant (ou Admin/Contrôleur) ; voir Voyage.responsable côté backend
+    // Logisticien (sans Admin) : ne peut mettre à jour que jusqu'à Douane ; le transitaire fait le reste
+    if (this.authService.isLogisticien() && !this.authService.isAdmin()) {
+      result = result.filter(e => SuiviTransportComponent.ETATS_LOGISTICIEN.includes(e.etat));
+    }
+
+    // Responsable = identifiant connecté === voyage.responsableIdentifiant (ou Admin/Contrôleur)
     const peutVoirProchainEtat = this.voyageForStatutChange && this.canUpdateVoyageStatus(this.voyageForStatutChange);
 
-    // Responsable du voyage (ou Admin/Contrôleur) : validés + prochain à valider
     if (peutVoirProchainEtat) {
       const premierNonValideIndex = result.findIndex(e => !e.valider);
       if (premierNonValideIndex === -1) {
@@ -1592,7 +1599,6 @@ export class SuiviTransportComponent implements OnInit {
       return result.slice(0, premierNonValideIndex + 1);
     }
 
-    // Autres comptes : uniquement les états déjà validés
     return result.filter(e => e.valider);
   }
 
@@ -1809,12 +1815,24 @@ export class SuiviTransportComponent implements OnInit {
     return getVoyageStatutClass(statut, voyage);
   }
 
+  /** Statuts que le logisticien peut mettre à jour (jusqu'à Douane ; le transitaire fait le reste). */
+  private static readonly STATUTS_LOGISTICIEN_MAX = ['CHARGEMENT', 'CHARGE', 'DEPART', 'ARRIVER', 'DOUANE'] as const;
+
+  /** États visibles/sélectionnables par le logisticien (jusqu'à Douane inclus). */
+  private static readonly ETATS_LOGISTICIEN = ['Chargement', 'Chargé', 'Départ', 'Arrivé', 'Douane'];
+
   /** True si l'utilisateur peut ouvrir le modal et modifier le statut.
    * - Admin : toujours.
-   * - Contrôleur : uniquement si voyage.liberer et au stade Livrer/DECHARGER/PartiellementDecharcher (RECEPTIONNER, LIVRE, etc.).
-   * - Responsable (sans Admin/Contrôleur) : uniquement si responsable du voyage et pas au stade Livrer/DECHARGER/PartiellementDecharcher. */
+   * - Logisticien (sans Admin) : peut mettre à jour uniquement jusqu'à Douane ; au-delà c'est le transitaire (pas de changement de rôles).
+   * - Contrôleur : uniquement si voyage.liberer et au stade Livrer/DECHARGER/PartiellementDecharcher.
+   * - Responsable : responsable du voyage et pas au stade Livrer/DECHARGER/PartiellementDecharcher. */
   canUpdateVoyageStatus(voyage: Voyage): boolean {
     if (this.authService.isAdmin()) return true;
+    if (this.authService.isLogisticien() && !this.authService.isAdmin()) {
+      if (!SuiviTransportComponent.STATUTS_LOGISTICIEN_MAX.includes((voyage?.statut || '') as any)) {
+        return false;
+      }
+    }
     if (this.authService.isControleur()) {
       return voyage?.liberer === true && ['RECEPTIONNER', 'LIVRE', 'DECHARGER', 'PARTIELLEMENT_DECHARGER'].includes(voyage.statut || '');
     }
@@ -1912,14 +1930,6 @@ export class SuiviTransportComponent implements OnInit {
     } catch (e) {
       return dateString;
     }
-  }
-
-  private sortByDateDepartAsc<T extends { dateDepart?: string }>(voyages: T[]): T[] {
-    return voyages.sort((a, b) => {
-      const da = a.dateDepart ? new Date(a.dateDepart).getTime() : 0;
-      const db = b.dateDepart ? new Date(b.dateDepart).getTime() : 0;
-      return da - db;
-    });
   }
 
   getClientInitiales(clientNom: string | undefined): string {

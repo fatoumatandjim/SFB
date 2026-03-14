@@ -14,6 +14,7 @@ import { arrowBackOutline } from 'ionicons/icons';
 import { IonIcon } from '@ionic/angular/standalone';
 import { AlertService } from '../nativeComp/alert/alert.service';
 import { ToastService } from '../nativeComp/toast/toast.service';
+import { sortByDateDepartDesc } from '../services/voyage-date.utils';
 
 interface VoyageDisplay extends Voyage {
   camionImmatriculation?: string;
@@ -148,7 +149,7 @@ export class TransitaireDetailPage implements OnInit {
           transactions: (v as any).transactions || [],
           liberer: (v as any).liberer ?? false
         }));
-        this.sortVoyagesByDateDepartAsc(this.voyages);
+        this.voyages = sortByDateDepartDesc(this.voyages);
         this.updateFilteredVoyages();
         this.isLoading = false;
       },
@@ -191,7 +192,7 @@ export class TransitaireDetailPage implements OnInit {
             transactions: (v as any).transactions || [],
             liberer: (v as any).liberer ?? false
           }));
-          this.sortVoyagesByDateDepartAsc(this.voyagesEnCours);
+          this.voyagesEnCours = sortByDateDepartDesc(this.voyagesEnCours);
           this.totalPagesEnCours = page.totalPages ?? 0;
           this.totalElementsEnCours = page.totalElements ?? 0;
           this.isLoadingEnCours = false;
@@ -234,8 +235,7 @@ export class TransitaireDetailPage implements OnInit {
         v.camionImmatriculation?.toLowerCase().includes(term)
       );
     }
-    this.sortVoyagesByDateDepartAsc(filtered);
-    this.filteredVoyages = filtered;
+    this.filteredVoyages = sortByDateDepartDesc(filtered);
   }
 
   onSearchChange() {
@@ -270,7 +270,7 @@ export class TransitaireDetailPage implements OnInit {
           typeProduit: (v as any).typeProduit || 'Essence',
           transactions: (v as any).transactions || []
         }));
-        this.sortVoyagesByDateDepartAsc(this.filteredVoyages);
+        this.filteredVoyages = sortByDateDepartDesc(this.filteredVoyages);
         if (this.searchTerm.trim()) {
           const term = this.searchTerm.toLowerCase();
           this.filteredVoyages = this.filteredVoyages.filter(v =>
@@ -574,11 +574,4 @@ export class TransitaireDetailPage implements OnInit {
     });
   }
 
-  private sortVoyagesByDateDepartAsc(list: VoyageDisplay[]) {
-    list.sort((a, b) => {
-      const da = a.dateDepart ? new Date(a.dateDepart).getTime() : 0;
-      const db = b.dateDepart ? new Date(b.dateDepart).getTime() : 0;
-      return da - db;
-    });
-  }
 }

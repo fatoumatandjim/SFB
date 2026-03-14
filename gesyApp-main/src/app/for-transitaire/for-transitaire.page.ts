@@ -16,6 +16,7 @@ import { logOutOutline } from 'ionicons/icons';
 import { IonIcon } from '@ionic/angular/standalone';
 import { AlertService } from '../nativeComp/alert/alert.service';
 import { ToastService } from '../nativeComp/toast/toast.service';
+import { sortByDateDepartDesc } from '../services/voyage-date.utils';
 
 interface VoyageDisplay extends Voyage {
   camionImmatriculation?: string;
@@ -132,8 +133,8 @@ export class ForTransitairePage implements OnInit {
     this.isLoading = true;
     // Charger uniquement les voyages non déclarés pour l'onglet "en-cours" via l'identifiant
     this.voyagesService.getVoyagesNonDeclaresByTransitaireIdentifiant(this.transitaireInfo.identifiant).subscribe({
-      next: (data) => {
-        this.voyages = this.sortByDateDepartAsc(
+      next: (data: any) => {
+        this.voyages = sortByDateDepartDesc(
           data.map(v => ({
             ...v,
             camionImmatriculation: (v as any).camionImmatriculation,
@@ -179,7 +180,7 @@ export class ForTransitairePage implements OnInit {
       )
       .subscribe({
         next: (page: VoyagePage) => {
-          this.voyagesEnCours = this.sortByDateDepartAsc(
+          this.voyagesEnCours = sortByDateDepartDesc(
             (page.voyages || []).map(v => ({
               ...v,
               camionImmatriculation: (v as any).camionImmatriculation,
@@ -278,7 +279,7 @@ export class ForTransitairePage implements OnInit {
 
     request.subscribe({
       next: (page: VoyagePage) => {
-        this.filteredVoyages = this.sortByDateDepartAsc(
+        this.filteredVoyages = sortByDateDepartDesc(
           page.voyages.map(v => ({
             ...v,
             camionImmatriculation: (v as any).camionImmatriculation,
@@ -828,11 +829,4 @@ export class ForTransitairePage implements OnInit {
     });
   }
 
-  private sortByDateDepartAsc<T extends { dateDepart?: string }>(voyages: T[]): T[] {
-    return voyages.sort((a, b) => {
-      const da = a.dateDepart ? new Date(a.dateDepart).getTime() : 0;
-      const db = b.dateDepart ? new Date(b.dateDepart).getTime() : 0;
-      return da - db;
-    });
-  }
 }

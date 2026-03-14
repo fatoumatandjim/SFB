@@ -16,6 +16,8 @@
       <button (click)="loadDashboardStats()">Réessayer</button>
     </div>
   } @else {
+  <!-- Admin : vue complète du tableau de bord (toutes les sections ci-dessous) -->
+  @if (isAdmin) {
   <div class="stats-grid">
     <div class="stat-card blue">
       <div class="stat-header">
@@ -142,7 +144,7 @@
     </div>
   </div>
 
-  @if (isAdmin && douaneData) {
+  @if (douaneData) {
   <div class="douane-section">
     <div class="section-header">
       <div>
@@ -175,7 +177,9 @@
   </div>
   }
 
-  <div class="trucks-section">
+  <!-- Admin et Logisticien : Statistiques des statuts du mois + Suivi des voyages en temps réel -->
+  @if (isAdmin || isLogisticien) {
+  <div class="trucks-section statuts-mois-section">
     <div class="section-header">
       <div>
         <h2>Statistiques des statuts du voyage - Mois en cours</h2>
@@ -194,8 +198,10 @@
     } @else {
       <p class="no-stats-mois">Aucun voyage avec date de départ ce mois.</p>
     }
+  </div>
 
-    <div class="section-header" style="margin-top: 1.5rem;">
+  <div class="trucks-section">
+    <div class="section-header">
       <div>
         <h2>Suivi des Voyages en Temps Réel</h2>
         <p>Statistiques des voyages en cours</p>
@@ -248,5 +254,6 @@
       }
     }
   </div>
+  }
   }
 </div>
