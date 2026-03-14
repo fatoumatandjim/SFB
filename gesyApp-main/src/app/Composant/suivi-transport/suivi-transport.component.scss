@@ -900,6 +900,12 @@
   min-width: 0;
   overflow: visible;
 
+  // Masquer les boutons d'action : le Transitaire fait Déclarer/Libérer/Passer à son niveau
+  .btn-action-sm,
+  .declaration-dropdown {
+    display: none !important;
+  }
+
   .badge-declared {
     display: inline-block;
     padding: 4px 10px;
