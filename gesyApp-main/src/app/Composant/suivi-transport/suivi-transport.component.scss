@@ -385,7 +385,13 @@
 
   th.col-statut,
   td.col-statut {
-    min-width: 100px;
+    min-width: 0;
+    max-width: 120px;
+    overflow: hidden;
+  }
+
+  td.col-statut {
+    vertical-align: middle;
   }
 
   thead {
@@ -603,7 +609,15 @@
   transition: all 0.2s;
   background: var(--bg-card);
   color: var(--text-primary);
-  min-width: 120px;
+  min-width: 0;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+  box-sizing: border-box;
+  width: 100%;
+  text-align: center;
 
   &:hover {
     background: var(--bg-tertiary);
@@ -668,7 +682,14 @@
   font-size: 13px;
   font-weight: 500;
   cursor: default;
-  min-width: 120px;
+  min-width: 0;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
+  width: 100%;
+  text-align: center;
   background: var(--bg-card);
   color: var(--text-primary);
 
@@ -3180,9 +3201,14 @@
 
   .btn-change-statut,
   .statut-badge-readonly {
-    min-width: 100px;
-    font-size: 12px;
-    padding: 5px 10px;
+    min-width: 0;
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+
+  th.col-statut,
+  td.col-statut {
+    max-width: 100px;
   }
 
   .action-btn {

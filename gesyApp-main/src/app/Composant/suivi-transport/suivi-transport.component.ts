@@ -19,6 +19,7 @@ import { AuthService } from 'src/app/services/auth.service';
 import { EditPrixTransportModalComponent, VoyagePrixRef } from '../shared/edit-prix-transport-modal/edit-prix-transport-modal.component';
 import {
   getVoyageStatutLabel,
+  getVoyageStatutLabelForList,
   getVoyageStatutClass,
   isSortieDouane,
   isVoyageEnChargement,
@@ -1300,8 +1301,14 @@ export class SuiviTransportComponent implements OnInit {
             });
           }
 
-          // Pré-sélectionner le statut courant dans le modal (cohérent avec le backend).
-          this.selectedStatut = (updatedVoyage.statut as string) || '';
+          // Pré-sélectionner la prochaine étape à valider (aligné avec la liste qui affiche "À décharger" pour RECEPTIONNER).
+          const visibleEtats = this.getVisibleEtats();
+          const premierNonValide = visibleEtats.find(e => !e.valider);
+          if (premierNonValide) {
+            this.selectedStatut = this.getStatutFromEtat(premierNonValide.etat) || (updatedVoyage.statut as string) || '';
+          } else {
+            this.selectedStatut = (updatedVoyage.statut as string) || '';
+          }
           this.showStatutModal = true;
         },
         error: (error) => {
@@ -1910,6 +1917,11 @@ export class SuiviTransportComponent implements OnInit {
 
   getStatutLabel(statut: string | undefined, voyage?: { liberer?: boolean }): string {
     return getVoyageStatutLabel(statut, voyage);
+  }
+
+  /** Libellé pour la colonne Statut de la liste (aligné avec le modal : RECEPTIONNER → "À décharger"). */
+  getStatutLabelForList(statut: string | undefined, voyage?: { liberer?: boolean }): string {
+    return getVoyageStatutLabelForList(statut, voyage);
   }
 
   getStatutClass(statut: string | undefined, voyage?: { liberer?: boolean }): string {
