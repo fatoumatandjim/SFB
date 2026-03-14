@@ -167,16 +167,18 @@
                 <td class="reference-cell">{{ ligne.reference || '-' }}</td>
                 <td class="montant-cell">{{ formatMontant(ligne.montant) }}</td>
                 <td class="actions-cell" role="cell">
-                  @if (ligne.type === 'DEPENSE') {
-                    <button class="action-btn edit" (click)="openEditDepenseModal(ligne)" title="Modifier">
-                      ✏️
-                    </button>
-                    <button class="action-btn delete" (click)="confirmDelete('depense', ligne.id, ligne.type)" title="Supprimer">
-                      🗑️
-                    </button>
-                  } @else {
-                    <span class="action-hint" title="Géré dans le menu Paiements">-</span>
-                  }
+                  <div class="actions-cell-inner">
+                    @if (ligne.type === 'DEPENSE') {
+                      <button class="action-btn edit" (click)="openEditDepenseModal(ligne)" title="Modifier">
+                        ✏️
+                      </button>
+                      <button class="action-btn delete" (click)="confirmDelete('depense', ligne.id, ligne.type)" title="Supprimer">
+                        🗑️
+                      </button>
+                    } @else {
+                      <span class="action-hint" title="Géré dans le menu Paiements">-</span>
+                    }
+                  </div>
                 </td>
               </tr>
             }

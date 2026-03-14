@@ -337,16 +337,21 @@
   }
 
   .actions-cell {
-    display: flex;
-    flex-wrap: nowrap;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    width: 100%;
+    width: 1%;
     min-width: 120px;
-    min-height: 40px;
     white-space: nowrap;
-    overflow: visible;
+    vertical-align: middle;
+    text-align: center;
+    padding: 16px 20px;
+
+    .actions-cell-inner {
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-height: 100%;
+    }
   }
 }
 
