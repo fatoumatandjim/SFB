@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DashboardService, DashboardStats } from '../../services/dashboard.service';
 import { AuthService } from '../../services/auth.service';
-import { getVoyageStatutLabel } from '../../services/voyage-statut.utils';
+import { getVoyageStatutLabel, STATUTS_VOYAGE_ORDER } from '../../services/voyage-statut.utils';
 
 @Component({
   selector: 'app-dashbord',
@@ -83,6 +83,16 @@ export class DashbordComponent implements OnInit {
 
   get statutsMoisCourant() {
     return this.stats?.statutsVoyageMoisCourant || [];
+  }
+
+  /** Tous les statuts avec leur total du mois (0 si absent de l’API). */
+  get statutsMoisCourantComplet(): { statut: string; count: number }[] {
+    const fromApi = this.stats?.statutsVoyageMoisCourant || [];
+    const countByStatut = new Map(fromApi.map((x) => [x.statut, x.count]));
+    return STATUTS_VOYAGE_ORDER.map((statut) => ({
+      statut,
+      count: countByStatut.get(statut) ?? 0
+    }));
   }
 
   getStatutVoyageLabel(statut: string): string {

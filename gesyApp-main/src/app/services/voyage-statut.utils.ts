@@ -1,17 +1,30 @@
 /**
  * Source unique des libellés et styles des statuts de voyage (DRY).
- * Utilisé par suivi-transport, dashboard, etc.
+ * Tous les statuts du backend (Voyage.StatutVoyage) doivent être présents.
  */
+
+/** Ordre d'affichage des statuts (aligné backend). */
+export const STATUTS_VOYAGE_ORDER: readonly string[] = [
+  'CHARGEMENT',
+  'CHARGE',
+  'DEPART',
+  'ARRIVER',
+  'DOUANE',
+  'RECEPTIONNER',
+  'LIVRE',
+  'PARTIELLEMENT_DECHARGER',
+  'DECHARGER'
+];
 
 export const STATUT_VOYAGE_LABELS: Readonly<Record<string, string>> = {
   CHARGEMENT: 'Chargement',
   CHARGE: 'Chargé',
   DEPART: 'Départ',
-  PARTIELLEMENT_DECHARGER: 'Partiellement Déchargé',
   ARRIVER: 'Arrivé',
   DOUANE: 'Douane',
   RECEPTIONNER: 'Sortie de douane',
   LIVRE: 'Attribué',
+  PARTIELLEMENT_DECHARGER: 'Partiellement Déchargé',
   DECHARGER: 'Décharger'
 } as const;
 
@@ -19,11 +32,11 @@ export const STATUT_VOYAGE_CLASSES: Readonly<Record<string, string>> = {
   CHARGEMENT: 'badge-blue',
   CHARGE: 'badge-orange',
   DEPART: 'badge-purple',
-  PARTIELLEMENT_DECHARGER: 'badge-gray',
   ARRIVER: 'badge-green',
   DOUANE: 'badge-yellow',
   RECEPTIONNER: 'badge-teal',
   LIVRE: 'badge-teal',
+  PARTIELLEMENT_DECHARGER: 'badge-gray',
   DECHARGER: 'badge-gray'
 } as const;
 
