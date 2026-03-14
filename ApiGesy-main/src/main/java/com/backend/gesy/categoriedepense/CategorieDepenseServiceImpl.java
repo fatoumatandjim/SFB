@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static com.backend.gesy.categoriedepense.CategorieDepense.NOM_COUT_TRANSPORT;
+
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -92,14 +94,18 @@ public class CategorieDepenseServiceImpl implements CategorieDepenseService {
                     entity.setNom(nom.trim());
                     entity.setDescription("Catégorie créée automatiquement pour les paiements (transport, T1, douane)");
                     entity.setStatut(CategorieDepense.StatutCategorie.ACTIF);
-                    if ("Coût de transport".equalsIgnoreCase(nom.trim())) {
-                        entity.setTarifsTransport("25,50,75,100,125,150,175,200,250,300");
+                    if (NOM_COUT_TRANSPORT.equalsIgnoreCase(nom.trim())) {
+                        entity.setTarifsTransport(tarifsTransportDefaultAsCsv());
                     }
                     return categorieDepenseMapper.toDTO(categorieDepenseRepository.save(entity));
                 });
     }
 
-    private static final List<Integer> TARIFS_TRANSPORT_DEFAULT = List.of(25, 50, 75, 100, 125, 150, 175, 200, 250, 300);
+    private static final List<Integer> TARIFS_TRANSPORT_DEFAULT = List.of(47, 50);
+
+    private static String tarifsTransportDefaultAsCsv() {
+        return TARIFS_TRANSPORT_DEFAULT.stream().map(String::valueOf).collect(Collectors.joining(","));
+    }
 
     @Override
     public List<Integer> getTarifsTransportByCategorieNom(String nomCategorie) {

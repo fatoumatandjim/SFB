@@ -48,10 +48,10 @@ public class CategorieDepenseController {
         return ResponseEntity.noContent().build();
     }
 
-    /** Tarifs transport (FCFA/litre) liés à la catégorie "Coût de transport" — pour la sélection lors de la création d'un voyage. */
+    /** Tarifs transport (FCFA/litre) liés à la catégorie Coût de transport — pour la sélection lors de la création d'un voyage. */
     @GetMapping("/tarifs-transport")
     public ResponseEntity<java.util.List<Integer>> getTarifsTransport() {
-        return ResponseEntity.ok(categorieDepenseService.getTarifsTransportByCategorieNom("Coût de transport"));
+        return ResponseEntity.ok(categorieDepenseService.getTarifsTransportByCategorieNom(CategorieDepense.NOM_COUT_TRANSPORT));
     }
 }
 

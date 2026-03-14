@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DepensesService, Depense, CategorieDepense, DepensePage, UnifiedLigneDepense, DepenseUnifiedPage } from '../../services/depenses.service';
+import { NOM_CATEGORIE_COUT_TRANSPORT, NOM_CATEGORIE_DROIT_DOUANE, NOM_CATEGORIE_FRAIS_T1 } from '../../constants/categories-depenses.constants';
 import { ComptesBancairesService, CompteBancaire } from '../../services/comptes-bancaires.service';
 import { CaissesService, Caisse } from '../../services/caisses.service';
 import { ToastService } from '../../nativeComp/toast/toast.service';
@@ -69,7 +70,7 @@ export class DepensesComponent implements OnInit {
     description: '',
     statut: 'ACTIF'
   };
-  /** Saisie des tarifs transport (ex: "25,50,75,100") pour la catégorie Coût de transport. */
+  /** Saisie des tarifs transport (ex: "47,50") pour la catégorie Coût de transport. */
   categorieTarifsTransportStr: string = '';
   
   itemToDelete: { type: 'depense' | 'categorie', id: number; ligneType?: 'DEPENSE' | 'PAIEMENT' } | null = null;
@@ -441,9 +442,9 @@ export class DepensesComponent implements OnInit {
       'Loyer': '#8b5cf6',
       'Fournitures': '#ec4899',
       'Transport': '#06b6d4',
-      'Coût de transport': '#06b6d4',
-      'Frais T1': '#8b5cf6',
-      'Droit de douane': '#f59e0b',
+      [NOM_CATEGORIE_COUT_TRANSPORT]: '#06b6d4',
+      [NOM_CATEGORIE_FRAIS_T1]: '#8b5cf6',
+      [NOM_CATEGORIE_DROIT_DOUANE]: '#f59e0b',
       'Autres': '#6b7280'
     };
     return colors[categorieNom] || '#6b7280';

@@ -433,7 +433,7 @@ public class VoyageServiceImpl implements VoyageService {
             paiement.setNotes("Paiement du cout de transport " + voyage.getNumeroVoyage());
             paiement.getTransactions().add(transactionFraisT1);
             paiement.setVoyage(savedVoyage);
-            assignCategorieToPaiementIfPresent(paiement, "Coût de transport");
+            assignCategorieToPaiementIfPresent(paiement, CategorieDepense.NOM_COUT_TRANSPORT);
 
             paiementRepository.save(paiement);
         }
@@ -2405,7 +2405,7 @@ public class VoyageServiceImpl implements VoyageService {
         paiementDouane.setNotes("Frais de douane pour le voyage " + voyage.getNumeroVoyage());
         paiementDouane.getTransactions().add(transactionFraisDouane);
         paiementDouane.setVoyage(savedVoyage);
-        assignCategorieToPaiementIfPresent(paiementDouane, "Droit de douane");
+        assignCategorieToPaiementIfPresent(paiementDouane, CategorieDepense.NOM_DROIT_DOUANE);
 
         Paiement paiementT1 = new Paiement();
         paiementT1.setMontant(fraisT1);
@@ -2416,7 +2416,7 @@ public class VoyageServiceImpl implements VoyageService {
         paiementT1.setNotes("Frais T1 pour le voyage " + voyage.getNumeroVoyage());
         paiementT1.getTransactions().add(transactionFraisT1);
         paiementT1.setVoyage(savedVoyage);
-        assignCategorieToPaiementIfPresent(paiementT1, "Frais T1");
+        assignCategorieToPaiementIfPresent(paiementT1, CategorieDepense.NOM_FRAIS_T1);
 
         paiementRepository.save(paiementDouane);
         paiementRepository.save(paiementT1);

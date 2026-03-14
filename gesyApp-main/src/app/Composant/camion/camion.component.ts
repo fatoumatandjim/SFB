@@ -13,6 +13,7 @@ import { CaissesService, Caisse } from '../../services/caisses.service';
 import { DepotsService, Depot } from '../../services/depots.service';
 import { AxesService, Axe } from '../../services/axes.service';
 import { DepensesService } from '../../services/depenses.service';
+import { TARIFS_TRANSPORT_DEFAULT } from '../../constants/categories-depenses.constants';
 import { AlertService } from '../../nativeComp/alert/alert.service';
 import { ToastService } from '../../nativeComp/toast/toast.service';
 import { AuthService } from '../../services/auth.service';
@@ -78,8 +79,8 @@ export class CamionComponent implements OnInit {
     numeroChauffeur: undefined
   };
 
-  /** Prix unitaires liés à la catégorie "Coût de transport" — chargés depuis l'API, sinon valeur par défaut. */
-  prixUnitaireTransportOptions: number[] = [25, 50, 75, 100, 125, 150, 175, 200, 250, 300];
+  /** Prix unitaires liés à la catégorie Coût de transport — chargés depuis l'API, sinon valeur par défaut. */
+  prixUnitaireTransportOptions: number[] = [...TARIFS_TRANSPORT_DEFAULT];
 
   voyageErrors: { [key: string]: string } = {};
   showAxeModal: boolean = false;
