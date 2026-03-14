@@ -352,7 +352,7 @@
                       (click)="onStatutClick(voyage)"
                       [title]="'Cliquer pour déclarer le voyage ' + (voyage.numeroVoyage || '')">
                       <span class="status-badge" [class]="getStatusClass(voyage.statut || '', voyage)">
-                        {{ getStatusLabel(voyage.statut, voyage.declarer, voyage.passager) }}
+                        {{ activeTab === 'en-cours' ? 'Déclarer' : getStatusLabel(voyage.statut, voyage.declarer, voyage.passager) }}
                       </span>
                     </button>
                   } @else {

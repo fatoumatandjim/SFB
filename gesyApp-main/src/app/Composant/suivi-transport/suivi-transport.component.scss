@@ -357,6 +357,31 @@
   width: 100%;
   min-width: 1200px; // Force le scroll horizontal si l'écran est trop étroit (md+)
   border-collapse: collapse;
+  table-layout: fixed;
+
+  col.col-actions {
+    width: 110px;
+  }
+
+  th.col-actions,
+  td.col-actions {
+    width: 110px;
+    min-width: 110px;
+    max-width: 110px;
+    padding-left: 8px;
+    padding-right: 8px;
+    text-align: center;
+    vertical-align: middle;
+    box-sizing: border-box;
+  }
+
+  td.col-actions .action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+    min-width: 0;
+  }
 
   thead {
     background: var(--bg-primary);

@@ -19,7 +19,7 @@ export function getChauffeurDisplay(entity: WithChauffeur | null | undefined): s
   if (nom && num) return `${nom} (${num})`;
   if (nom) return nom;
   if (num) return num;
-  return '–';
+  return '-';
 }
 
 /**
