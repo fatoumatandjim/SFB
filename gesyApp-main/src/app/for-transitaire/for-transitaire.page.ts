@@ -245,6 +245,14 @@ export class ForTransitairePage implements OnInit {
     this.filteredVoyages = filtered;
   }
 
+  /** Liste affichée pour les onglets À déclarer / Archives. Pour Archives, uniquement statut DECHARGER (sécurité). */
+  get displayListEnCoursOuArchives(): VoyageDisplay[] {
+    if (this.activeTab === 'archives') {
+      return this.filteredVoyages.filter(v => v.statut === 'DECHARGER');
+    }
+    return this.filteredVoyages;
+  }
+
   onSearchChange() {
     if (this.activeTab === 'en-cours') {
       this.updateFilteredVoyages();

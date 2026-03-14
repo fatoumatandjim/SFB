@@ -286,7 +286,7 @@
                 <div class="empty-message">Chargement...</div>
               </td>
             </tr>
-          } @else if (filteredVoyages.length === 0) {
+          } @else if (displayListEnCoursOuArchives.length === 0) {
             <tr>
               <td [attr.colspan]="activeTab === 'en-cours' ? 11 : 10" class="empty-state">
                 <div class="empty-message">
@@ -295,7 +295,7 @@
               </td>
             </tr>
           } @else {
-            @for (voyage of filteredVoyages; track voyage.id) {
+            @for (voyage of displayListEnCoursOuArchives; track voyage.id) {
               <tr>
                 @if (activeTab === 'en-cours') {
                   <td class="checkbox-column">

@@ -2602,7 +2602,8 @@ public class VoyageServiceImpl implements VoyageService {
                 .orElseThrow(() -> new RuntimeException("Transitaire non trouvé avec l'id: " + transitaireId));
 
         Pageable pageable = PageRequest.of(page, size);
-        Page<Voyage> voyagePage = voyageRepository.findArchivedVoyagesByTransitaire(transitaire, pageable);
+        // Archives = statut DECHARGER uniquement (aligné onglet Archives / Suivi transport)
+        Page<Voyage> voyagePage = voyageRepository.findVoyagesArchivesByTransitaire(transitaire, pageable);
 
         List<VoyageDTO> voyages = voyagePage.getContent().stream()
                 .map(voyageMapper::toDTO)
@@ -2625,7 +2626,7 @@ public class VoyageServiceImpl implements VoyageService {
         LocalDateTime startOfDay = date.atStartOfDay();
         LocalDateTime endOfDay = date.atTime(23, 59, 59).plusSeconds(1); // Début du jour suivant
         Pageable pageable = PageRequest.of(page, size);
-        Page<Voyage> voyagePage = voyageRepository.findArchivedVoyagesByTransitaireAndDate(transitaire, startOfDay,
+        Page<Voyage> voyagePage = voyageRepository.findVoyagesArchivesByTransitaireAndDate(transitaire, startOfDay,
                 endOfDay, pageable);
 
         List<VoyageDTO> voyages = voyagePage.getContent().stream()
@@ -2649,7 +2650,7 @@ public class VoyageServiceImpl implements VoyageService {
         LocalDateTime startDateTime = startDate.atStartOfDay();
         LocalDateTime endDateTime = endDate.atTime(23, 59, 59);
         Pageable pageable = PageRequest.of(page, size);
-        Page<Voyage> voyagePage = voyageRepository.findArchivedVoyagesByTransitaireAndDateRange(transitaire,
+        Page<Voyage> voyagePage = voyageRepository.findVoyagesArchivesByTransitaireAndDateRange(transitaire,
                 startDateTime, endDateTime, pageable);
 
         List<VoyageDTO> voyages = voyagePage.getContent().stream()
