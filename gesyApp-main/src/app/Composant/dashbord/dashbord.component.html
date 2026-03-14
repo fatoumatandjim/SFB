@@ -16,6 +16,7 @@
       <button (click)="loadDashboardStats()">Réessayer</button>
     </div>
   } @else {
+  <div class="dashboard-content">
   <!-- Admin : vue complète du tableau de bord (toutes les sections ci-dessous) -->
   @if (isAdmin) {
   <div class="stats-grid">
@@ -176,6 +177,7 @@
     </div>
   </div>
   }
+  }
 
   <!-- Admin et Logisticien : Statistiques des statuts du mois + Suivi des voyages en temps réel -->
   @if (isAdmin || isLogisticien) {
@@ -255,5 +257,6 @@
     }
   </div>
   }
+  </div>
   }
 </div>
