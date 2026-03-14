@@ -12,6 +12,7 @@ import { ComptesBancairesService, CompteBancaire } from '../../services/comptes-
 import { CaissesService, Caisse } from '../../services/caisses.service';
 import { DepotsService, Depot } from '../../services/depots.service';
 import { AxesService, Axe } from '../../services/axes.service';
+import { DepensesService } from '../../services/depenses.service';
 import { AlertService } from '../../nativeComp/alert/alert.service';
 import { ToastService } from '../../nativeComp/toast/toast.service';
 import { AuthService } from '../../services/auth.service';
@@ -76,6 +77,9 @@ export class CamionComponent implements OnInit {
     chauffeur: undefined,
     numeroChauffeur: undefined
   };
+
+  /** Prix unitaires liés à la catégorie "Coût de transport" — chargés depuis l'API, sinon valeur par défaut. */
+  prixUnitaireTransportOptions: number[] = [25, 50, 75, 100, 125, 150, 175, 200, 250, 300];
 
   voyageErrors: { [key: string]: string } = {};
   showAxeModal: boolean = false;
@@ -145,7 +149,8 @@ export class CamionComponent implements OnInit {
     private alertService: AlertService,
     private toastService: ToastService,
     private authService: AuthService,
-    private utilisateursService: UtilisateursService
+    private utilisateursService: UtilisateursService,
+    private depensesService: DepensesService
   ) { }
 
   ngOnInit() {
@@ -160,6 +165,21 @@ export class CamionComponent implements OnInit {
     this.loadAxes();
     this.loadComptesBancaires();
     this.loadCaisses();
+    this.loadTarifsTransportCoutTransport();
+  }
+
+  /** Charge les prix unitaires transport liés à la catégorie "Coût de transport" pour la liste de sélection. */
+  loadTarifsTransportCoutTransport() {
+    this.depensesService.getTarifsTransportCoutTransport().subscribe({
+      next: (tarifs) => {
+        if (tarifs && tarifs.length > 0) {
+          this.prixUnitaireTransportOptions = tarifs.slice().sort((a, b) => a - b);
+        }
+      },
+      error: () => {
+        // Conserver les valeurs par défaut en cas d'erreur
+      }
+    });
   }
 
   loadUtilisateurs() {
@@ -608,7 +628,7 @@ export class CamionComponent implements OnInit {
       }
     } else {
       if (!this.newVoyage.prixUnitaire || this.newVoyage.prixUnitaire <= 0) {
-        this.voyageErrors['prixUnitaire'] = 'Veuillez saisir le prix unitaire de transport';
+        this.voyageErrors['prixUnitaire'] = 'Veuillez sélectionner le prix unitaire de transport';
         isValid = false;
       }
     }

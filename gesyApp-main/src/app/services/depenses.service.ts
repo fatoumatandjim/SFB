@@ -8,6 +8,8 @@ export interface CategorieDepense {
   nom: string;
   description?: string;
   statut?: string;
+  /** Prix unitaires transport (FCFA/litre) pour la catégorie "Coût de transport". */
+  tarifsTransport?: number[];
 }
 
 export interface Depense {
@@ -35,6 +37,28 @@ export interface DepensePage {
   totalPages: number;
 }
 
+/** Ligne unifiée : dépense manuelle ou paiement (transport, T1, douane) pour filtre par catégorie. */
+export interface UnifiedLigneDepense {
+  type: 'DEPENSE' | 'PAIEMENT';
+  id: number;
+  libelle: string;
+  montant: number;
+  date: string;
+  categorieId?: number;
+  categorieNom?: string;
+  reference?: string;
+  voyageId?: number;
+  numeroVoyage?: string;
+}
+
+export interface DepenseUnifiedPage {
+  lignes: UnifiedLigneDepense[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -55,6 +79,11 @@ export class DepensesService {
 
   getCategorieById(id: number): Observable<CategorieDepense> {
     return this.http.get<CategorieDepense>(`${this.categoriesUrl}/${id}`);
+  }
+
+  /** Tarifs de transport (FCFA/litre) liés à la catégorie "Coût de transport" — pour la sélection à la création d'un voyage. */
+  getTarifsTransportCoutTransport(): Observable<number[]> {
+    return this.http.get<number[]>(`${this.categoriesUrl}/tarifs-transport`);
   }
 
   createCategorie(categorie: CategorieDepense): Observable<CategorieDepense> {
@@ -149,6 +178,29 @@ export class DepensesService {
       .set('startDate', startDate)
       .set('endDate', endDate);
     return this.http.get<number>(`${this.apiUrl}/stats/sum/date-range`, { params });
+  }
+
+  /** Liste unifiée : dépenses + paiements (coût transport, T1, douane) pour filtre par catégorie. */
+  getUnifiedDepenses(params: {
+    categorieId?: number | null;
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    size?: number;
+  }): Observable<DepenseUnifiedPage> {
+    let httpParams = new HttpParams()
+      .set('page', String(params.page ?? 0))
+      .set('size', String(params.size ?? 10));
+    if (params.categorieId != null && params.categorieId !== undefined && params.categorieId > 0) {
+      httpParams = httpParams.set('categorieId', String(params.categorieId));
+    }
+    if (params.startDate) {
+      httpParams = httpParams.set('startDate', params.startDate);
+    }
+    if (params.endDate) {
+      httpParams = httpParams.set('endDate', params.endDate);
+    }
+    return this.http.get<DepenseUnifiedPage>(`${this.apiUrl}/unified`, { params: httpParams });
   }
 }
 

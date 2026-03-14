@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { DepensesService, Depense, CategorieDepense, DepensePage } from '../../services/depenses.service';
+import { DepensesService, Depense, CategorieDepense, DepensePage, UnifiedLigneDepense, DepenseUnifiedPage } from '../../services/depenses.service';
 import { ComptesBancairesService, CompteBancaire } from '../../services/comptes-bancaires.service';
 import { CaissesService, Caisse } from '../../services/caisses.service';
 import { ToastService } from '../../nativeComp/toast/toast.service';
@@ -17,6 +17,8 @@ import { AlertService } from '../../nativeComp/alert/alert.service';
 export class DepensesComponent implements OnInit {
   // Data
   depenses: Depense[] = [];
+  /** Liste unifiée (dépenses + paiements transport/T1/douane) pour affichage et filtre par catégorie. */
+  unifiedLignes: UnifiedLigneDepense[] = [];
   categories: CategorieDepense[] = [];
   comptes: CompteBancaire[] = [];
   caisses: Caisse[] = [];
@@ -67,8 +69,10 @@ export class DepensesComponent implements OnInit {
     description: '',
     statut: 'ACTIF'
   };
+  /** Saisie des tarifs transport (ex: "25,50,75,100") pour la catégorie Coût de transport. */
+  categorieTarifsTransportStr: string = '';
   
-  itemToDelete: { type: 'depense' | 'categorie', id: number } | null = null;
+  itemToDelete: { type: 'depense' | 'categorie', id: number; ligneType?: 'DEPENSE' | 'PAIEMENT' } | null = null;
   
   // Stats
   totalDepenses: number = 0;
@@ -117,36 +121,18 @@ export class DepensesComponent implements OnInit {
 
   loadDepenses() {
     this.isLoading = true;
-    
-    let request;
-    
-    if (this.filterType === 'date' && this.filterDate) {
-      if (this.selectedCategorieId) {
-        request = this.depensesService.getDepensesByCategorieAndDate(
-          this.selectedCategorieId, this.filterDate, this.currentPage, this.pageSize
-        );
-      } else {
-        request = this.depensesService.getDepensesByDate(this.filterDate, this.currentPage, this.pageSize);
-      }
-    } else if (this.filterType === 'range' && this.filterStartDate && this.filterEndDate) {
-      if (this.selectedCategorieId) {
-        request = this.depensesService.getDepensesByCategorieAndDateRange(
-          this.selectedCategorieId, this.filterStartDate, this.filterEndDate, this.currentPage, this.pageSize
-        );
-      } else {
-        request = this.depensesService.getDepensesByDateRange(
-          this.filterStartDate, this.filterEndDate, this.currentPage, this.pageSize
-        );
-      }
-    } else if (this.selectedCategorieId) {
-      request = this.depensesService.getDepensesByCategorie(this.selectedCategorieId, this.currentPage, this.pageSize);
-    } else {
-      request = this.depensesService.getDepenses(this.currentPage, this.pageSize);
-    }
-    
-    request.subscribe({
-      next: (data: DepensePage) => {
-        this.depenses = data.depenses;
+    const startDate = this.filterType === 'range' && this.filterStartDate ? this.filterStartDate : undefined;
+    const endDate = this.filterType === 'range' && this.filterEndDate ? this.filterEndDate : undefined;
+    const singleDate = this.filterType === 'date' && this.filterDate ? this.filterDate : undefined;
+    this.depensesService.getUnifiedDepenses({
+      categorieId: this.selectedCategorieId ?? undefined,
+      startDate: startDate ?? singleDate,
+      endDate: endDate ?? singleDate,
+      page: this.currentPage,
+      size: this.pageSize
+    }).subscribe({
+      next: (data: DepenseUnifiedPage) => {
+        this.unifiedLignes = data.lignes;
         this.totalElements = data.totalElements;
         this.totalPages = data.totalPages;
         this.calculateTotalDepenses();
@@ -161,7 +147,7 @@ export class DepensesComponent implements OnInit {
   }
 
   calculateTotalDepenses() {
-    this.totalDepenses = this.depenses.reduce((sum, d) => sum + (d.montant || 0), 0);
+    this.totalDepenses = this.unifiedLignes.reduce((sum, d) => sum + (d.montant || 0), 0);
   }
 
   // === FILTERS ===
@@ -181,15 +167,15 @@ export class DepensesComponent implements OnInit {
     this.loadDepenses();
   }
 
-  get filteredDepenses(): Depense[] {
-    if (!this.searchTerm.trim()) return this.depenses;
-    
+  /** Liste unifiée filtrée par recherche texte. */
+  get filteredLignes(): UnifiedLigneDepense[] {
+    if (!this.searchTerm.trim()) return this.unifiedLignes;
     const term = this.searchTerm.toLowerCase();
-    return this.depenses.filter(d => 
-      d.libelle?.toLowerCase().includes(term) ||
-      d.categorieNom?.toLowerCase().includes(term) ||
-      d.reference?.toLowerCase().includes(term) ||
-      d.description?.toLowerCase().includes(term)
+    return this.unifiedLignes.filter(l =>
+      l.libelle?.toLowerCase().includes(term) ||
+      l.categorieNom?.toLowerCase().includes(term) ||
+      l.reference?.toLowerCase().includes(term) ||
+      (l.numeroVoyage && l.numeroVoyage.toLowerCase().includes(term))
     );
   }
 
@@ -234,16 +220,27 @@ export class DepensesComponent implements OnInit {
     this.showDepenseModal = true;
   }
 
-  openEditDepenseModal(depense: Depense) {
-    this.isEditingDepense = true;
-    this.depenseForm = {
-      ...depense,
-      dateDepense: depense.dateDepense ? depense.dateDepense.split('T')[0] : '',
-      compteId: depense.compteId,
-      caisseId: depense.caisseId
-    };
-    this.sourceType = depense.compteId != null ? 'compte' : depense.caisseId != null ? 'caisse' : null;
-    this.showDepenseModal = true;
+  openEditDepenseModal(depenseOrLigne: Depense | UnifiedLigneDepense) {
+    const isUnified = 'type' in depenseOrLigne;
+    if (isUnified && (depenseOrLigne as UnifiedLigneDepense).type === 'PAIEMENT') {
+      this.toastService.info('Les paiements (transport, T1, douane) se gèrent depuis le menu Paiements');
+      return;
+    }
+    const id = depenseOrLigne.id!;
+    this.depensesService.getDepenseById(id).subscribe({
+      next: (depense: Depense) => {
+        this.isEditingDepense = true;
+        this.depenseForm = {
+          ...depense,
+          dateDepense: depense.dateDepense ? depense.dateDepense.split('T')[0] : '',
+          compteId: depense.compteId,
+          caisseId: depense.caisseId
+        };
+        this.sourceType = depense.compteId != null ? 'compte' : depense.caisseId != null ? 'caisse' : null;
+        this.showDepenseModal = true;
+      },
+      error: () => this.toastService.error('Dépense introuvable')
+    });
   }
 
   closeDepenseModal() {
@@ -307,18 +304,23 @@ export class DepensesComponent implements OnInit {
       description: '',
       statut: 'ACTIF'
     };
+    this.categorieTarifsTransportStr = '';
     this.showCategorieModal = true;
   }
 
   openEditCategorieModal(categorie: CategorieDepense) {
     this.isEditingCategorie = true;
     this.categorieForm = { ...categorie };
+    this.categorieTarifsTransportStr = (categorie.tarifsTransport && categorie.tarifsTransport.length > 0)
+      ? categorie.tarifsTransport.sort((a, b) => a - b).join(', ')
+      : '';
     this.showCategorieModal = true;
   }
 
   closeCategorieModal() {
     this.showCategorieModal = false;
     this.categorieForm = {};
+    this.categorieTarifsTransportStr = '';
   }
 
   saveCategorie() {
@@ -326,6 +328,11 @@ export class DepensesComponent implements OnInit {
       this.toastService.error('Le nom de la catégorie est obligatoire');
       return;
     }
+    const tarifs = this.categorieTarifsTransportStr
+      .split(/[,;\s]+/)
+      .map(s => parseInt(s.trim(), 10))
+      .filter(n => !isNaN(n) && n > 0);
+    this.categorieForm.tarifsTransport = tarifs.length > 0 ? tarifs : undefined;
 
     if (this.isEditingCategorie && this.categorieForm.id) {
       this.depensesService.updateCategorie(this.categorieForm.id, this.categorieForm as CategorieDepense).subscribe({
@@ -355,8 +362,12 @@ export class DepensesComponent implements OnInit {
   }
 
   // === DELETE ===
-  confirmDelete(type: 'depense' | 'categorie', id: number) {
-    this.itemToDelete = { type, id };
+  confirmDelete(type: 'depense' | 'categorie', id: number, ligneType?: 'DEPENSE' | 'PAIEMENT') {
+    if (type === 'depense' && ligneType === 'PAIEMENT') {
+      this.toastService.info('Les paiements se gèrent depuis le menu Paiements');
+      return;
+    }
+    this.itemToDelete = { type, id, ligneType };
     this.showDeleteConfirm = true;
   }
 
@@ -367,7 +378,10 @@ export class DepensesComponent implements OnInit {
 
   executeDelete() {
     if (!this.itemToDelete) return;
-
+    if (this.itemToDelete.type === 'depense' && this.itemToDelete.ligneType === 'PAIEMENT') {
+      this.cancelDelete();
+      return;
+    }
     if (this.itemToDelete.type === 'depense') {
       this.depensesService.deleteDepense(this.itemToDelete.id).subscribe({
         next: () => {
@@ -427,6 +441,9 @@ export class DepensesComponent implements OnInit {
       'Loyer': '#8b5cf6',
       'Fournitures': '#ec4899',
       'Transport': '#06b6d4',
+      'Coût de transport': '#06b6d4',
+      'Frais T1': '#8b5cf6',
+      'Droit de douane': '#f59e0b',
       'Autres': '#6b7280'
     };
     return colors[categorieNom] || '#6b7280';
@@ -440,6 +457,14 @@ export class DepensesComponent implements OnInit {
     if (depense.caisseId != null) {
       const c = this.caisses.find(x => x.id === depense.caisseId);
       return c ? c.nom : `Caisse #${depense.caisseId}`;
+    }
+    return '-';
+  }
+
+  /** Pour une ligne unifiée de type PAIEMENT, affiche le voyage si présent. */
+  getSourceLabelLigne(ligne: UnifiedLigneDepense): string {
+    if (ligne.type === 'PAIEMENT' && ligne.numeroVoyage) {
+      return `Voyage ${ligne.numeroVoyage}`;
     }
     return '-';
   }

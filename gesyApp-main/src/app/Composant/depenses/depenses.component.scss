@@ -326,6 +326,25 @@
   color: white;
 }
 
+.badge-type {
+  padding: 4px 10px;
+  border-radius: 16px;
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+  &.depense {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  }
+  &.paiement {
+    background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+  }
+}
+
+.action-hint {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
 .action-btn {
   background: transparent;
   border: none;

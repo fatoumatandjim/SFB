@@ -65,6 +65,9 @@ public class CategorieDepenseServiceImpl implements CategorieDepenseService {
         if (dto.getStatut() != null) {
             existing.setStatut(CategorieDepense.StatutCategorie.valueOf(dto.getStatut()));
         }
+        if (dto.getTarifsTransport() != null) {
+            existing.setTarifsTransport(categorieDepenseMapper.toTarifsTransportString(dto.getTarifsTransport()));
+        }
         
         return categorieDepenseMapper.toDTO(categorieDepenseRepository.save(existing));
     }
@@ -75,6 +78,39 @@ public class CategorieDepenseServiceImpl implements CategorieDepenseService {
             throw new RuntimeException("Catégorie non trouvée avec l'id: " + id);
         }
         categorieDepenseRepository.deleteById(id);
+    }
+
+    @Override
+    public CategorieDepenseDTO getOrCreateByName(String nom) {
+        if (nom == null || nom.isBlank()) {
+            throw new RuntimeException("Le nom de la catégorie est requis");
+        }
+        return categorieDepenseRepository.findByNom(nom.trim())
+                .map(categorieDepenseMapper::toDTO)
+                .orElseGet(() -> {
+                    CategorieDepense entity = new CategorieDepense();
+                    entity.setNom(nom.trim());
+                    entity.setDescription("Catégorie créée automatiquement pour les paiements (transport, T1, douane)");
+                    entity.setStatut(CategorieDepense.StatutCategorie.ACTIF);
+                    if ("Coût de transport".equalsIgnoreCase(nom.trim())) {
+                        entity.setTarifsTransport("25,50,75,100,125,150,175,200,250,300");
+                    }
+                    return categorieDepenseMapper.toDTO(categorieDepenseRepository.save(entity));
+                });
+    }
+
+    private static final List<Integer> TARIFS_TRANSPORT_DEFAULT = List.of(25, 50, 75, 100, 125, 150, 175, 200, 250, 300);
+
+    @Override
+    public List<Integer> getTarifsTransportByCategorieNom(String nomCategorie) {
+        if (nomCategorie == null || nomCategorie.isBlank()) {
+            return List.of();
+        }
+        List<Integer> tarifs = categorieDepenseRepository.findByNom(nomCategorie.trim())
+                .map(cat -> categorieDepenseMapper.toDTO(cat).getTarifsTransport())
+                .filter(list -> list != null && !list.isEmpty())
+                .orElse(null);
+        return tarifs != null ? tarifs : TARIFS_TRANSPORT_DEFAULT;
     }
 }
 

@@ -2,6 +2,7 @@ package com.backend.gesy.depense;
 
 import com.backend.gesy.depense.dto.DepenseDTO;
 import com.backend.gesy.depense.dto.DepensePageDTO;
+import com.backend.gesy.depense.dto.DepenseUnifiedPageDTO;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -35,5 +36,8 @@ public interface DepenseService {
     // Statistiques
     BigDecimal sumByCategorie(Long categorieId);
     BigDecimal sumByDateRange(LocalDate startDate, LocalDate endDate);
+
+    /** Liste unifiée dépenses + paiements (transport, T1, douane) par catégorie, avec pagination. */
+    DepenseUnifiedPageDTO findUnified(Long categorieId, LocalDate startDate, LocalDate endDate, int page, int size);
 }
 

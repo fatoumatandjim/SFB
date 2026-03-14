@@ -4,6 +4,9 @@ import com.backend.gesy.alerte.Alerte;
 import com.backend.gesy.axe.Axe;
 import com.backend.gesy.axe.AxeRepository;
 import com.backend.gesy.camion.Camion;
+import com.backend.gesy.categoriedepense.CategorieDepense;
+import com.backend.gesy.categoriedepense.CategorieDepenseRepository;
+import com.backend.gesy.categoriedepense.CategorieDepenseService;
 import com.backend.gesy.compte.Compte;
 import com.backend.gesy.compte.CompteRepository;
 import com.backend.gesy.camion.CamionRepository;
@@ -110,6 +113,10 @@ public class VoyageServiceImpl implements VoyageService {
     private AlerteService alerteService;
     @Autowired
     private CompteRepository compteRepository;
+    @Autowired
+    private CategorieDepenseService categorieDepenseService;
+    @Autowired
+    private CategorieDepenseRepository categorieDepenseRepository;
 
     @Override
     public List<VoyageDTO> findAll() {
@@ -426,6 +433,7 @@ public class VoyageServiceImpl implements VoyageService {
             paiement.setNotes("Paiement du cout de transport " + voyage.getNumeroVoyage());
             paiement.getTransactions().add(transactionFraisT1);
             paiement.setVoyage(savedVoyage);
+            assignCategorieToPaiementIfPresent(paiement, "Coût de transport");
 
             paiementRepository.save(paiement);
         }
@@ -2397,6 +2405,7 @@ public class VoyageServiceImpl implements VoyageService {
         paiementDouane.setNotes("Frais de douane pour le voyage " + voyage.getNumeroVoyage());
         paiementDouane.getTransactions().add(transactionFraisDouane);
         paiementDouane.setVoyage(savedVoyage);
+        assignCategorieToPaiementIfPresent(paiementDouane, "Droit de douane");
 
         Paiement paiementT1 = new Paiement();
         paiementT1.setMontant(fraisT1);
@@ -2407,6 +2416,7 @@ public class VoyageServiceImpl implements VoyageService {
         paiementT1.setNotes("Frais T1 pour le voyage " + voyage.getNumeroVoyage());
         paiementT1.getTransactions().add(transactionFraisT1);
         paiementT1.setVoyage(savedVoyage);
+        assignCategorieToPaiementIfPresent(paiementT1, "Frais T1");
 
         paiementRepository.save(paiementDouane);
         paiementRepository.save(paiementT1);
@@ -2989,6 +2999,16 @@ public class VoyageServiceImpl implements VoyageService {
                     // Si le statut n'existe pas, retourner CHARGEMENT par défaut
                     return Voyage.StatutVoyage.CHARGEMENT;
                 }
+        }
+    }
+
+    /** DRY : associe une catégorie de dépense au paiement si elle existe (transport, T1, douane). */
+    private void assignCategorieToPaiementIfPresent(Paiement paiement, String nomCategorie) {
+        CategorieDepense cat = categorieDepenseRepository
+                .findById(categorieDepenseService.getOrCreateByName(nomCategorie).getId())
+                .orElse(null);
+        if (cat != null) {
+            paiement.setCategorieDepense(cat);
         }
     }
 }

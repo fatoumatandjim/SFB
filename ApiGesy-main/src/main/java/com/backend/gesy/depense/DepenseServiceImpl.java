@@ -7,6 +7,10 @@ import com.backend.gesy.comptebancaire.CompteBancaireRepository;
 import com.backend.gesy.depense.dto.DepenseDTO;
 import com.backend.gesy.depense.dto.DepenseMapper;
 import com.backend.gesy.depense.dto.DepensePageDTO;
+import com.backend.gesy.depense.dto.DepenseUnifiedPageDTO;
+import com.backend.gesy.depense.dto.UnifiedLigneDepenseDTO;
+import com.backend.gesy.paiement.PaiementService;
+import com.backend.gesy.paiement.dto.PaiementDTO;
 import com.backend.gesy.transaction.TransactionService;
 import com.backend.gesy.transaction.dto.TransactionDTO;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +26,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -37,6 +43,7 @@ public class DepenseServiceImpl implements DepenseService {
     private final CaisseRepository caisseRepository;
     private final DepenseMapper depenseMapper;
     private final TransactionService transactionService;
+    private final PaiementService paiementService;
 
     @Override
     public DepenseDTO save(DepenseDTO dto) {
@@ -200,6 +207,73 @@ public class DepenseServiceImpl implements DepenseService {
         LocalDateTime end = endDate.atTime(LocalTime.MAX);
         BigDecimal sum = depenseRepository.sumByDateRange(start, end);
         return sum != null ? sum : BigDecimal.ZERO;
+    }
+
+    @Override
+    public DepenseUnifiedPageDTO findUnified(Long categorieId, LocalDate startDate, LocalDate endDate, int page, int size) {
+        List<DepenseDTO> depenses;
+        List<PaiementDTO> paiements;
+        if (categorieId != null) {
+            CategorieDepense cat = getCategorieById(categorieId);
+            if (startDate != null && endDate != null) {
+                depenses = depenseRepository.findByCategorieAndDateRangeList(cat, startDate.atStartOfDay(), endDate.atTime(LocalTime.MAX)).stream()
+                        .map(depenseMapper::toDTO).collect(Collectors.toList());
+                paiements = paiementService.findByCategorieIdAndDateRange(categorieId, startDate, endDate);
+            } else {
+                depenses = depenseRepository.findByCategorieOrderByDateDepenseDesc(cat).stream()
+                        .map(depenseMapper::toDTO).collect(Collectors.toList());
+                paiements = paiementService.findByCategorieId(categorieId);
+            }
+        } else {
+            if (startDate != null && endDate != null) {
+                depenses = depenseRepository.findByDateRange(startDate.atStartOfDay(), endDate.atTime(LocalTime.MAX), PageRequest.of(0, Integer.MAX_VALUE))
+                        .getContent().stream().map(depenseMapper::toDTO).collect(Collectors.toList());
+                paiements = paiementService.findAllWithCategorie(startDate, endDate);
+            } else {
+                depenses = depenseRepository.findByOrderByDateDepenseDesc().stream().map(depenseMapper::toDTO).collect(Collectors.toList());
+                paiements = paiementService.findAllWithCategorie(null, null);
+            }
+        }
+        List<UnifiedLigneDepenseDTO> lignes = new ArrayList<>();
+        depenses.stream().map(this::toUnifiedLigneFromDepense).forEach(lignes::add);
+        paiements.stream().map(this::toUnifiedLigneFromPaiement).forEach(lignes::add);
+        lignes.sort(Comparator.comparing(UnifiedLigneDepenseDTO::getDate, Comparator.nullsLast(Comparator.reverseOrder())));
+        long total = lignes.size();
+        int from = Math.min(page * size, lignes.size());
+        int to = Math.min(from + size, lignes.size());
+        List<UnifiedLigneDepenseDTO> pageContent = from < lignes.size() ? lignes.subList(from, to) : new ArrayList<>();
+        int totalPages = size > 0 ? (int) Math.ceil((double) total / size) : 0;
+        return new DepenseUnifiedPageDTO(pageContent, page, size, total, totalPages);
+    }
+
+    private UnifiedLigneDepenseDTO toUnifiedLigneFromDepense(DepenseDTO d) {
+        UnifiedLigneDepenseDTO u = new UnifiedLigneDepenseDTO();
+        u.setType(UnifiedLigneDepenseDTO.TypeLigne.DEPENSE);
+        u.setId(d.getId());
+        u.setLibelle(d.getLibelle());
+        u.setMontant(d.getMontant());
+        u.setDate(d.getDateDepense() != null ? d.getDateDepense().toLocalDate() : null);
+        u.setCategorieId(d.getCategorieId());
+        u.setCategorieNom(d.getCategorieNom());
+        u.setReference(d.getReference());
+        u.setVoyageId(null);
+        u.setNumeroVoyage(null);
+        return u;
+    }
+
+    private UnifiedLigneDepenseDTO toUnifiedLigneFromPaiement(PaiementDTO p) {
+        UnifiedLigneDepenseDTO u = new UnifiedLigneDepenseDTO();
+        u.setType(UnifiedLigneDepenseDTO.TypeLigne.PAIEMENT);
+        u.setId(p.getId());
+        u.setLibelle(p.getNotes() != null && !p.getNotes().isBlank() ? p.getNotes() : (p.getReference() != null ? "Paiement " + p.getReference() : "Paiement"));
+        u.setMontant(p.getMontant());
+        u.setDate(p.getDate());
+        u.setCategorieId(p.getCategorieId());
+        u.setCategorieNom(p.getCategorieNom());
+        u.setReference(p.getReference());
+        u.setVoyageId(p.getVoyageId());
+        u.setNumeroVoyage(p.getNumeroVoyage());
+        return u;
     }
 
     private CategorieDepense getCategorieById(Long categorieId) {

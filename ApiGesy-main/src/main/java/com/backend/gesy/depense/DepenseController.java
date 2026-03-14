@@ -2,6 +2,7 @@ package com.backend.gesy.depense;
 
 import com.backend.gesy.depense.dto.DepenseDTO;
 import com.backend.gesy.depense.dto.DepensePageDTO;
+import com.backend.gesy.depense.dto.DepenseUnifiedPageDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -119,6 +120,17 @@ public class DepenseController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         return ResponseEntity.ok(depenseService.sumByDateRange(startDate, endDate));
+    }
+
+    /** Liste unifiée : dépenses + paiements (coût transport, T1, douane) par catégorie, pour filtrage dans le menu Dépenses. */
+    @GetMapping("/unified")
+    public ResponseEntity<DepenseUnifiedPageDTO> getUnified(
+            @RequestParam(required = false) Long categorieId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(depenseService.findUnified(categorieId, startDate, endDate, page, size));
     }
 }
 

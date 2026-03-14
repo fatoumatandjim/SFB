@@ -1180,21 +1180,22 @@
             <div class="form-row">
               <div class="form-group">
                 <label for="prix-unitaire">Prix unitaire de transport (FCFA/litre) *</label>
-                <input
-                  type="number"
+                <select
                   id="prix-unitaire"
                   [(ngModel)]="newVoyage.prixUnitaire"
                   name="prixUnitaire"
                   required
-                  min="0"
-                  step="0.01"
-                  placeholder="Ex: 50"
                   [class.error]="voyageErrors['prixUnitaire']"
-                />
+                >
+                  <option [ngValue]="undefined" disabled>Sélectionner un prix</option>
+                  @for (prix of prixUnitaireTransportOptions; track prix) {
+                    <option [ngValue]="prix">{{ prix }} FCFA/L</option>
+                  }
+                </select>
                 @if (voyageErrors['prixUnitaire']) {
                   <p class="form-error">{{ voyageErrors['prixUnitaire'] }}</p>
                 } @else {
-                  <p class="form-hint">Prix par litre de transport (ex: 50 FCFA/litre)</p>
+                  <p class="form-hint">Choisir le prix par litre de transport dans la liste</p>
                 }
               </div>
             </div>

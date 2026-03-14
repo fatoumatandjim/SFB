@@ -1,5 +1,6 @@
 package com.backend.gesy.paiement;
 
+import com.backend.gesy.categoriedepense.CategorieDepense;
 import com.backend.gesy.facture.Facture;
 import com.backend.gesy.transaction.Transaction;
 import com.backend.gesy.comptebancaire.CompteBancaire;
@@ -70,6 +71,11 @@ public class Paiement {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "caisse_id")
     private Caisse caisse;
+
+    /** Catégorie de dépense pour lier ce paiement (transport, T1, douane) au menu Dépenses. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "categorie_depense_id")
+    private CategorieDepense categorieDepense;
 
     public enum MethodePaiement {
         ESPECES,

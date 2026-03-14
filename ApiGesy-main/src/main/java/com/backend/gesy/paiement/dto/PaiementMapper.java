@@ -21,6 +21,14 @@ public class PaiementMapper {
         dto.setNumeroCompte(paiement.getNumeroCompte());
         dto.setReference(paiement.getReference());
         dto.setNotes(paiement.getNotes());
+        if (paiement.getCategorieDepense() != null) {
+            dto.setCategorieId(paiement.getCategorieDepense().getId());
+            dto.setCategorieNom(paiement.getCategorieDepense().getNom());
+        }
+        if (paiement.getVoyage() != null) {
+            dto.setVoyageId(paiement.getVoyage().getId());
+            dto.setNumeroVoyage(paiement.getVoyage().getNumeroVoyage());
+        }
         
         return dto;
     }
@@ -43,8 +51,7 @@ public class PaiementMapper {
         paiement.setNumeroCheque(dto.getNumeroCheque());
         paiement.setNumeroCompte(dto.getNumeroCompte());
         paiement.setReference(dto.getReference());
-        paiement.setNotes(dto.getNotes());
-        
+        paiement.setNotes(dto.getNotes());        
         return paiement;
     }
 }

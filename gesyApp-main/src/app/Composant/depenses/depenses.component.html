@@ -123,16 +123,17 @@
           <div class="spinner"></div>
           <p>Chargement...</p>
         </div>
-      } @else if (filteredDepenses.length === 0) {
+      } @else if (filteredLignes.length === 0) {
         <div class="empty-state">
           <span class="empty-icon">📭</span>
           <h3>Aucune dépense trouvée</h3>
-          <p>Ajoutez une nouvelle dépense pour commencer</p>
+          <p>Ajoutez une nouvelle dépense ou filtrez par catégorie (Coût de transport, Frais T1, Droit de douane)</p>
         </div>
       } @else {
         <table class="data-table">
           <thead>
             <tr>
+              <th>Type</th>
               <th>Date</th>
               <th>Libellé</th>
               <th>Catégorie</th>
@@ -143,30 +144,39 @@
             </tr>
           </thead>
           <tbody>
-            @for (depense of filteredDepenses; track depense.id) {
+            @for (ligne of filteredLignes; track ligne.type + '-' + ligne.id) {
               <tr>
-                <td>{{ formatDate(depense.dateDepense) }}</td>
+                <td>
+                  <span class="badge-type" [class.depense]="ligne.type === 'DEPENSE'" [class.paiement]="ligne.type === 'PAIEMENT'">
+                    {{ ligne.type === 'DEPENSE' ? 'Dépense' : 'Paiement' }}
+                  </span>
+                </td>
+                <td>{{ formatDate(ligne.date) }}</td>
                 <td class="libelle-cell">
-                  <span class="libelle">{{ depense.libelle }}</span>
-                  @if (depense.description) {
-                    <span class="description">{{ depense.description }}</span>
+                  <span class="libelle">{{ ligne.libelle }}</span>
+                  @if (ligne.numeroVoyage) {
+                    <span class="description">Voyage {{ ligne.numeroVoyage }}</span>
                   }
                 </td>
                 <td>
-                  <span class="badge-categorie" [style.background-color]="getCategorieColor(depense.categorieNom || '')">
-                    {{ depense.categorieNom }}
+                  <span class="badge-categorie" [style.background-color]="getCategorieColor(ligne.categorieNom || '')">
+                    {{ ligne.categorieNom || '-' }}
                   </span>
                 </td>
-                <td>{{ getSourceLabel(depense) }}</td>
-                <td>{{ depense.reference || '-' }}</td>
-                <td class="montant-cell">{{ formatMontant(depense.montant) }}</td>
+                <td>{{ getSourceLabelLigne(ligne) }}</td>
+                <td>{{ ligne.reference || '-' }}</td>
+                <td class="montant-cell">{{ formatMontant(ligne.montant) }}</td>
                 <td class="actions-cell">
-                  <button class="action-btn edit" (click)="openEditDepenseModal(depense)" title="Modifier">
-                    ✏️
-                  </button>
-                  <button class="action-btn delete" (click)="confirmDelete('depense', depense.id!)" title="Supprimer">
-                    🗑️
-                  </button>
+                  @if (ligne.type === 'DEPENSE') {
+                    <button class="action-btn edit" (click)="openEditDepenseModal(ligne)" title="Modifier">
+                      ✏️
+                    </button>
+                    <button class="action-btn delete" (click)="confirmDelete('depense', ligne.id, ligne.type)" title="Supprimer">
+                      🗑️
+                    </button>
+                  } @else {
+                    <span class="action-hint" title="Géré dans le menu Paiements">—</span>
+                  }
                 </td>
               </tr>
             }
@@ -376,6 +386,16 @@
             <option value="ACTIF">Actif</option>
             <option value="INACTIF">Inactif</option>
           </select>
+        </div>
+        <div class="form-group">
+          <label>Tarifs transport (FCFA/L)</label>
+          <input
+            type="text"
+            [(ngModel)]="categorieTarifsTransportStr"
+            name="categorieTarifsTransportStr"
+            placeholder="Ex: 25, 50, 75, 100, 125, 150"
+          />
+          <p class="form-hint">Optionnel. Pour la catégorie « Coût de transport », valeurs séparées par des virgules (utilisées dans la création de voyage).</p>
         </div>
       </div>
       <div class="modal-footer">

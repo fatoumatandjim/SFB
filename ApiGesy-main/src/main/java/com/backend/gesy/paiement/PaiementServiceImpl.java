@@ -2,6 +2,7 @@ package com.backend.gesy.paiement;
 
 import com.backend.gesy.alerte.Alerte;
 import com.backend.gesy.alerte.AlerteService;
+import com.backend.gesy.categoriedepense.CategorieDepenseRepository;
 import com.backend.gesy.facture.Facture;
 import com.backend.gesy.facture.FactureRepository;
 import com.backend.gesy.paiement.dto.PaiementDTO;
@@ -16,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -31,6 +33,7 @@ public class PaiementServiceImpl implements PaiementService {
     private final CompteBancaireRepository compteBancaireRepository;
     private final CaisseRepository caisseRepository;
     private final AlerteService alerteService;
+    private final CategorieDepenseRepository categorieDepenseRepository;
 
     @Override
     public List<PaiementDTO> findAll() {
@@ -62,6 +65,10 @@ public class PaiementServiceImpl implements PaiementService {
                 .orElseThrow(() -> new RuntimeException("Facture non trouvée avec l'id: " + paiementDTO.getFactureId()));
             paiement.setFacture(facture);
         }
+        if (paiementDTO.getCategorieId() != null) {
+            paiement.setCategorieDepense(categorieDepenseRepository.findById(paiementDTO.getCategorieId())
+                .orElseThrow(() -> new RuntimeException("Catégorie de dépense non trouvée avec l'id: " + paiementDTO.getCategorieId())));
+        }
         Paiement savedPaiement = paiementRepository.save(paiement);
         return paiementMapper.toDTO(savedPaiement);
     }
@@ -79,6 +86,12 @@ public class PaiementServiceImpl implements PaiementService {
         } else {
             paiement.setFacture(existingPaiement.getFacture());
         }
+        if (paiementDTO.getCategorieId() != null) {
+            paiement.setCategorieDepense(categorieDepenseRepository.findById(paiementDTO.getCategorieId())
+                .orElseThrow(() -> new RuntimeException("Catégorie de dépense non trouvée avec l'id: " + paiementDTO.getCategorieId())));
+        } else {
+            paiement.setCategorieDepense(existingPaiement.getCategorieDepense());
+        }
         Paiement updatedPaiement = paiementRepository.save(paiement);
         return paiementMapper.toDTO(updatedPaiement);
     }
@@ -89,6 +102,31 @@ public class PaiementServiceImpl implements PaiementService {
             .filter(p -> p.getStatut() == statut)
             .map(paiementMapper::toDTO)
             .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<PaiementDTO> findByCategorieId(Long categorieId) {
+        return paiementRepository.findByCategorieDepenseIdOrderByDateDesc(categorieId).stream()
+            .map(paiementMapper::toDTO)
+            .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<PaiementDTO> findByCategorieIdAndDateRange(Long categorieId, LocalDate startDate, LocalDate endDate) {
+        return paiementRepository.findByCategorieDepenseIdAndDateBetweenOrderByDateDesc(categorieId, startDate, endDate).stream()
+            .map(paiementMapper::toDTO)
+            .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<PaiementDTO> findAllWithCategorie(LocalDate startDate, LocalDate endDate) {
+        List<Paiement> list;
+        if (startDate != null && endDate != null) {
+            list = paiementRepository.findByCategorieDepenseIsNotNullAndDateBetweenOrderByDateDesc(startDate, endDate);
+        } else {
+            list = paiementRepository.findByCategorieDepenseIsNotNullOrderByDateDesc();
+        }
+        return list.stream().map(paiementMapper::toDTO).collect(Collectors.toList());
     }
 
     @Override
