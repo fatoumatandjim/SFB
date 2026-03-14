@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DashboardService, DashboardStats } from '../../services/dashboard.service';
 import { AuthService } from '../../services/auth.service';
+import { getVoyageStatutLabel } from '../../services/voyage-statut.utils';
 
 @Component({
   selector: 'app-dashbord',
@@ -76,5 +77,13 @@ export class DashbordComponent implements OnInit {
       montantFraisPayes: '0 F',
       currency: 'F'
     };
+  }
+
+  get statutsMoisCourant() {
+    return this.stats?.statutsVoyageMoisCourant || [];
+  }
+
+  getStatutVoyageLabel(statut: string): string {
+    return getVoyageStatutLabel(statut);
   }
 }

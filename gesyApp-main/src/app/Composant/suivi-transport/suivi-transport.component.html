@@ -234,12 +234,12 @@
           </td>
           <td>
             @if (canUpdateVoyageStatus(voyage)) {
-            <button class="btn-change-statut" (click)="openStatutModal(voyage)" [class]="getStatutClass(voyage.statut)"
+            <button class="btn-change-statut" (click)="openStatutModal(voyage)" [class]="getStatutClass(voyage.statut, voyage)"
               title="Changer le statut">
-              {{ getStatutLabel(voyage.statut) }}
+              {{ getStatutLabel(voyage.statut, voyage) }}
             </button>
             } @else {
-            <span class="statut-badge-readonly" [class]="getStatutClass(voyage.statut)">{{ getStatutLabel(voyage.statut) }}</span>
+            <span class="statut-badge-readonly" [class]="getStatutClass(voyage.statut, voyage)">{{ getStatutLabel(voyage.statut, voyage) }}</span>
             }
           </td>
           <td>
@@ -329,12 +329,12 @@
           </td>
           <td>
             @if (canUpdateVoyageStatus(voyage)) {
-            <button class="btn-change-statut" (click)="openStatutModal(voyage)" [class]="getStatutClass(voyage.statut)"
+            <button class="btn-change-statut" (click)="openStatutModal(voyage)" [class]="getStatutClass(voyage.statut, voyage)"
               title="Changer le statut">
-              {{ getStatutLabel(voyage.statut) }}
+              {{ getStatutLabel(voyage.statut, voyage) }}
             </button>
             } @else {
-            <span class="statut-badge-readonly" [class]="getStatutClass(voyage.statut)">{{ getStatutLabel(voyage.statut) }}</span>
+            <span class="statut-badge-readonly" [class]="getStatutClass(voyage.statut, voyage)">{{ getStatutLabel(voyage.statut, voyage) }}</span>
             }
           </td>
           <td>
@@ -405,12 +405,12 @@
           </td>
           <td>
             @if (canUpdateVoyageStatus(voyage)) {
-            <button class="btn-change-statut" (click)="openStatutModal(voyage)" [class]="getStatutClass(voyage.statut)"
+            <button class="btn-change-statut" (click)="openStatutModal(voyage)" [class]="getStatutClass(voyage.statut, voyage)"
               title="Changer le statut">
-              {{ getStatutLabel(voyage.statut) }}
+              {{ getStatutLabel(voyage.statut, voyage) }}
             </button>
             } @else {
-            <span class="statut-badge-readonly" [class]="getStatutClass(voyage.statut)">{{ getStatutLabel(voyage.statut) }}</span>
+            <span class="statut-badge-readonly" [class]="getStatutClass(voyage.statut, voyage)">{{ getStatutLabel(voyage.statut, voyage) }}</span>
             }
           </td>
           <td>
@@ -445,16 +445,6 @@
         </tr>
         }
         } @else if (activeTab === 'archives' && voyagesArchivesPage) {
-        <tr>
-          <td [attr.colspan]="11" class="archives-filter-row">
-            <button
-              class="btn-group-client"
-              [class.active]="showOnlyDeclaredArchives"
-              (click)="showOnlyDeclaredArchives = !showOnlyDeclaredArchives">
-              {{ showOnlyDeclaredArchives ? 'Afficher tous les voyages' : 'Afficher uniquement les voyages déclarés' }}
-            </button>
-          </td>
-        </tr>
         @for (voyage of voyagesArchivesFiltered; track voyage.id) {
         <tr>
           <td>
@@ -474,12 +464,12 @@
           </td>
           <td>
             @if (canUpdateVoyageStatus(voyage)) {
-            <button class="btn-change-statut" (click)="openStatutModal(voyage)" [class]="getStatutClass(voyage.statut)"
+            <button class="btn-change-statut" (click)="openStatutModal(voyage)" [class]="getStatutClass(voyage.statut, voyage)"
               title="Changer le statut">
-              {{ getStatutLabel(voyage.statut) }}
+              {{ getStatutLabel(voyage.statut, voyage) }}
             </button>
             } @else {
-            <span class="statut-badge-readonly" [class]="getStatutClass(voyage.statut)">{{ getStatutLabel(voyage.statut) }}</span>
+            <span class="statut-badge-readonly" [class]="getStatutClass(voyage.statut, voyage)">{{ getStatutLabel(voyage.statut, voyage) }}</span>
             }
           </td>
           <td>
@@ -573,12 +563,12 @@
           </td>
           <td>
             @if (canUpdateVoyageStatus(voyage)) {
-            <button class="btn-change-statut" (click)="openStatutModal(voyage)" [class]="getStatutClass(voyage.statut)"
+            <button class="btn-change-statut" (click)="openStatutModal(voyage)" [class]="getStatutClass(voyage.statut, voyage)"
               title="Changer le statut">
-              {{ getStatutLabel(voyage.statut) }}
+              {{ getStatutLabel(voyage.statut, voyage) }}
             </button>
             } @else {
-            <span class="statut-badge-readonly" [class]="getStatutClass(voyage.statut)">{{ getStatutLabel(voyage.statut) }}</span>
+            <span class="statut-badge-readonly" [class]="getStatutClass(voyage.statut, voyage)">{{ getStatutLabel(voyage.statut, voyage) }}</span>
             }
           </td>
           <td>
@@ -886,8 +876,8 @@
             </div>
             <div class="detail-item">
               <span class="detail-label">Statut:</span>
-              <span class="status-badge" [class]="getStatutClass(selectedVoyage.statut)">
-                {{ getStatutLabel(selectedVoyage.statut) }}
+              <span class="status-badge" [class]="getStatutClass(selectedVoyage.statut, selectedVoyage)">
+                {{ getStatutLabel(selectedVoyage.statut, selectedVoyage) }}
               </span>
             </div>
             <div class="detail-item">

@@ -22,6 +22,8 @@ export interface Camion {
   fournisseurEmail?: string;
   responsableId?: number | null;
   responsableIdentifiant?: string;
+  chauffeur?: string;
+  numeroChauffeur?: string;
 }
 
 export interface CamionWithVoyagesCount {

@@ -32,6 +32,8 @@ public class CamionMapper {
         dto.setFournisseurEmail(camion.getFournisseur() != null ? camion.getFournisseur().getEmail() : null);
         dto.setResponsableId(camion.getResponsable() != null ? camion.getResponsable().getId() : null);
         dto.setResponsableIdentifiant(camion.getResponsable() != null ? camion.getResponsable().getIdentifiant() : null);
+        dto.setChauffeur(camion.getChauffeur());
+        dto.setNumeroChauffeur(camion.getNumeroChauffeur());
 
         return dto;
     }
@@ -69,6 +71,9 @@ public class CamionMapper {
             compteRepository.findById(dto.getResponsableId())
                 .ifPresent(camion::setResponsable);
         }
+
+        camion.setChauffeur(dto.getChauffeur());
+        camion.setNumeroChauffeur(dto.getNumeroChauffeur());
 
         return camion;
     }

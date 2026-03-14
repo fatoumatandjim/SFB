@@ -178,6 +178,25 @@
   <div class="trucks-section">
     <div class="section-header">
       <div>
+        <h2>Statistiques des statuts du voyage - Mois en cours</h2>
+        <p>Totaux par statut (voyages dont le départ est dans le mois courant)</p>
+      </div>
+    </div>
+    @if (statutsMoisCourant.length > 0) {
+      <div class="voyages-stats-grid statuts-mois-grid">
+        @for (item of statutsMoisCourant; track item.statut) {
+          <div class="stat-item">
+            <div class="stat-value">{{ item.count }}</div>
+            <div class="stat-label">{{ getStatutVoyageLabel(item.statut) }}</div>
+          </div>
+        }
+      </div>
+    } @else {
+      <p class="no-stats-mois">Aucun voyage avec date de départ ce mois.</p>
+    }
+
+    <div class="section-header" style="margin-top: 1.5rem;">
+      <div>
         <h2>Suivi des Voyages en Temps Réel</h2>
         <p>Statistiques des voyages en cours</p>
       </div>

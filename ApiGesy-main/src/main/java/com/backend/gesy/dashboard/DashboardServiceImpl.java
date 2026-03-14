@@ -56,6 +56,7 @@ public class DashboardServiceImpl implements DashboardService {
                                 .finances(calculateFinances())
                                 .voyagesStats(calculateVoyagesStats())
                                 .douaneStats(calculateDouaneStats())
+                                .statutsVoyageMoisCourant(calculateStatutsVoyageMoisCourant())
                                 .build();
         }
 
@@ -421,6 +422,31 @@ public class DashboardServiceImpl implements DashboardService {
                                 .montantFraisPayes(formatBigDecimal(montantTotalFrais) + " F")
                                 .currency("F")
                                 .build();
+        }
+
+        /**
+         * Totaux par statut des voyages dont la date de départ est dans le mois en cours.
+         */
+        private List<DashboardDTO.StatutVoyageCountDTO> calculateStatutsVoyageMoisCourant() {
+                LocalDate now = LocalDate.now();
+                LocalDate startOfMonth = now.withDayOfMonth(1);
+                LocalDateTime startOfMonthDateTime = startOfMonth.atStartOfDay();
+                LocalDateTime endOfMonthDateTime = now.atTime(23, 59, 59);
+
+                Map<Voyage.StatutVoyage, Long> counts = voyageRepository.findAll().stream()
+                                .filter(v -> !v.isCession())
+                                .filter(v -> v.getDateDepart() != null)
+                                .filter(v -> !v.getDateDepart().isBefore(startOfMonthDateTime)
+                                                && !v.getDateDepart().isAfter(endOfMonthDateTime))
+                                .collect(Collectors.groupingBy(Voyage::getStatut, Collectors.counting()));
+
+                return counts.entrySet().stream()
+                                .map(e -> DashboardDTO.StatutVoyageCountDTO.builder()
+                                                .statut(e.getKey().name())
+                                                .count(e.getValue().intValue())
+                                                .build())
+                                .sorted((a, b) -> a.getStatut().compareTo(b.getStatut()))
+                                .collect(Collectors.toList());
         }
 
         private String formatBigDecimal(BigDecimal value) {

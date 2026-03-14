@@ -17,6 +17,7 @@ import { PdfService } from '../../services/pdf.service';
 import { ExcelService, CamionExcelData } from '../../services/excel.service';
 import { AuthService } from 'src/app/services/auth.service';
 import { EditPrixTransportModalComponent, VoyagePrixRef } from '../shared/edit-prix-transport-modal/edit-prix-transport-modal.component';
+import { getVoyageStatutLabel, getVoyageStatutClass, isSortieDouane } from '../../services/voyage-statut.utils';
 
 interface VoyageDisplay extends Voyage {
   camionImmatriculation?: string;
@@ -78,8 +79,6 @@ export class SuiviTransportComponent implements OnInit {
   pageSizeArchives: number = 10;
   // Filtre pour regrouper par client
   groupByClient: boolean = false;
-  // Filtre archives: n'afficher que les voyages déclarés
-  showOnlyDeclaredArchives: boolean = false;
   // Données groupées par client
   voyagesParClientPage: { clientsVoyages: Array<{ clientId: number; clientNom: string; clientEmail?: string; voyages: VoyageDisplay[]; nombreVoyages: number }>; currentPage: number; totalPages: number; totalElements: number; size: number } | null = null;
   showDetailModal: boolean = false;
@@ -798,13 +797,10 @@ export class SuiviTransportComponent implements OnInit {
     }
   }
 
-  // Voyages archives filtrés selon showOnlyDeclaredArchives
+  // Voyages archives : n'afficher que les voyages déclarés (déchargé non déclaré enlevé du filtre)
   get voyagesArchivesFiltered(): VoyageDisplay[] {
     if (!this.voyagesArchivesPage || !this.voyagesArchivesPage.voyages) {
       return [];
-    }
-    if (!this.showOnlyDeclaredArchives) {
-      return this.voyagesArchivesPage.voyages as VoyageDisplay[];
     }
     return (this.voyagesArchivesPage.voyages as VoyageDisplay[]).filter(v => v.declarer);
   }
@@ -927,9 +923,7 @@ export class SuiviTransportComponent implements OnInit {
         v.passager !== 'passer_non_declarer'
       );
     } else if (this.activeTab === 'receptionnes') {
-      filtered = filtered.filter(v =>
-        v.statut === 'RECEPTIONNER'
-      );
+      filtered = filtered.filter(v => isSortieDouane(v.statut, v));
     }
 
     // Filtrer par date
@@ -969,6 +963,24 @@ export class SuiviTransportComponent implements OnInit {
     }
 
     this.filteredVoyages = filtered;
+  }
+
+  /** Met à jour un voyage dans toutes les listes affichées (pour mise à jour immédiate après changement de statut). */
+  private updateVoyageInLists(voyageId: number, patch: Partial<VoyageDisplay>) {
+    const apply = (v: VoyageDisplay) => v.id === voyageId ? { ...v, ...patch } as VoyageDisplay : v;
+    this.voyages = this.voyages.map(apply);
+    if (this.voyagesEnCoursPage?.voyages) {
+      this.voyagesEnCoursPage = {
+        ...this.voyagesEnCoursPage,
+        voyages: this.voyagesEnCoursPage.voyages.map(apply)
+      };
+    }
+    if (this.voyagesArchivesPage?.voyages) {
+      this.voyagesArchivesPage = {
+        ...this.voyagesArchivesPage,
+        voyages: this.voyagesArchivesPage.voyages.map(apply)
+      };
+    }
   }
 
   onSearchChange() {
@@ -1044,7 +1056,7 @@ export class SuiviTransportComponent implements OnInit {
             v.passager !== 'passer_non_declarer'
           );
         } else if (this.activeTab === 'receptionnes') {
-          filtered = filtered.filter(v => v.statut === 'RECEPTIONNER');
+          filtered = filtered.filter(v => isSortieDouane(v.statut, v));
         } else if (this.activeTab === 'archives') {
           filtered = filtered.filter(v => v.statut === 'DECHARGER');
         }
@@ -1751,24 +1763,33 @@ export class SuiviTransportComponent implements OnInit {
         // Réinitialiser la sélection
         this.selectedStatut = '';
 
-        // Mettre à jour le voyage dans la liste principale
-        const index = this.voyages.findIndex(v => v.id === this.voyageForStatutChange!.id);
-        if (index !== -1) {
-          this.voyages[index].statut = updatedVoyage.statut as any;
-          this.voyages[index].etats = updatedVoyage.etats || [];
-          this.updateFilteredVoyages();
+        // Mettre à jour le voyage dans toutes les listes pour que la colonne Statut affiche tout de suite "Sortie de douane" (et pas "Douane") après changement
+        const patch: Partial<VoyageDisplay> = {
+          statut: updatedVoyage.statut as any,
+          etats: updatedVoyage.etats || []
+        };
+        if (updatedVoyage.liberer !== undefined) {
+          patch.liberer = updatedVoyage.liberer;
         }
+        this.updateVoyageInLists(voyageId, patch);
+        this.updateFilteredVoyages();
 
         // Mettre à jour aussi le voyage dans voyageForStatutChange pour que le statut affiché soit à jour
         if (this.voyageForStatutChange) {
           this.voyageForStatutChange.statut = updatedVoyage.statut as any;
           this.voyageForStatutChange.etats = updatedVoyage.etats || [];
+          if (updatedVoyage.liberer !== undefined) {
+            this.voyageForStatutChange.liberer = updatedVoyage.liberer;
+          }
         }
 
         // Si le voyage sélectionné est celui qui a été mis à jour, mettre à jour aussi
         if (this.selectedVoyage && this.voyageForStatutChange && this.selectedVoyage.id === this.voyageForStatutChange.id) {
           this.selectedVoyage.statut = updatedVoyage.statut as any;
           this.selectedVoyage.etats = updatedVoyage.etats || [];
+          if (updatedVoyage.liberer !== undefined) {
+            this.selectedVoyage.liberer = updatedVoyage.liberer;
+          }
         }
       },
       error: (error) => {
@@ -1780,35 +1801,12 @@ export class SuiviTransportComponent implements OnInit {
     });
   }
 
-  getStatutLabel(statut: string | undefined): string {
-    if (!statut) return 'N/A';
-    const labels: { [key: string]: string } = {
-      'CHARGEMENT': 'Chargement',
-      'CHARGE': 'Chargé',
-      'DEPART': 'Départ',
-      'PARTIELLEMENT_DECHARGER': 'Partiellement Déchargé',
-      'ARRIVER': 'Arrivé',
-      'DOUANE': 'Douane',
-      'RECEPTIONNER': 'Sortie de douane',
-      'LIVRE': 'Attribué',
-      'DECHARGER': 'Décharger'
-    };
-    return labels[statut] || statut;
+  getStatutLabel(statut: string | undefined, voyage?: { liberer?: boolean }): string {
+    return getVoyageStatutLabel(statut, voyage);
   }
 
-  getStatutClass(statut: string | undefined): string {
-    if (!statut) return 'badge-gray';
-    const classes: { [key: string]: string } = {
-      'CHARGEMENT': 'badge-blue',
-      'CHARGE': 'badge-orange',
-      'DEPART': 'badge-purple',
-      'ARRIVER': 'badge-green',
-      'DOUANE': 'badge-yellow',
-      'RECEPTIONNER': 'badge-teal',
-      'LIVRE': 'badge-teal',
-      'DECHARGER': 'badge-gray'
-    };
-    return classes[statut] || 'badge-gray';
+  getStatutClass(statut: string | undefined, voyage?: { liberer?: boolean }): string {
+    return getVoyageStatutClass(statut, voyage);
   }
 
   /** True si l'utilisateur peut ouvrir le modal et modifier le statut.

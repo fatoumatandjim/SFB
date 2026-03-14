@@ -41,6 +41,12 @@ public class Camion {
     @Column(nullable = false)
     private Double capacite; // en litres
 
+    @Column(name = "chauffeur")
+    private String chauffeur; // Nom du chauffeur
+
+    @Column(name = "numero_chauffeur")
+    private String numeroChauffeur; // Téléphone du chauffeur
+
     @Column(name = "dernier_controle")
     private LocalDate dernierControle;
 

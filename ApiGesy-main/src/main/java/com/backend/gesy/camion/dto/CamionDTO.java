@@ -29,5 +29,7 @@ public class CamionDTO {
     private String fournisseurEmail;
     private Long responsableId;
     private String responsableIdentifiant;
+    private String chauffeur;       // Nom du chauffeur
+    private String numeroChauffeur; // Téléphone du chauffeur
 }
 

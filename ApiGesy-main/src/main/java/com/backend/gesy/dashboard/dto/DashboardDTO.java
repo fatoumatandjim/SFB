@@ -19,6 +19,8 @@ public class DashboardDTO {
     private FinancesDTO finances;
     private VoyagesStatsDTO voyagesStats;
     private DouaneStatsDTO douaneStats;
+    /** Totaux par statut des voyages du mois en cours (dateDepart dans le mois) */
+    private List<StatutVoyageCountDTO> statutsVoyageMoisCourant;
 
     @Data
     @Builder
@@ -148,6 +150,15 @@ public class DashboardDTO {
         private String destination;
         private String statut;
         private String dateDepart;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class StatutVoyageCountDTO {
+        private String statut; // CHARGEMENT, CHARGE, etc.
+        private Integer count;
     }
 
     @Data

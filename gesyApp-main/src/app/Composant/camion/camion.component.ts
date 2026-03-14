@@ -98,7 +98,9 @@ export class CamionComponent implements OnInit {
     type: 'CITERNE',
     capacite: 0,
     fournisseurId: undefined,
-    responsableId: undefined
+    responsableId: undefined,
+    chauffeur: undefined,
+    numeroChauffeur: undefined
   };
 
   editCamionData: Partial<Camion> = {
@@ -441,6 +443,15 @@ export class CamionComponent implements OnInit {
     });
   }
 
+  /** Lors du choix du camion pour un nouveau voyage, remplir chauffeur / numéro depuis le camion */
+  onVoyageCamionSelect(camionId: number) {
+    const camion = this.camionsDisponibles.find(c => c.id === camionId);
+    if (camion) {
+      this.newVoyage.chauffeur = camion.chauffeur;
+      this.newVoyage.numeroChauffeur = camion.numeroChauffeur;
+    }
+  }
+
   closeAddVoyageModal() {
     this.showAddVoyageModal = false;
     this.newVoyage = {
@@ -469,6 +480,11 @@ export class CamionComponent implements OnInit {
 
     this.isLoading = true;
     const isCession = !!this.newVoyage.cession;
+    // Chauffeur et numéro : pris du camion sélectionné (saisis sur le camion, pas sur le voyage)
+    const selectedCamion = this.camionsDisponibles.find(c => c.id === this.newVoyage.camionId);
+    const chauffeur = selectedCamion?.chauffeur ?? this.newVoyage.chauffeur;
+    const numeroChauffeur = selectedCamion?.numeroChauffeur ?? this.newVoyage.numeroChauffeur;
+
     const voyage: Voyage = {
       camionId: this.newVoyage.camionId!,
       clientId: (this.newVoyage.clientId && this.newVoyage.clientId > 0) ? this.newVoyage.clientId : undefined,
@@ -479,8 +495,8 @@ export class CamionComponent implements OnInit {
       responsableId: this.newVoyage.responsableId!,
       prixUnitaire: isCession ? undefined : this.newVoyage.prixUnitaire,
       notes: this.newVoyage.notes,
-      chauffeur: this.newVoyage.chauffeur,
-      numeroChauffeur: this.newVoyage.numeroChauffeur,
+      chauffeur,
+      numeroChauffeur,
       cession: isCession
     };
 
@@ -619,7 +635,9 @@ export class CamionComponent implements OnInit {
       type: 'CITERNE',
       capacite: 0,
       fournisseurId: undefined,
-      responsableId: undefined
+      responsableId: undefined,
+      chauffeur: undefined,
+      numeroChauffeur: undefined
     };
   }
 
@@ -932,7 +950,9 @@ export class CamionComponent implements OnInit {
       montantLocationInitial: camion.montantLocationInitial,
       dernierControle: camion.dernierControle ? this.parseDateForInput(camion.dernierControle) : undefined,
       responsableId: camion.responsableId ?? undefined,
-      fournisseurId: camion.fournisseurId ?? undefined
+      fournisseurId: camion.fournisseurId ?? undefined,
+      chauffeur: camion.chauffeur,
+      numeroChauffeur: camion.numeroChauffeur
     };
     this.showEditModal = true;
   }
@@ -980,7 +1000,9 @@ export class CamionComponent implements OnInit {
       statut: 'DISPONIBLE',
       loue: false,
       montantLocation: undefined,
-      montantLocationInitial: undefined
+      montantLocationInitial: undefined,
+      chauffeur: undefined,
+      numeroChauffeur: undefined
     };
   }
 

@@ -59,6 +59,8 @@ export interface DashboardStats {
       retard: string;
     };
   };
+  /** Totaux par statut des voyages du mois en cours */
+  statutsVoyageMoisCourant?: Array<{ statut: string; count: number }>;
   voyagesStats: {
     totalVoyagesEnCours: number;
     voyagesArrives: number;

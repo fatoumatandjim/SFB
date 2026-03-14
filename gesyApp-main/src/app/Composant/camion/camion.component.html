@@ -245,6 +245,30 @@
             </div>
 
             <div class="form-group">
+              <label for="chauffeur-camion">Nom du chauffeur</label>
+              <input
+                type="text"
+                id="chauffeur-camion"
+                [(ngModel)]="newCamion.chauffeur"
+                name="chauffeur"
+                placeholder="Nom du chauffeur"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="numero-chauffeur-camion">Numéro du chauffeur</label>
+              <input
+                type="tel"
+                id="numero-chauffeur-camion"
+                [(ngModel)]="newCamion.numeroChauffeur"
+                name="numeroChauffeur"
+                placeholder="Ex: +223 70 12 34 56"
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
               <label for="fournisseur-camion">Fournisseur Transport</label>
               <select
                 id="fournisseur-camion"
@@ -469,6 +493,28 @@
                 min="0"
                 step="100"
                 placeholder="Ex: 32000"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="edit-chauffeur-camion">Nom du chauffeur</label>
+              <input
+                type="text"
+                id="edit-chauffeur-camion"
+                [(ngModel)]="editCamionData.chauffeur"
+                name="edit-chauffeur"
+                placeholder="Nom du chauffeur"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="edit-numero-chauffeur-camion">Numéro du chauffeur</label>
+              <input
+                type="tel"
+                id="edit-numero-chauffeur-camion"
+                [(ngModel)]="editCamionData.numeroChauffeur"
+                name="edit-numeroChauffeur"
+                placeholder="Ex: +223 70 12 34 56"
               />
             </div>
 
@@ -947,6 +993,7 @@
                 [(ngModel)]="newVoyage.camionId"
                 name="camionId"
                 required
+                (ngModelChange)="onVoyageCamionSelect($event)"
                 [class.error]="voyageErrors['camionId']"
               >
                 <option value="0">Sélectionner un camion</option>
@@ -1059,36 +1106,6 @@
                 <p class="form-error">{{ voyageErrors['responsableId'] }}</p>
               }
               <p class="form-hint">Utilisateur responsable de ce voyage</p>
-            </div>
-          </div>
-
-          <div class="form-row">
-
-
-            <div class="form-group">
-              <label for="chauffeur-voyage">Chauffeur</label>
-              <input
-                type="text"
-                id="chauffeur-voyage"
-                [(ngModel)]="newVoyage.chauffeur"
-                name="chauffeur"
-                placeholder="Nom du chauffeur"
-                class="form-input"
-              />
-              <p class="form-hint">Optionnel - nom du chauffeur</p>
-            </div>
-
-            <div class="form-group">
-              <label for="numero-chauffeur-voyage">Téléphone du chauffeur</label>
-              <input
-                type="tel"
-                id="numero-chauffeur-voyage"
-                [(ngModel)]="newVoyage.numeroChauffeur"
-                name="numeroChauffeur"
-                placeholder="Ex: +223 70 12 34 56"
-                class="form-input"
-              />
-              <p class="form-hint">Optionnel - numéro de téléphone du chauffeur</p>
             </div>
           </div>
 
