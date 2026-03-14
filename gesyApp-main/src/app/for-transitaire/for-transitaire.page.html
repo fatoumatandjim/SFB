@@ -268,7 +268,9 @@
                 <td><div class="date-value">{{ formatDate(voyage.dateDepart) }}</div></td>
                 <td><div class="destination-value">{{ voyage.destination }}</div></td>
                 <td>
-                  <button class="action-btn" (click)="viewVoyage(voyage)" title="Voir le détail">Voir</button>
+                  <button type="button" class="action-btn voir-btn" (click)="viewVoyage(voyage)" title="Voir le détail du voyage">
+                    <span>👁️</span> Voir
+                  </button>
                 </td>
               </tr>
             }
@@ -436,3 +438,59 @@
   }
 </div>
 
+@if (showDetailModal && selectedVoyage) {
+<div class="modal-overlay" (click)="closeDetailModal()" role="dialog" aria-modal="true" aria-labelledby="voyage-detail-title">
+  <div class="modal-content voyage-detail-modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2 id="voyage-detail-title">Détails du voyage {{ selectedVoyage.numeroVoyage }}</h2>
+      <button type="button" class="modal-close" (click)="closeDetailModal()" aria-label="Fermer">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="detail-content voyage-details">
+        <div class="detail-section">
+          <h3>Informations</h3>
+          <div class="detail-grid">
+            <div class="detail-item">
+              <span class="detail-label">Numéro:</span>
+              <span class="detail-value">{{ selectedVoyage.numeroVoyage }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Statut:</span>
+              <span class="status-badge" [class]="getStatusClass(selectedVoyage.statut || '', selectedVoyage)">
+                {{ getStatusLabel(selectedVoyage.statut, selectedVoyage.declarer, selectedVoyage.passager) }}
+              </span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Camion:</span>
+              <span class="detail-value">{{ selectedVoyage.camionImmatriculation || 'N/A' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Client:</span>
+              <span class="detail-value">{{ selectedVoyage.clientNom || '–' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Produit:</span>
+              <span class="detail-value">{{ selectedVoyage.typeProduit || 'Essence' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Quantité:</span>
+              <span class="detail-value">{{ selectedVoyage.quantite }} L</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Départ:</span>
+              <span class="detail-value">{{ formatDate(selectedVoyage.dateDepart) }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Destination:</span>
+              <span class="detail-value">{{ selectedVoyage.destination || '–' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn-close-modal" (click)="closeDetailModal()">Fermer</button>
+    </div>
+  </div>
+</div>
+}
