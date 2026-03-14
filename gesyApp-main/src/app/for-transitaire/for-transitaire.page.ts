@@ -410,10 +410,11 @@ export class ForTransitairePage implements OnInit {
     return d === true || d === 'true';
   }
 
-  /** True si le voyage est en état "À déclarer" (douane non déclaré ou passé non déclaré). */
+  /** True si le voyage est en état "À déclarer" (douane non déclaré ou passé non déclaré). Jamais true pour Archives (DECHARGER). */
   isStatutADeclarer(voyage: VoyageDisplay): boolean {
     if (!voyage) return false;
     const statut = (voyage.statut || '').toString().toUpperCase();
+    if (statut === 'DECHARGER' || statut === 'PARTIELLEMENT_DECHARGER') return false;
     const isDouane = statut === 'DOUANE';
     const isPasseNonDeclarer = voyage.passager === 'passer_non_declarer';
     return (isDouane || isPasseNonDeclarer) && !this.isDeclared(voyage);

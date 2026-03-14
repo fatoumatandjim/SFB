@@ -204,7 +204,7 @@
           <th>Quantité</th>
           <th>Départ</th>
           <th>Destination</th>
-          <th>Actions</th>
+          <th class="col-actions">Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -271,7 +271,7 @@
                 <td><div class="quantite">{{ voyage.quantite }} L</div></td>
                 <td><div class="date-value">{{ formatDate(voyage.dateDepart) }}</div></td>
                 <td><div class="destination-value">{{ voyage.destination }}</div></td>
-                <td>
+                <td class="col-actions">
                   <button type="button" class="action-btn voir-btn" (click)="viewVoyage(voyage)" title="Voir le détail du voyage">
                     <span>👁️</span> Voir
                   </button>
@@ -366,7 +366,7 @@
                 <td>
                   <div class="destination-value">{{ voyage.destination }}</div>
                 </td>
-                <td>
+                <td class="col-actions">
                   <div class="action-buttons">
                     @if (activeTab === 'en-cours') {
                       @if (voyage.liberer) {
