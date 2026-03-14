@@ -18,6 +18,12 @@ import { AlertService } from '../nativeComp/alert/alert.service';
 import { ToastService } from '../nativeComp/toast/toast.service';
 import { sortByDateDepartDesc } from '../services/voyage-date.utils';
 import { getVoyageStatutLabel, getVoyageStatutClass } from '../services/voyage-statut.utils';
+import {
+  getChauffeurDisplay as getChauffeurDisplayUtil,
+  formatDateFr,
+  getClientInitiales as getClientInitialesUtil,
+  getClientColor as getClientColorUtil
+} from '../services/voyage-display.utils';
 
 interface VoyageDisplay extends Voyage {
   camionImmatriculation?: string;
@@ -432,35 +438,14 @@ export class ForTransitairePage implements OnInit {
   }
 
   formatDate(dateString: string | undefined): string {
-    if (!dateString) return 'N/A';
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) {
-        return dateString;
-      }
-      return date.toLocaleDateString('fr-FR', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch (e) {
-      return dateString;
-    }
+    return formatDateFr(dateString);
   }
 
-  getClientInitiales(clientNom: string | undefined): string {
-    if (!clientNom) return '??';
-    return clientNom.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
-  }
+  getClientInitiales = getClientInitialesUtil;
+  getClientColor = getClientColorUtil;
 
-  getClientColor(clientNom: string | undefined): string {
-    if (!clientNom) return 'gray';
-    const colors = ['blue', 'purple', 'red', 'green', 'orange', 'teal', 'pink'];
-    const hash = clientNom.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    return colors[hash % colors.length];
-  }
+  /** Affiche le chauffeur (délègue à l'utilitaire partagé). */
+  getChauffeurDisplay = getChauffeurDisplayUtil;
 
   viewVoyage(voyage: VoyageDisplay) {
     this.selectedVoyage = voyage;
@@ -799,15 +784,6 @@ export class ForTransitairePage implements OnInit {
   }
 
   formatDateTime(dateString: string): string {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('fr-FR', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return formatDateFr(dateString);
   }
-
 }

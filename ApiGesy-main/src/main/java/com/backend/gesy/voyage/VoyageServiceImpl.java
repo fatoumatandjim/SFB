@@ -188,8 +188,8 @@ public class VoyageServiceImpl implements VoyageService {
     public List<VoyageDTO> findVoyagesNonDeclaresByTransitaireIdentifiant(String identifiant) {
         Transitaire transitaire = transitaireRepository.findByIdentifiant(identifiant)
                 .orElseThrow(() -> new RuntimeException("Transitaire non trouvé avec l'identifiant: " + identifiant));
-        // À déclarer = voyages non libérés (inclut déclarés et passés non déclarés) : reste jusqu'à Libérer
-        return voyageRepository.findVoyagesActifsByTransitaire(transitaire)
+        // Tab « À déclarer » : uniquement les voyages à la douane non déclarés (statut DOUANE)
+        return voyageRepository.findVoyagesADeclarerByTransitaire(transitaire)
                 .stream()
                 .map(voyageMapper::toDTO)
                 .collect(Collectors.toList());

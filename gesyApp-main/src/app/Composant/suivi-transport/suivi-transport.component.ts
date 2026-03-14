@@ -26,6 +26,12 @@ import {
   STATUTS_EN_COURS
 } from '../../services/voyage-statut.utils';
 import { sortByDateDepartDesc } from '../../services/voyage-date.utils';
+import {
+  getChauffeurDisplay,
+  formatDateFr,
+  getClientInitiales,
+  getClientColor
+} from '../../services/voyage-display.utils';
 
 /** Valeur du champ passager pour les voyages à la douane (non déclarés) */
 const PASSAGER_NON_DECLARER = 'passer_non_declarer';
@@ -1980,46 +1986,15 @@ export class SuiviTransportComponent implements OnInit {
     });
   }
 
-  /** Affiche le chauffeur : nom + téléphone si disponible */
-  getChauffeurDisplay(voyage: Voyage): string {
-    const nom = voyage.chauffeur?.trim();
-    const tel = voyage.numeroChauffeur?.trim();
-    if (nom && tel) return `${nom} (${tel})`;
-    if (nom) return nom;
-    if (tel) return tel;
-    return '-';
-  }
+  /** Affiche le chauffeur (délègue à l'utilitaire partagé). */
+  getChauffeurDisplay = getChauffeurDisplay;
 
   formatDate(dateString: string | undefined): string {
-    if (!dateString) return 'N/A';
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) {
-        return dateString;
-      }
-      return date.toLocaleDateString('fr-FR', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch (e) {
-      return dateString;
-    }
+    return formatDateFr(dateString);
   }
 
-  getClientInitiales(clientNom: string | undefined): string {
-    if (!clientNom) return '??';
-    return clientNom.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
-  }
-
-  getClientColor(clientNom: string | undefined): string {
-    if (!clientNom) return 'gray';
-    const colors = ['blue', 'purple', 'red', 'green', 'orange', 'teal', 'pink'];
-    const hash = clientNom.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    return colors[hash % colors.length];
-  }
+  getClientInitiales = getClientInitiales;
+  getClientColor = getClientColor;
 
   /**
    * Extrait le message d'erreur du backend depuis l'objet d'erreur HTTP

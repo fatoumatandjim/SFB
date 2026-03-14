@@ -194,6 +194,7 @@
           }
           <th>Numéro Voyage</th>
           <th>Camion</th>
+          <th>Chauffeur</th>
           <th>Client</th>
           <th>Statut</th>
           <th>Type Produit</th>
@@ -207,13 +208,13 @@
         @if (activeTab === 'voyages-en-cours') {
           @if (isLoadingEnCours) {
             <tr>
-              <td colspan="9" class="empty-state">
+              <td colspan="10" class="empty-state">
                 <div class="empty-message">Chargement...</div>
               </td>
             </tr>
           } @else if (voyagesEnCours.length === 0) {
             <tr>
-              <td colspan="9" class="empty-state">
+              <td colspan="10" class="empty-state">
                 <div class="empty-message">Aucun voyage en cours (non déchargé) trouvé</div>
               </td>
             </tr>
@@ -278,13 +279,13 @@
         } @else {
           @if (isLoading) {
             <tr>
-              <td [attr.colspan]="activeTab === 'en-cours' ? 10 : 9" class="empty-state">
+              <td [attr.colspan]="activeTab === 'en-cours' ? 11 : 10" class="empty-state">
                 <div class="empty-message">Chargement...</div>
               </td>
             </tr>
           } @else if (filteredVoyages.length === 0) {
             <tr>
-              <td [attr.colspan]="activeTab === 'en-cours' ? 10 : 9" class="empty-state">
+              <td [attr.colspan]="activeTab === 'en-cours' ? 11 : 10" class="empty-state">
                 <div class="empty-message">
                   Aucun voyage {{ activeTab === 'en-cours' ? 'à déclarer' : 'archivé' }} trouvé
                 </div>
@@ -315,6 +316,7 @@
                     </div>
                   </div>
                 </td>
+                <td><div class="chauffeur-info">{{ getChauffeurDisplay(voyage) }}</div></td>
                 <td>
                   @if (voyage.clientNom) {
                     <div class="client-info">
@@ -463,6 +465,10 @@
             <div class="detail-item">
               <span class="detail-label">Camion:</span>
               <span class="detail-value">{{ selectedVoyage.camionImmatriculation || 'N/A' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Chauffeur:</span>
+              <span class="detail-value">{{ getChauffeurDisplay(selectedVoyage) }}</span>
             </div>
             <div class="detail-item">
               <span class="detail-label">Client:</span>

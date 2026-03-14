@@ -143,6 +143,7 @@
         <tr>
           <th>Numéro Voyage</th>
           <th>Camion</th>
+          <th class="col-chauffeur">Chauffeur</th>
           <th>Client</th>
           <th>Statut</th>
           <th class="col-declaration">Déclaré</th>
@@ -157,7 +158,7 @@
       <tbody>
         @if (isLoading) {
         <tr>
-          <td [attr.colspan]="12" class="empty-state">
+          <td [attr.colspan]="13" class="empty-state">
             <div class="empty-message">Chargement...</div>
           </td>
         </tr>
@@ -174,6 +175,9 @@
                 <div class="camion-id">{{ voyage.camionImmatriculation || 'N/A' }}</div>
               </div>
             </div>
+          </td>
+          <td class="col-chauffeur">
+            <div class="chauffeur-info">{{ getChauffeurDisplay(voyage) }}</div>
           </td>
           <td>
             @if (voyage.clientVoyages && voyage.clientVoyages.length > 0) {
@@ -313,7 +317,7 @@
         }
         } @else if (activeTab === 'archives' && voyagesArchivesPage) {
         <tr>
-          <td [attr.colspan]="12" class="archives-filter-row">
+          <td [attr.colspan]="13" class="archives-filter-row">
             <button
               class="btn-group-client"
               [class.active]="showOnlyDeclaredArchives"
@@ -334,6 +338,9 @@
                 <div class="camion-id">{{ voyage.camionImmatriculation || 'N/A' }}</div>
               </div>
             </div>
+          </td>
+          <td class="col-chauffeur">
+            <div class="chauffeur-info">{{ getChauffeurDisplay(voyage) }}</div>
           </td>
           <td>
             @if (voyage.clientVoyages && voyage.clientVoyages.length > 0) {

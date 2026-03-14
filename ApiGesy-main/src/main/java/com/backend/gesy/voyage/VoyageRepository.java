@@ -220,25 +220,31 @@ public interface VoyageRepository extends JpaRepository<Voyage, Long> {
                      "ORDER BY v.dateDepart DESC, v.id DESC")
        List<Voyage> findVoyagesActifsByTransitaire(@Param("transitaire") Transitaire transitaire);
 
-       /** Voyages en cours du transitaire : non déclarés ou passer_non_declarer ; tri du plus récent au plus ancien */
+       /** Voyages « À déclarer » du transitaire : statut DOUANE et non déclarés uniquement */
+       @Query("SELECT v FROM Voyage v WHERE v.transitaire = :transitaire " +
+                     "AND v.statut = 'DOUANE' AND (v.declarer = false OR v.declarer IS NULL) " +
+                     "ORDER BY v.dateDepart DESC, v.id DESC")
+       List<Voyage> findVoyagesADeclarerByTransitaire(@Param("transitaire") Transitaire transitaire);
+
+       /** Voyages en cours du transitaire : tous les statuts sauf DECHARGER (aligné suivi transport) */
        @Query(value = "SELECT v FROM Voyage v WHERE v.transitaire = :transitaire " +
-                     "AND ( (v.declarer = false OR v.declarer IS NULL) OR v.passager = 'passer_non_declarer' ) " +
+                     "AND (v.statut IS NULL OR v.statut <> 'DECHARGER') " +
                      "ORDER BY v.dateDepart DESC, v.id DESC",
                      countQuery = "SELECT COUNT(v) FROM Voyage v WHERE v.transitaire = :transitaire " +
-                                   "AND ( (v.declarer = false OR v.declarer IS NULL) OR v.passager = 'passer_non_declarer' )")
+                                   "AND (v.statut IS NULL OR v.statut <> 'DECHARGER')")
        Page<Voyage> findVoyagesEnCoursByTransitaire(@Param("transitaire") Transitaire transitaire, Pageable pageable);
 
-       /** Voyages archivés du transitaire (libérés) : tri du plus récent au plus ancien */
+       /** Voyages archivés du transitaire : statut DECHARGER uniquement (aligné suivi transport) */
        @Query(value = "SELECT v FROM Voyage v WHERE v.transitaire = :transitaire " +
-                     "AND v.liberer = true " +
+                     "AND v.statut = 'DECHARGER' " +
                      "ORDER BY v.dateDepart DESC, v.id DESC",
-                     countQuery = "SELECT COUNT(v) FROM Voyage v WHERE v.transitaire = :transitaire AND v.liberer = true")
+                     countQuery = "SELECT COUNT(v) FROM Voyage v WHERE v.transitaire = :transitaire AND v.statut = 'DECHARGER'")
        Page<Voyage> findVoyagesArchivesByTransitaire(@Param("transitaire") Transitaire transitaire, Pageable pageable);
 
-       @Query(value = "SELECT v FROM Voyage v WHERE v.transitaire = :transitaire AND v.liberer = true " +
+       @Query(value = "SELECT v FROM Voyage v WHERE v.transitaire = :transitaire AND v.statut = 'DECHARGER' " +
                      "AND v.dateDepart IS NOT NULL AND v.dateDepart >= :startOfDay AND v.dateDepart < :endOfDay " +
                      "ORDER BY v.dateDepart DESC, v.id DESC",
-                     countQuery = "SELECT COUNT(v) FROM Voyage v WHERE v.transitaire = :transitaire AND v.liberer = true " +
+                     countQuery = "SELECT COUNT(v) FROM Voyage v WHERE v.transitaire = :transitaire AND v.statut = 'DECHARGER' " +
                                    "AND v.dateDepart IS NOT NULL AND v.dateDepart >= :startOfDay AND v.dateDepart < :endOfDay")
        Page<Voyage> findVoyagesArchivesByTransitaireAndDate(
                      @Param("transitaire") Transitaire transitaire,
@@ -246,10 +252,10 @@ public interface VoyageRepository extends JpaRepository<Voyage, Long> {
                      @Param("endOfDay") LocalDateTime endOfDay,
                      Pageable pageable);
 
-       @Query(value = "SELECT v FROM Voyage v WHERE v.transitaire = :transitaire AND v.liberer = true " +
+       @Query(value = "SELECT v FROM Voyage v WHERE v.transitaire = :transitaire AND v.statut = 'DECHARGER' " +
                      "AND v.dateDepart IS NOT NULL AND v.dateDepart >= :startDate AND v.dateDepart <= :endDate " +
                      "ORDER BY v.dateDepart DESC, v.id DESC",
-                     countQuery = "SELECT COUNT(v) FROM Voyage v WHERE v.transitaire = :transitaire AND v.liberer = true " +
+                     countQuery = "SELECT COUNT(v) FROM Voyage v WHERE v.transitaire = :transitaire AND v.statut = 'DECHARGER' " +
                                    "AND v.dateDepart IS NOT NULL AND v.dateDepart >= :startDate AND v.dateDepart <= :endDate")
        Page<Voyage> findVoyagesArchivesByTransitaireAndDateRange(
                      @Param("transitaire") Transitaire transitaire,
