@@ -1613,12 +1613,15 @@ export class SuiviTransportComponent implements OnInit {
   }
 
   getEtatLabel(etat: string): string {
-    // Mapper "Livré" vers "Attribué" et "Réceptionné" vers "Sortie de douane" pour l'affichage uniquement
+    // Mapper les libellés backend vers l'affichage (aligné djikineholding)
     if (etat === 'Livré') {
       return 'Attribué';
     }
     if (etat === 'Réceptionné') {
       return 'Sortie de douane';
+    }
+    if (etat === 'Arrivé') {
+      return 'Arriver à la frontière';
     }
     return etat;
   }

@@ -648,20 +648,24 @@ public class VoyageServiceImpl implements VoyageService {
                     ", Statut interne après conversion: " + nouveauStatut);
             System.out.println("--------------------------------------------------------------");
 
-            // Gérer les dates selon le statut
+            // Gérer les dates selon le statut (chaque étape reste sur son statut, pas de passage automatique)
             LocalDateTime now = LocalDateTime.now();
             if (nouveauStatut == Voyage.StatutVoyage.CHARGE) {
                 // Retirer du dépôt et ajouter au stock citerne lors du chargement
                 retirerDuDepotEtAjouterAuStockCiterne(voyage, now);
+                validerEtat(voyage, "CHARGE");
+                voyage.setStatut(Voyage.StatutVoyage.CHARGE);
+            } else if (nouveauStatut == Voyage.StatutVoyage.DEPART) {
                 voyage.setDateDepart(now);
                 validerEtat(voyage, "DEPART");
                 voyage.setStatut(Voyage.StatutVoyage.DEPART);
-            } else if (nouveauStatut == Voyage.StatutVoyage.DEPART) {
-                voyage.setDateDepart(now);
             } else if (nouveauStatut == Voyage.StatutVoyage.ARRIVER) {
                 voyage.setDateArrivee(now);
-                voyage.setStatut(Voyage.StatutVoyage.DOUANE);
+                validerEtat(voyage, "ARRIVER");
+                voyage.setStatut(Voyage.StatutVoyage.ARRIVER);
+            } else if (nouveauStatut == Voyage.StatutVoyage.DOUANE) {
                 validerEtat(voyage, "DOUANE");
+                voyage.setStatut(Voyage.StatutVoyage.DOUANE);
             }
 
             // Ajouter ou mettre à jour les clients attribués au voyage (possible quel que soit le statut)
@@ -881,15 +885,19 @@ public class VoyageServiceImpl implements VoyageService {
             if (nouveauStatut == Voyage.StatutVoyage.CHARGE) {
                 // Retirer du dépôt et ajouter au stock citerne lors du chargement
                 retirerDuDepotEtAjouterAuStockCiterne(voyage, now);
+                validerEtat(voyage, "CHARGE");
+                voyage.setStatut(Voyage.StatutVoyage.CHARGE);
+            } else if (nouveauStatut == Voyage.StatutVoyage.DEPART) {
                 voyage.setDateDepart(now);
                 validerEtat(voyage, "DEPART");
                 voyage.setStatut(Voyage.StatutVoyage.DEPART);
-            } else if (nouveauStatut == Voyage.StatutVoyage.DEPART) {
-                voyage.setDateDepart(now);
             } else if (nouveauStatut == Voyage.StatutVoyage.ARRIVER) {
                 voyage.setDateArrivee(now);
-                voyage.setStatut(Voyage.StatutVoyage.DOUANE);
+                validerEtat(voyage, "ARRIVER");
+                voyage.setStatut(Voyage.StatutVoyage.ARRIVER);
+            } else if (nouveauStatut == Voyage.StatutVoyage.DOUANE) {
                 validerEtat(voyage, "DOUANE");
+                voyage.setStatut(Voyage.StatutVoyage.DOUANE);
             } else if (nouveauStatut == Voyage.StatutVoyage.LIVRE) {
                 // Assigner le client si fourni - créer un ClientVoyage et le marquer comme "Livrer"
                 if (clientId != null && clientId > 0) {

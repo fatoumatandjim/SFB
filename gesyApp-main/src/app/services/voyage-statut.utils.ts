@@ -22,7 +22,7 @@ export const STATUT_VOYAGE_LABELS: Readonly<Record<string, string>> = {
   CHARGEMENT: 'Chargement',
   CHARGE: 'Chargé',
   DEPART: 'Départ',
-  ARRIVER: 'Arrivé',
+  ARRIVER: 'Arriver à la frontière',
   DOUANE: 'Douane',
   RECEPTIONNER: 'Sortie de douane',
   LIVRE: 'Attribué',
