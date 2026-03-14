@@ -53,22 +53,25 @@
     <div class="tabs">
       <button
         class="tab-btn"
-        [class.active]="activeTab === 'en-cours'"
-        (click)="setTab('en-cours')">
-        <span>📋</span>
-        À déclarer
-      </button>
-      <button
-        class="tab-btn"
         [class.active]="activeTab === 'voyages-en-cours'"
-        (click)="setTab('voyages-en-cours')">
+        (click)="setTab('voyages-en-cours')"
+        title="Tous les statuts sauf Décharger (En route, Chargement, Chargé, Départ, Arriver à la frontière, Douane, Réceptionné, Attribué, Partiellement déchargé)">
         <span>🚛</span>
         Voyages en cours
       </button>
       <button
         class="tab-btn"
+        [class.active]="activeTab === 'en-cours'"
+        (click)="setTab('en-cours')"
+        title="Uniquement À la douane, non déclarés">
+        <span>📋</span>
+        À déclarer
+      </button>
+      <button
+        class="tab-btn"
         [class.active]="activeTab === 'archives'"
-        (click)="setTab('archives')">
+        (click)="setTab('archives')"
+        title="Uniquement statut Décharger">
         <span>📦</span>
         Archives
       </button>

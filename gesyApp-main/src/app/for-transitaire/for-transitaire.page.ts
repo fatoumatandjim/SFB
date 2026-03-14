@@ -50,7 +50,8 @@ interface TransitaireInfo {
   imports: [CommonModule, FormsModule, IonIcon, AxesComponent]
 })
 export class ForTransitairePage implements OnInit {
-  activeTab: 'en-cours' | 'voyages-en-cours' | 'archives' | 'axes' = 'en-cours';
+  /** Onglet actif : Voyages en cours (défaut, comme Suivi transport) | À déclarer | Archives | Axes */
+  activeTab: 'en-cours' | 'voyages-en-cours' | 'archives' | 'axes' = 'voyages-en-cours';
   searchTerm: string = '';
   isLoading: boolean = false;
   voyages: VoyageDisplay[] = [];
@@ -125,6 +126,8 @@ export class ForTransitairePage implements OnInit {
         nom: identifiant,
         identifiant: identifiant
       };
+      // Charger l’onglet par défaut (Voyages en cours) et les données de l’onglet À déclarer
+      this.loadVoyagesEnCours();
       this.loadVoyages();
       this.loadStats();
       this.loadPaysAndAxes();
