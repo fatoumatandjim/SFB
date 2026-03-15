@@ -1775,12 +1775,11 @@ export class SuiviTransportComponent implements OnInit {
       return;
     }
 
-    // Validation spéciale pour DECHARGER : au moins un client doit être coché
-    if (this.selectedStatut === 'DECHARGER') {
+    // Validation spéciale pour DECHARGER : au moins un client coché (sauf en PARTIELLEMENT_DECHARGER où on envoie tous les clients)
+    if (this.selectedStatut === 'DECHARGER' && this.voyageForStatutChange?.statut !== 'PARTIELLEMENT_DECHARGER') {
       const hasClientLivrer = this.voyageForStatutChange?.clientVoyages?.some(cv =>
         cv.id && this.dechargerClientLivres[cv.id]
       ) || false;
-
       if (!hasClientLivrer) {
         this.isLoading = false;
         this.toastService.error('Veuillez cocher au moins un client livré avant de décharger.');
@@ -1823,14 +1822,16 @@ export class SuiviTransportComponent implements OnInit {
         params = undefined;
       }
     } else if (this.selectedStatut === 'DECHARGER') {
-      // Pour DECHARGER, envoyer les manquants pour les ClientVoyage marqués comme livrés
-      // Clés en string pour que le JSON soit correctement désérialisé côté backend (Map<String, Double>)
+      // Pour DECHARGER, envoyer les manquants pour les ClientVoyage (cochés, ou tous si on est en PARTIELLEMENT_DECHARGER pour finaliser)
       params = {};
       params.manquants = {} as Record<string, number>;
 
       if (this.voyageForStatutChange?.clientVoyages && this.voyageForStatutChange.clientVoyages.length > 0) {
+        const inclureTousLesClients = this.voyageForStatutChange.statut === 'PARTIELLEMENT_DECHARGER';
         this.voyageForStatutChange.clientVoyages.forEach(cv => {
-          if (cv.id && this.dechargerClientLivres[cv.id]) {
+          if (!cv.id) return;
+          const estCoche = !!this.dechargerClientLivres[cv.id];
+          if (estCoche || inclureTousLesClients) {
             const manquant = this.dechargerManquants[cv.id];
             const value = (manquant !== undefined && manquant !== null && manquant >= 0)
               ? manquant

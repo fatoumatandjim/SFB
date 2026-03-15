@@ -847,33 +847,30 @@ public class VoyageServiceImpl implements VoyageService {
                     boolean tousClientsLivres = clientVoyages.stream()
                             .allMatch(cv -> cv.getStatut() == ClientVoyage.StatutLivraison.LIVRER);
                     
-                    // Calculer la somme des quantités livrées (quantité - manquant pour chaque client)
+                    // Calculer la somme des quantités attribuées aux clients livrés
                     Double quantiteTotaleLivree = clientVoyages.stream()
                             .filter(cv -> cv.getStatut() == ClientVoyage.StatutLivraison.LIVRER)
-                            .mapToDouble(cv -> {
-                                return cv.getQuantite() != null ? cv.getQuantite() : 0.0;
-                            })
+                            .mapToDouble(cv -> cv.getQuantite() != null ? cv.getQuantite() : 0.0)
                             .sum();
+                    Double quantiteVoyage = voyage.getQuantite() != null ? voyage.getQuantite() : 0.0;
                     
-                     Double quantiteVoyage = voyage.getQuantite() != null ? voyage.getQuantite() : 0.0;
+                    // Complètement déchargé si : tous les clients sont livrés ET (quantités égales OU demande explicite DECHARGER)
+                    // Quand l'utilisateur demande explicitement "Décharger" depuis PARTIELLEMENT_DECHARGER et que tous les clients sont livrés, on accepte
+                    boolean quantitesEgales = Math.abs(quantiteTotaleLivree - quantiteVoyage) <= 0.01;
+                    boolean demandeExpliciteDecharger = (nouveauStatut == Voyage.StatutVoyage.DECHARGER);
+                    boolean completementDecharge = tousClientsLivres && (quantitesEgales || demandeExpliciteDecharger);
                     
-                    // Si tous les clients sont livrés ET la quantité totale livrée = quantité du voyage
-                    // Alors c'est complètement déchargé (DECHARGER)
-                    // Sinon, c'est partiellement déchargé (PARTIELLEMENT_DECHARGER)
-                    boolean completementDecharge = tousClientsLivres && 
-                            Math.abs(quantiteTotaleLivree - quantiteVoyage) <= 0.01; // Tolérance de 0.01
                     System.out.println("-----------------------------------------------------------------");
                     System.out.println("Vérification du déchargement: Tous clients livrés = " + tousClientsLivres +
                             ", Quantité totale livrée = " + quantiteTotaleLivree +
                             ", Quantité du voyage = " + quantiteVoyage +
+                            ", Demande explicite DECHARGER = " + demandeExpliciteDecharger +
                             ", Complètement déchargé = " + completementDecharge);
                     System.out.println("-----------------------------------------------------------------");
                     if (completementDecharge) {
-                        // Le voyage est complètement déchargé
                         voyage.setStatut(Voyage.StatutVoyage.DECHARGER);
                         validerEtat(voyage, "DECHARGER");
                     } else {
-                        // Si les conditions ne sont pas remplies, forcer PARTIELLEMENT_DECHARGER
                         voyage.setStatut(Voyage.StatutVoyage.PARTIELLEMENT_DECHARGER);
                     }
 
