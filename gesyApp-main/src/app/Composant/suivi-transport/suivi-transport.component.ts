@@ -1694,7 +1694,11 @@ export class SuiviTransportComponent implements OnInit {
     }
 
     // Responsable = identifiant connecté === voyage.responsableIdentifiant (ou Admin/Contrôleur)
-    const peutVoirProchainEtat = this.voyageForStatutChange && this.canUpdateVoyageStatus(this.voyageForStatutChange);
+    // En PARTIELLEMENT_DECHARGER, toujours montrer "Décharger" pour permettre de finaliser le déchargement
+    const peutVoirProchainEtat = this.voyageForStatutChange && (
+      this.canUpdateVoyageStatus(this.voyageForStatutChange) ||
+      this.voyageForStatutChange.statut === 'PARTIELLEMENT_DECHARGER'
+    );
 
     if (peutVoirProchainEtat) {
       const premierNonValideIndex = result.findIndex(e => !e.valider);
@@ -1740,9 +1744,10 @@ export class SuiviTransportComponent implements OnInit {
       }
     }
 
-    // Vérifier si l'état est déjà validé
+    // Vérifier si l'état est déjà validé (sauf passage PARTIELLEMENT_DECHARGER -> DECHARGER)
     const selectedEtat = this.etatsVoyage.find(e => this.getStatutFromEtat(e.etat) === this.selectedStatut);
-    if (selectedEtat && selectedEtat.valider) {
+    const isPassageDechargementComplet = this.selectedStatut === 'DECHARGER' && this.voyageForStatutChange?.statut === 'PARTIELLEMENT_DECHARGER';
+    if (selectedEtat && selectedEtat.valider && !isPassageDechargementComplet) {
       this.toastService.warning('Cet état est déjà validé. Vous ne pourrez plus le modifier.');
       return;
     }
@@ -1955,7 +1960,9 @@ export class SuiviTransportComponent implements OnInit {
     const identifiant = this.authService.getIdentifiant();
     if (!identifiant || !voyage?.responsableIdentifiant) return false;
     if (identifiant !== voyage.responsableIdentifiant) return false;
-    const statutsSansDroitResponsable = ['RECEPTIONNER', 'LIVRE', 'DECHARGER', 'PARTIELLEMENT_DECHARGER'];
+    const statutsSansDroitResponsable = ['RECEPTIONNER', 'LIVRE', 'DECHARGER'];
+    // PARTIELLEMENT_DECHARGER : le responsable peut ouvrir le modal et passer à DECHARGER pour finaliser
+    if ((voyage.statut || '') === 'PARTIELLEMENT_DECHARGER') return true;
     return !statutsSansDroitResponsable.includes(voyage.statut || '');
   }
 

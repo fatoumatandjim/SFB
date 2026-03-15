@@ -2020,7 +2020,9 @@ public class VoyageServiceImpl implements VoyageService {
 
     /**
      * Valide l'état correspondant au statut du voyage
-     * Ne peut pas valider un état déjà validé (sauf si c'est le même état)
+     * Ne peut pas valider un état déjà validé (sauf si c'est le même état).
+     * Si l'état n'existe pas encore (ex: "Décharger" pour un voyage en PARTIELLEMENT_DECHARGER),
+     * il est créé puis validé pour permettre le passage à DECHARGER.
      */
     private void validerEtat(Voyage voyage, String statut) {
         // Mapper le statut vers le texte de l'état
@@ -2029,16 +2031,23 @@ public class VoyageServiceImpl implements VoyageService {
         // Trouver tous les états du voyage
         List<EtatVoyage> etats = etatVoyageRepository.findByVoyageId(voyage.getId());
 
-        // Trouver l'état correspondant au texte
+        // Trouver l'état correspondant au texte, ou le créer s'il n'existe pas (ex: passage PARTIELLEMENT_DECHARGER -> DECHARGER)
         EtatVoyage etatVoyage = etats.stream()
                 .filter(e -> e.getEtat().equals(etatTexte))
                 .findFirst()
-                .orElseThrow(() -> new RuntimeException("État non trouvé pour le statut: " + statut));
+                .orElseGet(() -> {
+                    EtatVoyage nouveau = new EtatVoyage();
+                    nouveau.setVoyage(voyage);
+                    nouveau.setEtat(etatTexte);
+                    nouveau.setDateHeure(LocalDateTime.now());
+                    nouveau.setValider(false);
+                    return etatVoyageRepository.save(nouveau);
+                });
 
         // Si l'état est déjà validé, on met juste à jour la date/heure sans lever
         // d'exception
         // Cela permet de gérer les cas où plusieurs statuts mappent vers le même état
-        if (etatVoyage.getValider()) {
+        if (Boolean.TRUE.equals(etatVoyage.getValider())) {
             // Mettre à jour la date/heure même si déjà validé
             etatVoyage.setDateHeure(LocalDateTime.now());
             etatVoyageRepository.save(etatVoyage);
