@@ -88,8 +88,14 @@ public class VoyageMapper {
         dto.setNotes(voyage.getNotes());
         dto.setDeclarer(voyage.getDeclarer() != null ? voyage.getDeclarer() : false);
         dto.setPassager(voyage.getPassager());
-        dto.setChauffeur(voyage.getChauffeur());
-        dto.setNumeroChauffeur(voyage.getNumeroChauffeur());
+        // Chauffeur : priorité au camion (source de vérité), sinon repli sur le voyage (compatibilité)
+        if (voyage.getCamion() != null) {
+            dto.setChauffeur(voyage.getCamion().getChauffeur());
+            dto.setNumeroChauffeur(voyage.getCamion().getNumeroChauffeur());
+        } else {
+            dto.setChauffeur(voyage.getChauffeur());
+            dto.setNumeroChauffeur(voyage.getNumeroChauffeur());
+        }
 
         // Mapper la première facture si présente (pour compatibilité avec le DTO)
         if (voyage.getFactures() != null && !voyage.getFactures().isEmpty()) {
