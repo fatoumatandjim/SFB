@@ -1913,9 +1913,20 @@ export class SuiviTransportComponent implements OnInit {
           }
         }
 
-        // Si le voyage passe en "Déchargé", il quitte "Voyages en cours" et apparaît dans "Archives"
+        // Si le voyage passe en "Déchargé", il quitte "Voyages en cours" et apparaît uniquement dans "Archives"
         if (updatedVoyage.statut === 'DECHARGER') {
           this.activeTab = 'archives';
+          // Retirer le voyage de la liste "En cours" immédiatement
+          if (this.voyagesEnCoursPage?.voyages) {
+            this.voyagesEnCoursPage = {
+              ...this.voyagesEnCoursPage,
+              voyages: this.voyagesEnCoursPage.voyages.filter(v => v.id !== voyageId),
+              totalElements: Math.max(0, (this.voyagesEnCoursPage.totalElements ?? 1) - 1)
+            };
+          }
+          // Recharger les deux listes depuis le serveur pour garder la cohérence
+          this.loadVoyagesEnCours();
+          this.loadVoyagesArchives();
         }
         this.closeStatutModal();
         this.updateFilteredVoyages();
