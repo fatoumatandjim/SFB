@@ -1106,6 +1106,12 @@ export class SuiviTransportComponent implements OnInit {
         voyages: this.voyagesArchivesPage.voyages.map(apply)
       };
     }
+    if (this.voyagesPartiellementDechargesPage?.voyages) {
+      this.voyagesPartiellementDechargesPage = {
+        ...this.voyagesPartiellementDechargesPage,
+        voyages: this.voyagesPartiellementDechargesPage.voyages.map(apply)
+      };
+    }
   }
 
   onSearchChange() {

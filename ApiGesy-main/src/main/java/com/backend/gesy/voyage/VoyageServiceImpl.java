@@ -695,8 +695,10 @@ public class VoyageServiceImpl implements VoyageService {
                 voyage.setStatut(Voyage.StatutVoyage.DOUANE);
             }
 
-            // Ajouter ou mettre à jour les clients attribués au voyage (possible quel que soit le statut)
-            if (request.getClients() != null && !request.getClients().isEmpty()) {
+            // Ajouter ou mettre à jour les clients attribués au voyage (possible quel que soit le statut).
+            // Ne pas exécuter pour DECHARGER/PARTIELLEMENT_DECHARGER : éviter d'écraser les livraisons déjà enregistrées
+            // (sinon tous les clients de la liste seraient remis à NON_LIVRE avant le traitement des manquants).
+            if (!isDechargerRequest && request.getClients() != null && !request.getClients().isEmpty()) {
                 for (ClientQuantiteDTO clientQuantite : request.getClients()) {
                     if (clientQuantite.getClientId() == null || clientQuantite.getClientId() <= 0) {
                         continue; // Ignorer les clients invalides
