@@ -1866,7 +1866,8 @@ export class SuiviTransportComponent implements OnInit {
         // Réinitialiser la sélection
         this.selectedStatut = '';
 
-        // Mettre à jour le voyage dans toutes les listes pour que la colonne Statut affiche tout de suite "Sortie de douane" (et pas "Douane") après changement
+        // Mettre à jour le voyage dans toutes les listes avec la réponse du serveur (source de vérité)
+        // Ne pas appeler updateFilteredVoyages() ici : le rechargement async pourrait écraser avec des données pas encore à jour
         const patch: Partial<VoyageDisplay> = {
           statut: updatedVoyage.statut as any,
           etats: updatedVoyage.etats || []
@@ -1874,24 +1875,32 @@ export class SuiviTransportComponent implements OnInit {
         if (updatedVoyage.liberer !== undefined) {
           patch.liberer = updatedVoyage.liberer;
         }
+        if (updatedVoyage.clientVoyages) {
+          patch.clientVoyages = updatedVoyage.clientVoyages;
+        }
         this.updateVoyageInLists(voyageId, patch);
-        this.updateFilteredVoyages();
 
-        // Mettre à jour aussi le voyage dans voyageForStatutChange pour que le statut affiché soit à jour
+        // Mettre à jour aussi le voyage dans voyageForStatutChange pour que le modal et les détails reflètent la réponse
         if (this.voyageForStatutChange) {
           this.voyageForStatutChange.statut = updatedVoyage.statut as any;
           this.voyageForStatutChange.etats = updatedVoyage.etats || [];
           if (updatedVoyage.liberer !== undefined) {
             this.voyageForStatutChange.liberer = updatedVoyage.liberer;
           }
+          if (updatedVoyage.clientVoyages) {
+            this.voyageForStatutChange.clientVoyages = updatedVoyage.clientVoyages;
+          }
         }
 
-        // Si le voyage sélectionné est celui qui a été mis à jour, mettre à jour aussi
+        // Si le voyage sélectionné est celui qui a été mis à jour, mettre à jour aussi (détails, liste)
         if (this.selectedVoyage && this.voyageForStatutChange && this.selectedVoyage.id === this.voyageForStatutChange.id) {
           this.selectedVoyage.statut = updatedVoyage.statut as any;
           this.selectedVoyage.etats = updatedVoyage.etats || [];
           if (updatedVoyage.liberer !== undefined) {
             this.selectedVoyage.liberer = updatedVoyage.liberer;
+          }
+          if (updatedVoyage.clientVoyages) {
+            this.selectedVoyage.clientVoyages = updatedVoyage.clientVoyages;
           }
         }
       },
