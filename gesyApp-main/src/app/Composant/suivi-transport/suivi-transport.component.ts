@@ -997,35 +997,49 @@ export class SuiviTransportComponent implements OnInit {
   loadVoyagesArchives() {
     this.isLoading = true;
     this.filteredVoyages = [];
-    const pageSize = 10000;
-    const obs = this.filterType === 'date' && this.filterDate
-      ? this.voyagesService.getArchivedVoyagesByDate(this.filterDate, 0, pageSize)
-      : this.filterType === 'range' && this.filterStartDate && this.filterEndDate
-        ? this.voyagesService.getArchivedVoyagesByDateRange(this.filterStartDate, this.filterEndDate, 0, pageSize)
-        : this.voyagesService.getArchivedVoyages(0, pageSize);
-    obs.subscribe({
+    // Charger tous les voyages puis filtrer : statut DECHARGER OU (déclaré + état Décharger validé)
+    // pour que les voyages "déclaré + déchargement validé" apparaissent bien dans Archives
+    this.voyagesService.getAllVoyages().subscribe({
       next: (data) => {
-        let voyages = (data.voyages || []).map((v: any) => ({
+        let list = data.map((v: any) => ({
           ...v,
           camionImmatriculation: v.camionImmatriculation,
           clientNom: v.clientNom,
           depotNom: v.depotNom,
           typeProduit: v.typeProduit || 'Essence',
-          etats: v.etats || []
+          etats: v.etats || [],
+          responsableIdentifiant: v.responsableIdentifiant
         }));
         if (this.isLogisticienOnly()) {
           const identifiant = this.authService.getIdentifiant();
-          voyages = voyages.filter((v: any) => v.responsableIdentifiant === identifiant);
+          list = list.filter((v: any) => v.responsableIdentifiant === identifiant);
         }
-        let filtered = sortByDateCreationDesc(voyages) as VoyageDisplay[];
+        // Archives = statut DECHARGER ou déclaré avec état "Décharger" validé
+        let filtered = list.filter((v: VoyageDisplay) => v.statut === 'DECHARGER' || isDechargerValide(v));
         if (this.filterStatut) {
           filtered = filtered.filter((v: VoyageDisplay) => {
-            if (this.filterStatut === 'RECEPTIONNER') {
-              if (!isSortieDouane(v.statut, v)) return false;
-            } else if (v.statut !== this.filterStatut) {
-              return false;
+            if (this.filterStatut === 'DECHARGER') {
+              return v.statut === 'DECHARGER' || isDechargerValide(v);
             }
-            return true;
+            if (this.filterStatut === 'RECEPTIONNER') {
+              return isSortieDouane(v.statut, v);
+            }
+            return v.statut === this.filterStatut;
+          });
+        }
+        if (this.filterType === 'date' && this.filterDate) {
+          filtered = filtered.filter((v: VoyageDisplay) => {
+            if (!v.dateDepart) return false;
+            return new Date(v.dateDepart).toDateString() === new Date(this.filterDate).toDateString();
+          });
+        } else if (this.filterType === 'range' && this.filterStartDate && this.filterEndDate) {
+          const start = new Date(this.filterStartDate);
+          const end = new Date(this.filterEndDate);
+          end.setHours(23, 59, 59, 999);
+          filtered = filtered.filter((v: VoyageDisplay) => {
+            if (!v.dateDepart) return false;
+            const d = new Date(v.dateDepart);
+            return d >= start && d <= end;
           });
         }
         if (this.filterType === 'axe' && this.filterAxeId != null) {
@@ -1041,7 +1055,7 @@ export class SuiviTransportComponent implements OnInit {
             (v.camionImmatriculation?.toLowerCase().includes(term))
           );
         }
-        this._allArchivesFiltered = filtered;
+        this._allArchivesFiltered = sortByDateCreationDesc(filtered) as VoyageDisplay[];
         this.currentPageArchives = 0;
         this.applyArchivesPagination();
         this.isLoading = false;
