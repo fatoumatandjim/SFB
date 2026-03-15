@@ -51,6 +51,12 @@ export interface VoyageLiberer {
   liberer?: boolean;
 }
 
+/** Étend le voyage pour la logique d’affichage (déclaré + état Décharger validé = afficher "Décharger"). */
+export interface VoyagePourStatut extends VoyageLiberer {
+  declarer?: boolean;
+  etats?: Array<{ etat?: string; valider?: boolean }>;
+}
+
 /** Statuts considérés "en chargement" (bon d'enlèvement, Excel, etc.). */
 export const STATUTS_EN_CHARGEMENT: readonly string[] = ['EN_ATTENTE_CHARGEMENT', 'CHARGEMENT'];
 
@@ -85,15 +91,26 @@ export function isSortieDouane(
   );
 }
 
+/** True si le voyage est déclaré et a l’état "Décharger" validé → afficher "Décharger" au lieu de "Sortie de douane". */
+function isDechargerValide(voyage?: VoyagePourStatut): boolean {
+  if (!voyage?.declarer || !voyage.etats?.length) return false;
+  return voyage.etats.some(
+    (e) => (e.etat === 'Décharger' || e.etat === 'Decharger') && e.valider === true
+  );
+}
+
 /**
  * Libellé affiché pour un statut de voyage.
  * DOUANE + liberer → "Sortie de douane" (cohérent avec RECEPTIONNER).
+ * Si le voyage est déclaré et l’état "Décharger" est validé, on affiche "Décharger" même si le statut API est encore RECEPTIONNER/DOUANE.
  */
 export function getVoyageStatutLabel(
   statut: string | undefined,
-  voyage?: VoyageLiberer
+  voyage?: VoyageLiberer | VoyagePourStatut
 ): string {
   if (!statut) return 'N/A';
+  const v = voyage as VoyagePourStatut | undefined;
+  if (isDechargerValide(v)) return STATUT_VOYAGE_LABELS['DECHARGER'];
   if (statut === 'DOUANE' && voyage?.liberer) return LABEL_SORTIE_DOUANE;
   return STATUT_VOYAGE_LABELS[statut] ?? statut;
 }
@@ -101,12 +118,15 @@ export function getVoyageStatutLabel(
 /**
  * Classe CSS pour le badge du statut.
  * DOUANE + liberer → même style que RECEPTIONNER.
+ * Si déclaré + état "Décharger" validé, style "Décharger".
  */
 export function getVoyageStatutClass(
   statut: string | undefined,
-  voyage?: VoyageLiberer
+  voyage?: VoyageLiberer | VoyagePourStatut
 ): string {
   if (!statut) return DEFAULT_CLASS;
+  const v = voyage as VoyagePourStatut | undefined;
+  if (isDechargerValide(v)) return STATUT_VOYAGE_CLASSES['DECHARGER'];
   if (statut === 'DOUANE' && voyage?.liberer) return CLASS_SORTIE_DOUANE;
   return STATUT_VOYAGE_CLASSES[statut] ?? DEFAULT_CLASS;
 }
