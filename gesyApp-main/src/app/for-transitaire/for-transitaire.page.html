@@ -281,20 +281,16 @@
                 <td class="col-actions">
                   <div class="action-cell-inner">
                     <div class="action-buttons">
-                      <button type="button" class="action-btn voir-btn" (click)="viewVoyage(voyage)" title="Voir le détail du voyage">
-                        <span>👁️</span> Voir
+                      <button type="button" class="action-btn btn-view" (click)="viewVoyage(voyage)" title="Voir le détail du voyage">
+                        <span>👁️</span>
                       </button>
                       @if (voyage.liberer) {
                         <span class="status-badge badge-libere" title="Voyage libéré">Liberé</span>
                       } @else if (voyage.declarer || voyage.passager === 'passer_non_declarer') {
-                        <button type="button" class="action-btn liberer-btn" (click)="libererVoyage(voyage)" title="Libérer le voyage">
-                          <span>Libérer</span>
-                        </button>
+                        <button type="button" class="btn-action-sm btn-liberer" (click)="libererVoyage(voyage)" title="Libérer le voyage">Libérer</button>
                       }
                       @if (!voyage.declarer && !voyage.passager && voyage.statut === 'DOUANE') {
-                        <button type="button" class="action-btn passer-btn" (click)="passerNonDeclarer(voyage)" title="Passer non déclaré">
-                          <span>Passer non déclaré</span>
-                        </button>
+                        <button type="button" class="btn-action-sm btn-passer" (click)="passerNonDeclarer(voyage)" title="Passer non déclaré">Passer</button>
                       }
                     </div>
                   </div>
@@ -392,21 +388,17 @@
                 <td class="col-actions">
                   <div class="action-cell-inner">
                     <div class="action-buttons">
-                      <button type="button" class="action-btn voir-btn" (click)="viewVoyage(voyage)" title="Voir le détail du voyage">
-                        <span>👁️</span> Voir
+                      <button type="button" class="action-btn btn-view" (click)="viewVoyage(voyage)" title="Voir le détail du voyage">
+                        <span>👁️</span>
                       </button>
                       @if (activeTab === 'en-cours') {
                         @if (voyage.liberer) {
                           <span class="status-badge badge-libere" title="Voyage libéré">Liberé</span>
                         } @else if (voyage.declarer || voyage.passager === 'passer_non_declarer') {
-                          <button type="button" class="action-btn liberer-btn" (click)="libererVoyage(voyage)" title="Libérer le voyage">
-                            <span>Libérer</span>
-                          </button>
+                          <button type="button" class="btn-action-sm btn-liberer" (click)="libererVoyage(voyage)" title="Libérer le voyage">Libérer</button>
                         }
                         @if (!voyage.declarer && !voyage.passager && voyage.statut === 'DOUANE') {
-                          <button type="button" class="action-btn passer-btn" (click)="passerNonDeclarer(voyage)" title="Passer non déclaré">
-                            <span>Passer non déclaré</span>
-                          </button>
+                          <button type="button" class="btn-action-sm btn-passer" (click)="passerNonDeclarer(voyage)" title="Passer non déclaré">Passer</button>
                         }
                       }
                     </div>

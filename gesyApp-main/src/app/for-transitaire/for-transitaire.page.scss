@@ -721,120 +721,80 @@
 
 .action-buttons {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
   align-items: center;
+  justify-content: center;
 }
 
+// Aligné sur suivi-transport : bouton icône Voir/Détails
 .action-btn {
-  background: var(--bg-secondary);
+  background: none;
   border: none;
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  display: flex;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border-radius: 4px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 14px;
   transition: all 0.2s;
+  flex-shrink: 0;
 
   &:hover {
-    background: var(--bg-card);
-    transform: scale(1.1);
+    background: var(--bg-tertiary, #e5e7eb);
+    transform: scale(1.05);
   }
 
-  span {
-    display: block;
+  &.btn-view {
+    background: rgba(59, 130, 246, 0.2);
+    color: #3b82f6;
+    &:hover {
+      background: rgba(59, 130, 246, 0.4);
+    }
   }
 }
 
-.voir-btn {
-  width: auto;
-  min-width: auto;
-  padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 500;
-  color: #fff;
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+// Aligné sur suivi-transport : petits boutons texte Libérer / Passer
+.btn-action-sm {
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
   border: none;
   border-radius: 4px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-  white-space: nowrap;
-  gap: 6px;
-
-  span {
-    font-size: inherit;
-  }
-
-  &:hover {
-    filter: brightness(1.1);
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(99, 102, 241, 0.3);
-  }
-
-  &:focus {
-    outline: none;
-    box-shadow: 0 0 0 2px var(--accent-primary);
-  }
-}
-
-.passer-btn {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  color: #fff;
-  width: auto;
-  height: auto;
-  padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 500;
-  white-space: nowrap;
-  border-radius: 4px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-
-  &:hover {
-    filter: brightness(1.1);
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
-  }
-
-  span {
-    font-size: inherit;
-  }
-}
-
-.liberer-btn {
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-  color: #fff;
-  width: auto;
-  height: auto;
-  padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 500;
-  white-space: nowrap;
-  border-radius: 4px;
-  border: none;
   cursor: pointer;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-  margin-right: 6px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  line-height: 1.25;
+  min-height: 26px;
+  flex-shrink: 0;
 
-  &:hover {
-    filter: brightness(1.1);
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(99, 102, 241, 0.3);
+  &.btn-liberer {
+    background: rgba(168, 85, 247, 0.2);
+    color: #c084fc;
+    &:hover {
+      background: rgba(168, 85, 247, 0.4);
+    }
   }
 
-  span {
-    font-size: inherit;
+  &.btn-passer {
+    background: rgba(251, 191, 36, 0.2);
+    color: #fbbf24;
+    &:hover {
+      background: rgba(251, 191, 36, 0.4);
+    }
   }
 }
 
 .badge-libere {
-  background: #6366f1;
-  color: #fff;
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
-  margin-right: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 4px;
+  background: rgba(168, 85, 247, 0.2);
+  color: #c084fc;
 }
 
 // Modal styles
