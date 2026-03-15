@@ -1384,13 +1384,6 @@
       display: flex;
       flex-direction: column;
       gap: 8px;
-
-      /* Boutons prix d'achat et modifier client toujours visibles */
-      .btn-add-prix-achat-small {
-        flex-shrink: 0;
-        visibility: visible;
-        opacity: 1;
-      }
     }
 
     .info-row {
@@ -1474,12 +1467,11 @@
     }
 
     .btn-add-prix-achat-small {
-      display: inline-flex;
+      display: flex;
       align-items: center;
       gap: 6px;
       padding: 8px 12px;
-      margin-top: 10px;
-      margin-right: 8px;
+      margin-top: 8px;
       background: #10b981;
       color: white;
       border: none;
@@ -1488,8 +1480,7 @@
       font-weight: 500;
       cursor: pointer;
       transition: all 0.2s;
-      width: auto;
-      min-width: 0;
+      width: fit-content;
 
       &:hover {
         background: #059669;
@@ -1503,24 +1494,6 @@
 
       span {
         font-size: 14px;
-      }
-
-      &.btn-modifier-prix {
-        background: var(--bg-primary);
-        color: var(--accent-primary, #3b82f6);
-        border: 1px solid var(--accent-primary, #3b82f6);
-      }
-
-      &.btn-modifier-prix:hover {
-        background: rgba(59, 130, 246, 0.1);
-      }
-
-      &.btn-edit-client {
-        background: #6b7280;
-      }
-
-      &.btn-edit-client:hover {
-        background: #4b5563;
       }
     }
   }
