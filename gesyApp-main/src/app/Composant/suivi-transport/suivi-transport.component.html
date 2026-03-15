@@ -160,8 +160,8 @@
           <th class="col-declaration">Déclaré</th>
           <th>Type Produit</th>
           <th>Quantité restante</th>
-          <th>Départ</th>
-          <th>Dépôt</th>
+          <th class="col-depart">Départ</th>
+          <th class="col-depot">Dépôt</th>
           <th>Axe</th>
           <th class="col-actions">Actions</th>
         </tr>
@@ -297,13 +297,13 @@
           <td>
             <div class="quantite-value">{{ voyage.quantite | number }} L</div>
           </td>
-          <td>
+          <td class="col-depart">
             <div class="date-info">
               <div class="date-value">{{ formatDate(getVoyageDisplayDate(voyage)) }}</div>
               <div class="lieu-value">{{ voyage.lieuDepart }}</div>
             </div>
           </td>
-          <td>
+          <td class="col-depot">
             <div class="destination-value">{{ voyage.depotNom }}</div>
             @if (voyage.dateArrivee) {
             <div class="date-arrivee">Arriver à la frontière: {{ formatDate(voyage.dateArrivee) }}</div>
@@ -450,8 +450,8 @@
             <div class="type-produit">{{ voyage.produitNom || voyage.typeProduit || 'N/A' }}</div>
           </td>
           <td>{{ voyage.quantite }} L</td>
-          <td>{{ formatDate(getVoyageDisplayDate(voyage)) }}</td>
-          <td>{{ voyage.depotNom }}</td>
+          <td class="col-depart">{{ formatDate(getVoyageDisplayDate(voyage)) }}</td>
+          <td class="col-depot">{{ voyage.depotNom }}</td>
           <td>{{ voyage.axeNom || getAxeNom(voyage.axeId) || '-' }}</td>
           <td class="col-actions">
             <div class="action-buttons">

@@ -485,6 +485,18 @@
     white-space: nowrap;
     vertical-align: middle;
   }
+
+  th.col-depart,
+  td.col-depart {
+    min-width: 140px;
+    width: 140px;
+  }
+
+  th.col-depot,
+  td.col-depot {
+    min-width: 140px;
+    width: 140px;
+  }
 }
 
 .action-buttons {

@@ -1267,6 +1267,15 @@ export class SuiviTransportComponent implements OnInit {
             }
           }
 
+          // Mettre à jour immédiatement la ligne dans la liste avec le statut réel (évite décalage liste vs popup).
+          if (this.voyageForStatutChange?.id && updatedVoyage.statut !== undefined) {
+            this.updateVoyageInLists(this.voyageForStatutChange.id, {
+              statut: updatedVoyage.statut as any,
+              liberer: updatedVoyage.liberer,
+              etats: updatedVoyage.etats || []
+            });
+          }
+
           // Rafraîchir la liste depuis le serveur (source de vérité) pour que la colonne Statut soit cohérente.
           if (this.activeTab === 'en-cours') {
             this.loadVoyagesEnCours();
