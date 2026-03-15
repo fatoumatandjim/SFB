@@ -34,7 +34,6 @@ interface VoyageDisplay extends Voyage {
   liberer?: boolean;
   passager?: string; // passer_declarer, passer_non_declarer ou null
   transactions?: Transaction[];
-  etats?: Array<{ etat?: string; valider?: boolean }>;
 }
 
 interface TransitaireInfo {
