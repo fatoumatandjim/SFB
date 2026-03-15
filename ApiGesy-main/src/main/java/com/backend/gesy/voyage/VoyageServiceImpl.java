@@ -745,13 +745,18 @@ public class VoyageServiceImpl implements VoyageService {
             } else if (nouveauStatut == Voyage.StatutVoyage.DECHARGER || nouveauStatut == Voyage.StatutVoyage.PARTIELLEMENT_DECHARGER) {
                 // Gérer plusieurs manquants par ClientVoyage
                 if (request.getManquants() != null && !request.getManquants().isEmpty()) {
-                    for (Map.Entry<Long, Double> entry : request.getManquants().entrySet()) {
-                        Long clientVoyageId = entry.getKey();
+                    for (Map.Entry<String, Double> entry : request.getManquants().entrySet()) {
+                        Long clientVoyageId;
+                        try {
+                            clientVoyageId = Long.parseLong(entry.getKey());
+                        } catch (NumberFormatException e) {
+                            continue; // Clé invalide, ignorer
+                        }
                         Double manquant = entry.getValue();
                         
                         // CORRECTION : Permettre les manquants de 0 (livraison complète)
                         // Seuls les manquants négatifs sont invalides
-                        if (clientVoyageId == null || manquant == null || manquant < 0) {
+                        if (manquant == null || manquant < 0) {
                             continue; // Ignorer les manquants invalides
                         }
                         System.out.println("Traitement du manquant pour ClientVoyage ID: " + clientVoyageId + ", Manquant: " + manquant);

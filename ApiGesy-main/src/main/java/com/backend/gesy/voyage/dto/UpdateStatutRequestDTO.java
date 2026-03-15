@@ -15,5 +15,6 @@ import java.util.Map;
 public class UpdateStatutRequestDTO {
     private String statut;
     private List<ClientQuantiteDTO> clients; // Pour le statut LIVRE : liste de clients avec quantités
-    private Map<Long, Double> manquants; // Pour le statut DECHARGER : Map<clientVoyageId, manquant>
+    // Clés en String car en JSON les clés d'objet sont toujours des chaînes (frontend envoie {"123": 0})
+    private Map<String, Double> manquants; // Pour le statut DECHARGER : Map<clientVoyageId, manquant>
 }
