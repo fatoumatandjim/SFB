@@ -1903,6 +1903,10 @@ export class SuiviTransportComponent implements OnInit {
             this.selectedVoyage.clientVoyages = updatedVoyage.clientVoyages;
           }
         }
+
+        // Fermer le modal et recharger la liste depuis le serveur pour refléter l'état persisté
+        this.closeStatutModal();
+        this.updateFilteredVoyages();
       },
       error: (error) => {
         console.error('Erreur lors de la mise à jour du statut:', error);

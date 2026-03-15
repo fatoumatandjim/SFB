@@ -883,13 +883,16 @@ public class VoyageServiceImpl implements VoyageService {
                 }
             }
 
-            // Mettre à jour le statut du camion en fonction du nouveau statut du voyage
+            // Mettre à jour le statut du camion en fonction du statut final du voyage (après éventuel passage en PARTIELLEMENT_DECHARGER)
             if (voyage.getCamion() != null) {
-                updateCamionStatusFromVoyage(voyage.getCamion(), nouveauStatut, voyage);
+                updateCamionStatusFromVoyage(voyage.getCamion(), voyage.getStatut(), voyage);
             }
 
-            Voyage updatedVoyage = voyageRepository.save(voyage);
-            return voyageMapper.toDTO(updatedVoyage);
+            voyageRepository.saveAndFlush(voyage);
+            // Recharger depuis la base pour garantir que le DTO reflète l'état persisté (et les collections lazy)
+            Voyage refreshed = voyageRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Voyage non trouvé après sauvegarde"));
+            return voyageMapper.toDTO(refreshed);
         } catch (IllegalArgumentException e) {
             throw new RuntimeException("Statut invalide: " + request.getStatut());
         }
