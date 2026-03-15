@@ -220,6 +220,12 @@ public interface VoyageRepository extends JpaRepository<Voyage, Long> {
                      "ORDER BY v.dateDepart DESC, v.id DESC")
        List<Voyage> findVoyagesActifsByTransitaire(@Param("transitaire") Transitaire transitaire);
 
+       /** Voyages « À déclarer » : non libérés OU non déclarés (reste tant qu'on n'a pas à la fois libérer et déclarer) */
+       @Query("SELECT v FROM Voyage v WHERE v.transitaire = :transitaire " +
+                     "AND ((v.liberer = false OR v.liberer IS NULL) OR (v.declarer = false OR v.declarer IS NULL)) " +
+                     "ORDER BY v.dateDepart DESC, v.id DESC")
+       List<Voyage> findVoyagesADeclarerOuALibererByTransitaire(@Param("transitaire") Transitaire transitaire);
+
        /** Voyages « À déclarer » du transitaire : statut DOUANE et non déclarés uniquement */
        @Query("SELECT v FROM Voyage v WHERE v.transitaire = :transitaire " +
                      "AND v.statut = 'DOUANE' AND (v.declarer = false OR v.declarer IS NULL) " +
