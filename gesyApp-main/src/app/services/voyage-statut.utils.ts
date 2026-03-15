@@ -91,8 +91,8 @@ export function isSortieDouane(
   );
 }
 
-/** True si le voyage est déclaré et a l’état "Décharger" validé → afficher "Décharger" au lieu de "Sortie de douane". */
-function isDechargerValide(voyage?: VoyagePourStatut): boolean {
+/** True si le voyage est déclaré et a l’état "Décharger" validé → à afficher comme "Décharger" et à exclure de la liste En cours (Archives uniquement). */
+export function isDechargerValide(voyage?: VoyagePourStatut): boolean {
   if (!voyage?.declarer || !voyage.etats?.length) return false;
   return voyage.etats.some(
     (e) => (e.etat === 'Décharger' || e.etat === 'Decharger') && e.valider === true

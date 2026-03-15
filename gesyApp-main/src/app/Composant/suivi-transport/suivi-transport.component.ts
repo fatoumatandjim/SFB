@@ -21,6 +21,7 @@ import {
   getVoyageStatutLabel,
   getVoyageStatutClass,
   isSortieDouane,
+  isDechargerValide,
   isVoyageEnChargement,
   STATUTS_VOYAGE_ORDER,
   STATUTS_EN_COURS
@@ -913,7 +914,12 @@ export class SuiviTransportComponent implements OnInit {
           const identifiant = this.authService.getIdentifiant();
           list = list.filter((v: any) => v.responsableIdentifiant === identifiant);
         }
-        let filtered = list.filter((v: VoyageDisplay) => v.statut !== 'DECHARGER' || !v.declarer);
+        // Exclure les voyages déjà déchargés : statut DECHARGER ou déclaré avec état "Décharger" validé → uniquement dans Archives
+        let filtered = list.filter((v: VoyageDisplay) => {
+          if (v.statut === 'DECHARGER') return false;
+          if (isDechargerValide(v)) return false; // déclaré + Décharger validé → n'apparaît qu'aux Archives
+          return true;
+        });
         if (this.filterStatut) {
           filtered = filtered.filter((v: VoyageDisplay) => {
             if (this.filterStatut === 'RECEPTIONNER') {
@@ -1136,12 +1142,12 @@ export class SuiviTransportComponent implements OnInit {
           voyages = voyages.filter((v: any) => v.responsableIdentifiant === identifiant);
         }
 
-        // Filtrer par onglet
+        // Filtrer par onglet : déchargés (DECHARGER ou déclaré + Décharger validé) → Archives uniquement
         let filtered = voyages;
         if (this.activeTab === 'en-cours') {
-          filtered = filtered.filter(v => v.statut !== 'DECHARGER' || !v.declarer);
+          filtered = filtered.filter(v => v.statut !== 'DECHARGER' && !isDechargerValide(v));
         } else if (this.activeTab === 'archives') {
-          filtered = filtered.filter(v => v.statut === 'DECHARGER');
+          filtered = filtered.filter(v => v.statut === 'DECHARGER' || isDechargerValide(v));
         }
 
         // Filtrer par recherche
