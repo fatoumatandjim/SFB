@@ -121,6 +121,8 @@ public class VoyageServiceImpl implements VoyageService {
     @Override
     public List<VoyageDTO> findAll() {
         return voyageRepository.findAll().stream()
+                .sorted(Comparator.comparing(Voyage::getDateCreation, Comparator.nullsLast(Comparator.naturalOrder())).reversed()
+                        .thenComparing(Voyage::getId, Comparator.nullsLast(Comparator.naturalOrder())).reversed())
                 .map(voyageMapper::toDTO)
                 .collect(Collectors.toList());
     }
@@ -315,6 +317,8 @@ public class VoyageServiceImpl implements VoyageService {
         // Générer un numéro de voyage unique
         String numeroVoyage = generateUniqueNumeroVoyage();
         voyage.setNumeroVoyage(numeroVoyage);
+
+        voyage.setDateCreation(LocalDateTime.now());
 
         // Statut par défaut: EN_ATTENTE_CHARGEMENT (création directe en attente de chargement)
         if (voyage.getStatut() == null) {

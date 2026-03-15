@@ -50,6 +50,7 @@ public class VoyageMapper {
         dto.setTransitairePhone(voyage.getTransitaire() != null ? voyage.getTransitaire().getTelephone() : null);
         dto.setAxeId(voyage.getAxe() != null ? voyage.getAxe().getId() : null);
         dto.setAxeNom(voyage.getAxe() != null ? voyage.getAxe().getNom() : null);
+        dto.setDateCreation(voyage.getDateCreation());
         dto.setDateDepart(voyage.getDateDepart());
         dto.setDateArrivee(voyage.getDateArrivee());
         dto.setDestination(voyage.getDestination());
@@ -154,6 +155,7 @@ public class VoyageMapper {
         Voyage voyage = new Voyage();
         voyage.setId(dto.getId());
         voyage.setNumeroVoyage(dto.getNumeroVoyage());
+        voyage.setDateCreation(dto.getDateCreation());
         voyage.setDateDepart(dto.getDateDepart());
         voyage.setDateArrivee(dto.getDateArrivee());
         voyage.setDestination(dto.getDestination());

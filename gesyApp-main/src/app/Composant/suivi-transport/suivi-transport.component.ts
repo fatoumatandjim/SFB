@@ -25,7 +25,7 @@ import {
   STATUTS_VOYAGE_ORDER,
   STATUTS_EN_COURS
 } from '../../services/voyage-statut.utils';
-import { sortByDateDepartDesc } from '../../services/voyage-date.utils';
+import { sortByDateCreationDesc } from '../../services/voyage-date.utils';
 import {
   getChauffeurDisplay,
   formatDateFr,
@@ -600,7 +600,7 @@ export class SuiviTransportComponent implements OnInit {
           const identifiant = this.authService.getIdentifiant();
           list = list.filter(v => (v as any).responsableIdentifiant === identifiant);
         }
-        this.voyages = sortByDateDepartDesc(list);
+        this.voyages = sortByDateCreationDesc(list);
         this.updateFilteredVoyages();
         this.isLoading = false;
       },
@@ -695,7 +695,7 @@ export class SuiviTransportComponent implements OnInit {
     const totalElements = filtered.length;
     const totalPages = Math.ceil(totalElements / this.pageSizeArchives) || 1;
     const start = this.currentPageArchives * this.pageSizeArchives;
-    const voyages = (sortByDateDepartDesc(filtered) as VoyageDisplay[]).slice(start, start + this.pageSizeArchives);
+    const voyages = (sortByDateCreationDesc(filtered) as VoyageDisplay[]).slice(start, start + this.pageSizeArchives);
     this.voyagesArchivesPage = {
       voyages,
       currentPage: this.currentPageArchives,
@@ -709,7 +709,7 @@ export class SuiviTransportComponent implements OnInit {
     this.isLoading = true;
     this.voyagesService.getVoyagesPassesNonDeclares().subscribe({
       next: (data) => {
-        const _nonDeclares = sortByDateDepartDesc(data.map((v: any) => ({
+        const _nonDeclares = sortByDateCreationDesc(data.map((v: any) => ({
           ...v,
           camionImmatriculation: (v as any).camionImmatriculation,
           clientNom: (v as any).clientNom,
@@ -780,7 +780,7 @@ export class SuiviTransportComponent implements OnInit {
       // Charger les voyages normalement
       this.voyagesService.getVoyagesAvecClientSansFacture(this.currentPageSansPrixAchat, this.pageSizeSansPrixAchat).subscribe({
         next: (data: any) => {
-          const voyages = sortByDateDepartDesc(data.voyages.map((v: any) => ({
+          const voyages = sortByDateCreationDesc(data.voyages.map((v: any) => ({
             ...v,
             camionImmatriculation: (v as any).camionImmatriculation,
             clientNom: (v as any).clientNom,
@@ -820,7 +820,7 @@ export class SuiviTransportComponent implements OnInit {
     this.filteredVoyages = [];
     this.voyagesService.getVoyagesSansPrixTransport(this.currentPageSansPrixTransport, this.pageSizeSansPrixTransport).subscribe({
       next: (data: any) => {
-        const voyages = sortByDateDepartDesc(data.voyages.map((v: any) => ({
+        const voyages = sortByDateCreationDesc(data.voyages.map((v: any) => ({
           ...v,
           camionImmatriculation: (v as any).camionImmatriculation,
           clientNom: (v as any).clientNom,
@@ -870,7 +870,7 @@ export class SuiviTransportComponent implements OnInit {
     this.voyagesService.getVoyagesPartiellementDecharges(this.currentPagePartiellementDecharges, this.pageSizePartiellementDecharges).subscribe({
       next: (data: any) => {
         this.voyagesPartiellementDechargesPage = {
-          voyages: sortByDateDepartDesc(data.voyages || []),
+          voyages: sortByDateCreationDesc(data.voyages || []),
           currentPage: data.currentPage || 0,
           totalPages: data.totalPages || 0,
           totalElements: data.totalElements || 0,
@@ -957,7 +957,7 @@ export class SuiviTransportComponent implements OnInit {
             (v.camionImmatriculation?.toLowerCase().includes(term))
           );
         }
-        const sorted = sortByDateDepartDesc(filtered) as VoyageDisplay[];
+        const sorted = sortByDateCreationDesc(filtered) as VoyageDisplay[];
         this.voyages = sorted;
         const totalElements = sorted.length;
         const totalPages = Math.ceil(totalElements / this.pageSizeEnCours) || 1;
@@ -1011,7 +1011,7 @@ export class SuiviTransportComponent implements OnInit {
           const identifiant = this.authService.getIdentifiant();
           voyages = voyages.filter((v: any) => v.responsableIdentifiant === identifiant);
         }
-        let filtered = sortByDateDepartDesc(voyages) as VoyageDisplay[];
+        let filtered = sortByDateCreationDesc(voyages) as VoyageDisplay[];
         if (this.filterStatut) {
           filtered = filtered.filter((v: VoyageDisplay) => {
             if (this.filterStatut === 'RECEPTIONNER') {
@@ -1156,7 +1156,7 @@ export class SuiviTransportComponent implements OnInit {
           );
         }
 
-        this.filteredVoyages = sortByDateDepartDesc(filtered);
+        this.filteredVoyages = sortByDateCreationDesc(filtered);
         this.voyagesAxePage = {
           voyages: this.filteredVoyages,
           currentPage: page.currentPage,

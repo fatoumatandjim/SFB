@@ -61,6 +61,9 @@ public class Voyage {
     @Column(name = "date_depart")
     private LocalDateTime dateDepart;
 
+    @Column(name = "date_creation")
+    private LocalDateTime dateCreation = LocalDateTime.now();
+
     @Column(name = "date_arrivee")
     private LocalDateTime dateArrivee;
 

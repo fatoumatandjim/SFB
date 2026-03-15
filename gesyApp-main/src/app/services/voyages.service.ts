@@ -42,6 +42,7 @@ export interface Voyage {
   axeId?: number | null;
   axeNom?: string;
   dateDepart?: string;
+  dateCreation?: string;
   dateArrivee?: string;
   destination?: string;
   lieuDepart?: string;

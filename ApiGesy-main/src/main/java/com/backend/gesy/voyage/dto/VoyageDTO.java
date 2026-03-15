@@ -26,6 +26,7 @@ public class VoyageDTO {
     private String transitairePhone;
     private Long axeId;
     private String axeNom;
+    private LocalDateTime dateCreation;
     private LocalDateTime dateDepart;
     private LocalDateTime dateArrivee;
     private String destination;

@@ -111,17 +111,17 @@ public interface VoyageRepository extends JpaRepository<Voyage, Long> {
                      @Param("endDate") LocalDateTime endDate,
                      Pageable pageable);
 
-       // Pagination pour tous les voyages archivés (uniquement les voyages déchargés)
+       // Pagination pour tous les voyages archivés (uniquement les voyages déchargés) — tri par date de création (récent d'abord)
        @Query("SELECT v FROM Voyage v WHERE v.statut = 'DECHARGER' " +
-                     "ORDER BY v.dateDepart DESC")
+                     "ORDER BY COALESCE(v.dateCreation, v.dateDepart) DESC, v.id DESC")
        Page<Voyage> findArchivedVoyages(Pageable pageable);
        
-       // Voyages partiellement déchargés
-       @Query("SELECT v FROM Voyage v WHERE v.statut = 'PARTIELLEMENT_DECHARGER' ORDER BY v.dateDepart DESC, v.id DESC")
+       // Voyages partiellement déchargés — tri par date de création
+       @Query("SELECT v FROM Voyage v WHERE v.statut = 'PARTIELLEMENT_DECHARGER' ORDER BY COALESCE(v.dateCreation, v.dateDepart) DESC, v.id DESC")
        Page<Voyage> findVoyagesPartiellementDecharges(Pageable pageable);
        
-       // Voyages en cours (non déchargés)
-       @Query("SELECT v FROM Voyage v WHERE v.statut != 'DECHARGER' ORDER BY v.dateDepart DESC, v.id DESC")
+       // Voyages en cours (non déchargés) — tri par date de création
+       @Query("SELECT v FROM Voyage v WHERE v.statut != 'DECHARGER' ORDER BY COALESCE(v.dateCreation, v.dateDepart) DESC, v.id DESC")
        Page<Voyage> findVoyagesEnCours(Pageable pageable);
 
        // Voyages en cours (non déchargés) avec au moins un client assigné (pour rapport PDF)
@@ -130,16 +130,16 @@ public interface VoyageRepository extends JpaRepository<Voyage, Long> {
                      "ORDER BY v.dateDepart DESC, v.id DESC")
        List<Voyage> findVoyagesEnCoursAvecClients();
 
-       // Pagination avec filtre par date pour tous les voyages archivés
+       // Pagination avec filtre par date pour tous les voyages archivés — tri par date de création
        @Query("SELECT v FROM Voyage v WHERE v.statut = 'DECHARGER' " +
                      "AND DATE(v.dateDepart) = DATE(:date) " +
-                     "ORDER BY v.dateDepart DESC")
+                     "ORDER BY COALESCE(v.dateCreation, v.dateDepart) DESC, v.id DESC")
        Page<Voyage> findArchivedVoyagesByDate(@Param("date") LocalDateTime date, Pageable pageable);
 
-       // Pagination avec filtre par intervalle de dates pour tous les voyages archivés
+       // Pagination avec filtre par intervalle de dates pour tous les voyages archivés — tri par date de création
        @Query("SELECT v FROM Voyage v WHERE v.statut = 'DECHARGER' " +
                      "AND v.dateDepart >= :startDate AND v.dateDepart <= :endDate " +
-                     "ORDER BY v.dateDepart DESC")
+                     "ORDER BY COALESCE(v.dateCreation, v.dateDepart) DESC, v.id DESC")
        Page<Voyage> findArchivedVoyagesByDateRange(
                      @Param("startDate") LocalDateTime startDate,
                      @Param("endDate") LocalDateTime endDate,
