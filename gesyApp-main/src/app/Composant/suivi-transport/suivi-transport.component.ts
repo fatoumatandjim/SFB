@@ -1371,8 +1371,8 @@ export class SuiviTransportComponent implements OnInit {
   }
 
   donnerPrixAchat() {
-    if (!this.authService.isComptable()) {
-      this.toastService.warning('Seul le comptable peut modifier les prix d\'achat');
+    if (!this.authService.isAdmin() && !this.authService.isComptable()) {
+      this.toastService.warning('Seul le comptable ou l\'admin peut ajouter/modifier le prix d\'achat');
       return;
     }
     if (!this.voyageForPrixAchat || !this.voyageForPrixAchat.id) {
@@ -1966,6 +1966,11 @@ export class SuiviTransportComponent implements OnInit {
 
   isComptable(): boolean {
     return this.authService.isComptable();
+  }
+
+  /** Seul le comptable ou l'admin peut ajouter/modifier le prix d'achat. */
+  canAddOrModifyPrixAchat(): boolean {
+    return this.authService.isAdmin() || this.authService.isComptable();
   }
 
   // Modal modification prix unitaire transport (comptable) — référence stable

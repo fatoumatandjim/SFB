@@ -698,24 +698,22 @@
                   <span class="info-label">Prix d'achat:</span>
                   <span class="info-value missing">Non défini</span>
                 </div>
-                @if (isComptable()) {
-                <button class="btn-add-prix-achat-small" (click)="openPrixAchatModal(selectedVoyage, clientVoyage)"
+                @if (canAddOrModifyPrixAchat()) {
+                <button type="button" class="btn-add-prix-achat-small" (click)="openPrixAchatModal(selectedVoyage, clientVoyage)"
                   title="Donner le prix d'achat pour ce client">
                   <span>💰</span>
                   Donner le prix d'achat
                 </button>
                 }
                 }
-                @if (clientVoyage.prixAchat) {
-                @if (isComptable()) {
-                <button class="btn-add-prix-achat-small" (click)="openPrixAchatModal(selectedVoyage, clientVoyage)"
+                @if (clientVoyage.prixAchat && canAddOrModifyPrixAchat()) {
+                <button type="button" class="btn-add-prix-achat-small btn-modifier-prix" (click)="openPrixAchatModal(selectedVoyage, clientVoyage)"
                   title="Modifier le prix d'achat pour ce client">
                   <span>✏️</span>
                   Modifier le prix d'achat
                 </button>
                 }
-                }
-                <button class="btn-add-prix-achat-small" (click)="openEditClientVoyageModal(selectedVoyage, clientVoyage)"
+                <button type="button" class="btn-add-prix-achat-small btn-edit-client" (click)="openEditClientVoyageModal(selectedVoyage, clientVoyage)"
                   title="Modifier la quantité attribuée à ce client">
                   <span>⚙️</span>
                   Modifier le client
