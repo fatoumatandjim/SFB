@@ -571,8 +571,8 @@ export class ForTransitairePage implements OnInit {
 
       this.voyagesService.passerNonDeclarer(voyage.id!).subscribe({
         next: () => {
-          // Recharger la liste depuis le backend : le voyage reste en « voyages actifs »
           this.loadVoyages();
+          if (this.activeTab === 'voyages-en-cours') this.loadVoyagesEnCours();
           this.toastService.success('Voyage marqué comme passé non déclaré');
         },
         error: (error) => {
@@ -662,6 +662,7 @@ export class ForTransitairePage implements OnInit {
     this.voyagesService.libererVoyage(voyageId).subscribe({
       next: () => {
         this.loadVoyages();
+        if (this.activeTab === 'voyages-en-cours') this.loadVoyagesEnCours();
         this.selectedVoyages.delete(voyageId);
         this.toastService.success('Voyage libéré avec succès');
       },
