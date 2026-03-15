@@ -1207,20 +1207,12 @@
               type="number"
               id="decharger-manquant-{{ clientVoyage.id }}"
               class="form-input"
-              [class.disabled]="isClientFieldDisabled(clientVoyage.id)"
               [ngModel]="dechargerManquants[clientVoyage.id || 0]"
               (ngModelChange)="onDechargerManquantChange(clientVoyage.id, $event)"
-              [disabled]="isClientFieldDisabled(clientVoyage.id)"
-              [readonly]="isClientFieldDisabled(clientVoyage.id)"
               min="0"
               step="0.01"
               placeholder="0" />
-            <small class="form-help">
-              Quantité manquante pour ce client
-              @if (isClientLivrer(clientVoyage.id) && !isModifierMode(clientVoyage.id)) {
-                (déjà livré - cliquez sur "Modifier" pour changer)
-              }
-            </small>
+            <small class="form-help">Quantité manquante pour ce client (0 = livraison complète)</small>
           </div>
         </div>
         }

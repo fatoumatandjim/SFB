@@ -1234,14 +1234,11 @@ export class SuiviTransportComponent implements OnInit {
     this.dechargerModifierMode = {};
 
     // Si le voyage a déjà des ClientVoyage, initialiser dechargerManquants et dechargerClientLivres
+    // Chaque client a un champ manquant modifiable (valeur existante ou 0 par défaut)
     if (voyage.clientVoyages && voyage.clientVoyages.length > 0) {
       voyage.clientVoyages.forEach(cv => {
         if (cv.id) {
-          // Garder la valeur existante de manquant, même si elle vaut 0
-          if (cv.manquant !== undefined && cv.manquant !== null) {
-            this.dechargerManquants[cv.id] = cv.manquant;
-          }
-          // Initialiser l'état de livraison basé sur le statut existant
+          this.dechargerManquants[cv.id] = (cv.manquant !== undefined && cv.manquant !== null) ? cv.manquant : 0;
           this.dechargerClientLivres[cv.id] = cv.statut === 'LIVRER';
         }
       });
@@ -1289,9 +1286,7 @@ export class SuiviTransportComponent implements OnInit {
             this.dechargerClientLivres = {};
             updatedVoyage.clientVoyages.forEach(cv => {
               if (cv.id) {
-                if (cv.manquant !== undefined && cv.manquant !== null) {
-                  this.dechargerManquants[cv.id] = cv.manquant;
-                }
+                this.dechargerManquants[cv.id] = (cv.manquant !== undefined && cv.manquant !== null) ? cv.manquant : 0;
                 this.dechargerClientLivres[cv.id] = cv.statut === 'LIVRER';
               }
             });
@@ -1823,31 +1818,23 @@ export class SuiviTransportComponent implements OnInit {
         params = undefined;
       }
     } else if (this.selectedStatut === 'DECHARGER') {
-      // Pour DECHARGER, envoyer uniquement les manquants pour les ClientVoyage marqués comme livrés
-      // Cette validation a déjà été faite plus haut, donc on est sûr qu'au moins un client est coché
+      // Pour DECHARGER, envoyer les manquants pour les ClientVoyage marqués comme livrés
+      // Clés en string pour que le JSON soit correctement désérialisé côté backend (Map<String, Double>)
       params = {};
-      params.manquants = {};
+      params.manquants = {} as Record<string, number>;
 
-      // Ne traiter que les ClientVoyage marqués comme livrés
       if (this.voyageForStatutChange?.clientVoyages && this.voyageForStatutChange.clientVoyages.length > 0) {
         this.voyageForStatutChange.clientVoyages.forEach(cv => {
           if (cv.id && this.dechargerClientLivres[cv.id]) {
-            // Seulement si le client est marqué comme livré
             const manquant = this.dechargerManquants[cv.id];
-            if (manquant !== undefined && manquant !== null && manquant >= 0) {
-              // Manquant saisi explicitement (y compris 0 saisi par l'utilisateur)
-              params.manquants[Number(cv.id)] = manquant;
-            } else if (cv.manquant !== undefined && cv.manquant !== null && cv.manquant >= 0) {
-              // Utiliser le manquant existant s'il existe déjà côté backend
-              params.manquants[Number(cv.id)] = cv.manquant;
-            }
-            // Sinon : aucun manquant n'est envoyé pour ce client (différent d'un 0 explicite)
+            const value = (manquant !== undefined && manquant !== null && manquant >= 0)
+              ? manquant
+              : (cv.manquant !== undefined && cv.manquant !== null && cv.manquant >= 0 ? cv.manquant : 0);
+            params.manquants[String(cv.id)] = value;
           }
         });
       }
 
-      // Double vérification : si aucun ClientVoyage n'est marqué comme livré après traitement,
-      // cela ne devrait pas arriver grâce à la validation plus haut, mais on vérifie quand même
       if (Object.keys(params.manquants).length === 0) {
         this.isLoading = false;
         this.toastService.error('Aucun client livré sélectionné. Impossible de décharger.');
