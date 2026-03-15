@@ -465,6 +465,11 @@ public class VoyageServiceImpl implements VoyageService {
         voyage.setId(existingVoyage.getId());
         voyage.setNumeroVoyage(existingVoyage.getNumeroVoyage()); // Conserver le numéro existant
 
+        // Conserver le statut existant si le DTO n'en envoie pas (cohérence camion / voyage)
+        if (voyage.getStatut() == null && existingVoyage.getStatut() != null) {
+            voyage.setStatut(existingVoyage.getStatut());
+        }
+
         // Responsable : mettre à jour si fourni, sinon conserver l'existant
         if (voyageDTO.getResponsableId() != null && voyageDTO.getResponsableId() > 0) {
             Compte responsable = compteRepository.findById(voyageDTO.getResponsableId())
@@ -475,19 +480,29 @@ public class VoyageServiceImpl implements VoyageService {
         }
 
         // Mettre à jour le camion et son statut
+        Camion ancienCamion = existingVoyage.getCamion();
         Camion camion;
         if (voyageDTO.getCamionId() != null) {
-            camion = camionRepository.findById(voyageDTO.getCamionId())
-                    .orElseThrow(() -> new RuntimeException("Camion non trouvé avec l'id: " + voyageDTO.getCamionId()));
+            Long nouveauCamionId = voyageDTO.getCamionId();
+            boolean changementCamion = ancienCamion == null || !nouveauCamionId.equals(ancienCamion.getId());
+            if (changementCamion && ancienCamion != null
+                    && ancienCamion.getStatut() != Camion.StatutCamion.EN_MAINTENANCE
+                    && ancienCamion.getStatut() != Camion.StatutCamion.HORS_SERVICE) {
+                ancienCamion.setStatut(Camion.StatutCamion.DISPONIBLE);
+                camionRepository.save(ancienCamion);
+            }
+            camion = camionRepository.findById(nouveauCamionId)
+                    .orElseThrow(() -> new RuntimeException("Camion non trouvé avec l'id: " + nouveauCamionId));
             voyage.setCamion(camion);
         } else {
-            camion = existingVoyage.getCamion();
+            camion = ancienCamion;
             voyage.setCamion(camion);
         }
 
-        // Mettre à jour le statut du camion en fonction du statut du voyage
-        if (camion != null && voyage.getStatut() != null) {
-            updateCamionStatusFromVoyage(camion, voyage.getStatut(), voyage);
+        // Mettre à jour le statut du camion en fonction du statut du voyage (toujours cohérent)
+        Voyage.StatutVoyage statutVoyage = voyage.getStatut() != null ? voyage.getStatut() : existingVoyage.getStatut();
+        if (camion != null && statutVoyage != null) {
+            updateCamionStatusFromVoyage(camion, statutVoyage, voyage);
         }
 
         // Mettre à jour le client - créer ou mettre à jour un ClientVoyage
