@@ -49,10 +49,9 @@
       }
     </div>
 
-    @if (activeTab === 'en-cours') {
+    @if (activeTab === 'en-cours' && statsVoyages.length > 0) {
     <div class="stats-section">
       <h3 class="stats-title">Statistiques par statut ({{ getStatsFilterLabel() }})</h3>
-      @if (statsVoyages.length > 0) {
       <div class="stats-cards">
         @for (stat of statsVoyages; track stat.statut) {
         <div class="stat-card-mini">
@@ -61,19 +60,26 @@
         </div>
         }
       </div>
-      } @else {
-      <p class="stats-empty">Aucun voyage en cours</p>
-      }
     </div>
     }
 
     <div class="actions-bar">
       @if (activeTab === 'en-cours' && voyagesEnChargement.length > 0) {
-      <button class="btn-generate-excel" (click)="generateListeCamionsExcel()"
-        title="Télécharger la liste Excel des camions par dépôt">
-        <span>📊</span>
-        Liste Excel
-      </button>
+      <div class="bon-enlevement-actions">
+        <button class="btn-generate-bon" (click)="generateBonEnlevement()" [disabled]="selectedChargementCount === 0"
+          title="Générer les bons d'enlèvement pour les voyages sélectionnés">
+          <span>📄</span>
+          Générer bon(s) d'enlèvement
+          @if (selectedChargementCount > 0) {
+          <span class="badge-count">({{ selectedChargementCount }})</span>
+          }
+        </button>
+        <button class="btn-generate-excel" (click)="generateListeCamionsExcel()"
+          title="Télécharger la liste Excel des camions par dépôt">
+          <span>📊</span>
+          Liste Excel
+        </button>
+      </div>
       }
       <button class="btn-rapport-pdf-camions" (click)="generateRapportCamionsPdf()"
         [disabled]="rapportPdfGenerating"
@@ -127,9 +133,9 @@
       @if (filterType === 'axe') {
       <div class="filter-axe-input">
         <select [(ngModel)]="filterAxeId" (change)="onFilterChange()" class="select-input">
-          <option [value]="undefined">Sélectionner un axe</option>
+          <option [ngValue]="undefined">Sélectionner un axe</option>
           @for (axe of axes; track axe.id) {
-          <option [value]="axe.id">{{ axe.nom }}</option>
+          <option [ngValue]="axe.id">{{ axe.nom }}</option>
           }
         </select>
       </div>
@@ -139,27 +145,18 @@
 
   <div class="table-container">
     <table class="voyages-table">
-      <colgroup>
-        <col>
-        <col>
-        <col class="col-chauffeur">
-        <col>
-        <col class="col-statut">
-        <col class="col-declaration">
-        <col>
-        <col>
-        <col>
-        <col>
-        <col>
-        <col class="col-actions">
-      </colgroup>
       <thead>
         <tr>
+          @if (activeTab === 'en-cours' && voyagesEnChargement.length > 0) {
+          <th class="checkbox-header">
+            <input type="checkbox" [checked]="allChargementSelected" (change)="toggleSelectAllChargement()"
+              title="Sélectionner tous les voyages en chargement" />
+          </th>
+          }
           <th>Numéro Voyage</th>
           <th>Camion</th>
-          <th class="col-chauffeur">Chauffeur</th>
           <th>Client</th>
-          <th class="col-statut">Statut</th>
+          <th>Statut</th>
           <th class="col-declaration">Déclaré</th>
           <th>Type Produit</th>
           <th>Quantité restante</th>
@@ -172,13 +169,21 @@
       <tbody>
         @if (isLoading) {
         <tr>
-          <td [attr.colspan]="12" class="empty-state">
+          <td [attr.colspan]="(activeTab === 'en-cours' && voyagesEnChargement.length > 0) ? 13 : 12" class="empty-state">
             <div class="empty-message">Chargement...</div>
           </td>
         </tr>
         } @else if (activeTab === 'en-cours' && voyagesEnCoursPage && voyagesEnCoursPage.voyages.length > 0) {
         @for (voyage of voyagesEnCoursPage.voyages; track voyage.id) {
         <tr>
+          @if (voyagesEnChargement.length > 0) {
+          <td class="checkbox-cell">
+            @if (voyage.statut === 'EN_ATTENTE_CHARGEMENT' || voyage.statut === 'CHARGEMENT') {
+            <input type="checkbox" [checked]="isVoyageSelected(voyage.id)" (change)="toggleVoyageSelection(voyage.id)"
+              title="Sélectionner pour générer le bon d'enlèvement" />
+            }
+          </td>
+          }
           <td>
             <div class="voyage-numero">{{ voyage.numeroVoyage }}</div>
           </td>
@@ -189,9 +194,6 @@
                 <div class="camion-id">{{ voyage.camionImmatriculation || 'N/A' }}</div>
               </div>
             </div>
-          </td>
-          <td class="col-chauffeur">
-            <div class="chauffeur-info">{{ getChauffeurDisplay(voyage) }}</div>
           </td>
           <td>
             @if (voyage.clientVoyages && voyage.clientVoyages.length > 0) {
@@ -207,7 +209,7 @@
             <div class="no-client">-</div>
             }
           </td>
-          <td class="col-statut">
+          <td>
             @if (canUpdateVoyageStatus(voyage)) {
             <button class="btn-change-statut" (click)="openStatutModal(voyage)" [class]="getStatutClass(voyage.statut, voyage)"
               title="Changer le statut">
@@ -315,6 +317,11 @@
               <button class="action-btn btn-view" (click)="viewVoyage(voyage)" title="Détails">
                 <span>👁️</span>
               </button>
+              @if (voyage.statut === 'EN_ATTENTE_CHARGEMENT' || voyage.statut === 'CHARGEMENT') {
+              <button class="action-btn btn-bon" (click)="generateBonEnlevement(voyage.id)" title="Bon d'enlèvement">
+                <span>📄</span>
+              </button>
+              }
               @if (canModifyOrDeleteVoyage()) {
               <button class="action-btn btn-edit" (click)="openEditVoyageModal(voyage)" title="Modifier">
                 <span>✏️</span>
@@ -345,17 +352,7 @@
           <td>
             <div class="voyage-numero">{{ voyage.numeroVoyage }}</div>
           </td>
-          <td>
-            <div class="camion-info">
-              <div class="truck-icon">🚛</div>
-              <div class="camion-details">
-                <div class="camion-id">{{ voyage.camionImmatriculation || 'N/A' }}</div>
-              </div>
-            </div>
-          </td>
-          <td class="col-chauffeur">
-            <div class="chauffeur-info">{{ getChauffeurDisplay(voyage) }}</div>
-          </td>
+          <td>{{ voyage.camionImmatriculation || 'N/A' }}</td>
           <td>
             @if (voyage.clientVoyages && voyage.clientVoyages.length > 0) {
             <div class="client-count-badge" (click)="showClientsList(voyage.clientVoyages, $event)"
@@ -370,7 +367,7 @@
             <span class="no-client">-</span>
             }
           </td>
-          <td class="col-statut">
+          <td>
             @if (canUpdateVoyageStatus(voyage)) {
             <button class="btn-change-statut" (click)="openStatutModal(voyage)" [class]="getStatutClass(voyage.statut, voyage)"
               title="Changer le statut">
@@ -477,7 +474,7 @@
         }
         } @else {
         <tr>
-          <td [attr.colspan]="12" class="empty-state">
+          <td [attr.colspan]="(activeTab === 'en-cours' && voyagesEnChargement.length > 0) ? 13 : 12" class="empty-state">
             <div class="empty-message">
               @if (activeTab === 'en-cours') {
               Aucun voyage en cours trouvé
