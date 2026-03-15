@@ -1890,25 +1890,10 @@ public class VoyageServiceImpl implements VoyageService {
                 break;
             case RECEPTIONNER:
             case LIVRE:
-                // Si le voyage est arrivé au dépôt ou livré
-                // Le camion redevient disponible seulement si tous les ClientVoyage sont "Livrer"
-                boolean tousClientsLivres = true;
-                if (voyage != null && voyage.getId() != null) {
-                    List<ClientVoyage> clientVoyages = clientVoyageRepository.findByVoyageId(voyage.getId());
-                    if (!clientVoyages.isEmpty()) {
-                        // Vérifier que tous les ClientVoyage sont "Livrer"
-                        tousClientsLivres = clientVoyages.stream()
-                                .allMatch(cv -> cv.getStatut() == ClientVoyage.StatutLivraison.LIVRER);
-                    } else {
-                        // Si aucun ClientVoyage, considérer comme disponible (compatibilité ancien système)
-                        tousClientsLivres = true;
-                    }
-                }
-                
-                if (tousClientsLivres &&
-                        camion.getStatut() != Camion.StatutCamion.EN_MAINTENANCE &&
+                // Tant que le statut n'est pas "déchargé" (DECHARGER), le camion reste en route (non disponible)
+                if (camion.getStatut() != Camion.StatutCamion.EN_MAINTENANCE &&
                         camion.getStatut() != Camion.StatutCamion.HORS_SERVICE) {
-                    camion.setStatut(Camion.StatutCamion.DISPONIBLE);
+                    camion.setStatut(Camion.StatutCamion.EN_ROUTE);
                 }
                 break;
             case DECHARGER:
