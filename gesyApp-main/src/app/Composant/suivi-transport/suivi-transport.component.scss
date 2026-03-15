@@ -497,6 +497,20 @@
     min-width: 140px;
     width: 140px;
   }
+
+  th.col-chauffeur,
+  td.col-chauffeur {
+    min-width: 120px;
+  }
+}
+
+.chauffeur-info {
+  font-size: 13px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
 }
 
 .action-buttons {
