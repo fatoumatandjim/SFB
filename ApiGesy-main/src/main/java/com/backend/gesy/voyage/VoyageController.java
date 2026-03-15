@@ -283,6 +283,12 @@ public class VoyageController {
                 }
             }
             
+            // Pour DECHARGER/PARTIELLEMENT_DECHARGER, le body avec manquants est obligatoire
+            if ("DECHARGER".equalsIgnoreCase(statut) || "PARTIELLEMENT_DECHARGER".equalsIgnoreCase(statut)) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .header("X-Error-Message", "Pour Décharger, envoyer le body JSON avec statut et manquants (clés = id ClientVoyage).")
+                        .body(null);
+            }
             // Utiliser l'ancienne méthode pour compatibilité
             if (statut == null || statut.trim().isEmpty()) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)

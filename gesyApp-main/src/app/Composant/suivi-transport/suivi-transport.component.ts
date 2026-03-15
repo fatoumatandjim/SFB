@@ -1846,7 +1846,10 @@ export class SuiviTransportComponent implements OnInit {
     this.voyagesService.updateStatut(voyageId, this.selectedStatut!, params).subscribe({
       next: (updatedVoyage) => {
         this.isLoading = false;
-        this.toastService.success('Statut du voyage mis à jour avec succès!');
+        const isDecharge = updatedVoyage.statut === 'DECHARGER';
+        this.toastService.success(isDecharge
+          ? 'Déchargement enregistré. Le voyage apparaît dans l\'onglet Archives.'
+          : 'Statut du voyage mis à jour avec succès.');
 
         // Mettre à jour immédiatement les états depuis la réponse
         if (updatedVoyage.etats && updatedVoyage.etats.length > 0) {
@@ -1904,7 +1907,10 @@ export class SuiviTransportComponent implements OnInit {
           }
         }
 
-        // Fermer le modal et recharger la liste depuis le serveur pour refléter l'état persisté
+        // Si le voyage passe en "Déchargé", il quitte "Voyages en cours" et apparaît dans "Archives"
+        if (updatedVoyage.statut === 'DECHARGER') {
+          this.activeTab = 'archives';
+        }
         this.closeStatutModal();
         this.updateFilteredVoyages();
       },

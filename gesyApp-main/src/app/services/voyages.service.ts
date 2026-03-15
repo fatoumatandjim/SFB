@@ -376,14 +376,16 @@ export class VoyagesService {
   }
 
   updateStatut(voyageId: number, statut: string, params?: any): Observable<Voyage> {
-    // Si params contient des clients ou manquants, utiliser le nouveau format
+    // Si params contient des clients ou manquants, utiliser le nouveau format (body JSON)
     if (params && (params.clients || params.manquants)) {
       const request = {
         statut: statut,
         clients: params.clients || [],
         manquants: params.manquants || {}
       };
-      return this.http.put<Voyage>(`${this.apiUrl}/${voyageId}/statut`, request);
+      return this.http.put<Voyage>(`${this.apiUrl}/${voyageId}/statut`, request, {
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
     // Sinon, utiliser l'ancien format pour compatibilité
     let url = `${this.apiUrl}/${voyageId}/statut?statut=${statut}`;
