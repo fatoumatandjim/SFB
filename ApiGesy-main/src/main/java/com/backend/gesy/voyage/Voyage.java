@@ -93,12 +93,6 @@ public class Voyage {
     @Column(name = "passager")
     private String passager; // passer_declarer, passer_non_declarer ou null
 
-    @Column(name = "chauffeur")
-    private String chauffeur; // Nom du chauffeur
-
-    @Column(name = "numero_chauffeur")
-    private String numeroChauffeur;
-
     /** Vente de type cession : pas de cout du voyage, client issu des achats */
     @Column(name = "cession")
     private boolean cession = false;

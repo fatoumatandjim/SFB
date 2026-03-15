@@ -74,9 +74,7 @@ export class CamionComponent implements OnInit {
     axeId: undefined,
     produitId: undefined,
     depotId: undefined,
-    prixUnitaire: undefined,
-    chauffeur: undefined,
-    numeroChauffeur: undefined
+    prixUnitaire: undefined
   };
 
   /** Prix unitaires liés à la catégorie Coût de transport — chargés depuis l'API, sinon valeur par défaut. */
@@ -460,14 +458,8 @@ export class CamionComponent implements OnInit {
     });
   }
 
-  /** Lors du choix du camion pour un nouveau voyage, remplir chauffeur / numéro depuis le camion */
-  onVoyageCamionSelect(camionId: number) {
-    const camion = this.camionsDisponibles.find(c => c.id === camionId);
-    if (camion) {
-      this.newVoyage.chauffeur = camion.chauffeur;
-      this.newVoyage.numeroChauffeur = camion.numeroChauffeur;
-    }
-  }
+  /** Lors du choix du camion pour un nouveau voyage (chauffeur affiché côté liste depuis le camion). */
+  onVoyageCamionSelect(_camionId: number) {}
 
   closeAddVoyageModal() {
     this.showAddVoyageModal = false;
@@ -480,8 +472,6 @@ export class CamionComponent implements OnInit {
       depotId: undefined,
       responsableId: undefined,
       prixUnitaire: undefined,
-      chauffeur: undefined,
-      numeroChauffeur: undefined,
       cession: false
     };
     this.voyageErrors = {};
@@ -497,10 +487,6 @@ export class CamionComponent implements OnInit {
 
     this.isLoading = true;
     const isCession = !!this.newVoyage.cession;
-    // Chauffeur et numéro : pris du camion sélectionné (saisis sur le camion, pas sur le voyage)
-    const selectedCamion = this.camionsDisponibles.find(c => c.id === this.newVoyage.camionId);
-    const chauffeur = selectedCamion?.chauffeur ?? this.newVoyage.chauffeur;
-    const numeroChauffeur = selectedCamion?.numeroChauffeur ?? this.newVoyage.numeroChauffeur;
 
     const voyage: Voyage = {
       camionId: this.newVoyage.camionId!,
@@ -512,8 +498,6 @@ export class CamionComponent implements OnInit {
       responsableId: this.newVoyage.responsableId!,
       prixUnitaire: isCession ? undefined : this.newVoyage.prixUnitaire,
       notes: this.newVoyage.notes,
-      chauffeur,
-      numeroChauffeur,
       cession: isCession
     };
 
