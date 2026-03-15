@@ -263,13 +263,13 @@
                       (click)="onStatutClick(voyage)"
                       [title]="'Cliquer pour déclarer le voyage ' + (voyage.numeroVoyage || '')">
                       <span class="status-badge" [class]="getStatusClass(voyage.statut || '', voyage)">
-                        {{ getStatusLabel(voyage.statut, voyage.declarer, voyage.passager) }}
+                        {{ getStatusLabel(voyage.statut, voyage) }}
                       </span>
                     </button>
                   } @else {
                     <div class="status-cell">
                       <span class="status-badge" [class]="getStatusClass(voyage.statut || '', voyage)">
-                        {{ getStatusLabel(voyage.statut, voyage.declarer, voyage.passager) }}
+                        {{ getStatusLabel(voyage.statut, voyage) }}
                       </span>
                     </div>
                   }
@@ -352,13 +352,13 @@
                       (click)="onStatutClick(voyage)"
                       [title]="'Cliquer pour déclarer le voyage ' + (voyage.numeroVoyage || '')">
                       <span class="status-badge" [class]="getStatusClass(voyage.statut || '', voyage)">
-                        {{ activeTab === 'en-cours' ? 'Déclarer' : getStatusLabel(voyage.statut, voyage.declarer, voyage.passager) }}
+                        {{ activeTab === 'en-cours' ? 'Déclarer' : getStatusLabel(voyage.statut, voyage) }}
                       </span>
                     </button>
                   } @else {
                     <div class="status-cell">
                       <span class="status-badge" [class]="getStatusClass(voyage.statut || '', voyage)">
-                        {{ getStatusLabel(voyage.statut, voyage.declarer, voyage.passager) }}
+                        {{ getStatusLabel(voyage.statut, voyage) }}
                       </span>
                     </div>
                   }
@@ -473,7 +473,7 @@
             <div class="detail-item">
               <span class="detail-label">Statut:</span>
               <span class="status-badge" [class]="getStatusClass(selectedVoyage.statut || '', selectedVoyage)">
-                {{ getStatusLabel(selectedVoyage.statut, selectedVoyage.declarer, selectedVoyage.passager) }}
+                {{ getStatusLabel(selectedVoyage.statut, selectedVoyage) }}
               </span>
             </div>
             <div class="detail-item">

@@ -34,6 +34,7 @@ interface VoyageDisplay extends Voyage {
   liberer?: boolean;
   passager?: string; // passer_declarer, passer_non_declarer ou null
   transactions?: Transaction[];
+  etats?: Array<{ etat?: string; valider?: boolean }>;
 }
 
 interface TransitaireInfo {
@@ -190,6 +191,7 @@ export class ForTransitairePage implements OnInit {
       )
       .subscribe({
         next: (page: VoyagePage) => {
+          // Backend exclut déjà les voyages déclaré + Décharger validé (une seule source de vérité)
           this.voyagesEnCours = sortByDateDepartDesc(
             (page.voyages || []).map(v => ({
               ...v,
@@ -198,7 +200,8 @@ export class ForTransitairePage implements OnInit {
               clientEmail: (v as any).clientEmail,
               typeProduit: (v as any).typeProduit || 'Essence',
               transactions: (v as any).transactions || [],
-              liberer: (v as any).liberer ?? false
+              liberer: (v as any).liberer ?? false,
+              etats: (v as any).etats || []
             }))
           );
           this.totalPagesEnCours = page.totalPages ?? 0;
@@ -245,11 +248,8 @@ export class ForTransitairePage implements OnInit {
     this.filteredVoyages = filtered;
   }
 
-  /** Liste affichée pour les onglets À déclarer / Archives. Pour Archives, uniquement statut DECHARGER (sécurité). */
+  /** Liste affichée pour les onglets À déclarer / Archives. Archives = pagination backend (une seule source de vérité). */
   get displayListEnCoursOuArchives(): VoyageDisplay[] {
-    if (this.activeTab === 'archives') {
-      return this.filteredVoyages.filter(v => v.statut === 'DECHARGER');
-    }
     return this.filteredVoyages;
   }
 
@@ -267,48 +267,36 @@ export class ForTransitairePage implements OnInit {
     if (!this.transitaireInfo) return;
 
     this.isLoading = true;
-    let request: Observable<VoyagePage>;
+    const id = this.transitaireInfo.identifiant;
 
+    let request: Observable<VoyagePage>;
     if (this.useDateRange && this.filterStartDate && this.filterEndDate) {
-      // Filtrer par intervalle de dates
       request = this.voyagesService.getArchivedVoyagesByTransitaireIdentifiantAndDateRange(
-        this.transitaireInfo.identifiant,
-        this.filterStartDate,
-        this.filterEndDate,
-        this.currentPage,
-        this.pageSize
+        id, this.filterStartDate, this.filterEndDate, this.currentPage, this.pageSize
       );
     } else if (this.filterDate) {
-      // Filtrer par date unique
       request = this.voyagesService.getArchivedVoyagesByTransitaireIdentifiantAndDate(
-        this.transitaireInfo.identifiant,
-        this.filterDate,
-        this.currentPage,
-        this.pageSize
+        id, this.filterDate, this.currentPage, this.pageSize
       );
     } else {
-      // Pas de filtre de date
-      request = this.voyagesService.getArchivedVoyagesByTransitaireIdentifiant(
-        this.transitaireInfo.identifiant,
-        this.currentPage,
-        this.pageSize
-      );
+      request = this.voyagesService.getArchivedVoyagesByTransitaireIdentifiant(id, this.currentPage, this.pageSize);
     }
 
     request.subscribe({
       next: (page: VoyagePage) => {
         this.filteredVoyages = sortByDateDepartDesc(
-          page.voyages.map(v => ({
+          (page.voyages || []).map(v => ({
             ...v,
             camionImmatriculation: (v as any).camionImmatriculation,
             clientNom: (v as any).clientNom,
             clientEmail: (v as any).clientEmail,
             typeProduit: (v as any).typeProduit || 'Essence',
-            transactions: (v as any).transactions || []
+            transactions: (v as any).transactions || [],
+            etats: (v as any).etats || [],
+            liberer: (v as any).liberer ?? false
           }))
         );
-
-        // Appliquer le filtre de recherche si présent
+        // Filtre recherche côté client sur la page courante (pour cohérence totalElements/totalPages, un endpoint backend avec param search serait idéal)
         if (this.searchTerm.trim()) {
           const term = this.searchTerm.toLowerCase();
           this.filteredVoyages = this.filteredVoyages.filter(v =>
@@ -318,10 +306,9 @@ export class ForTransitairePage implements OnInit {
             v.camionImmatriculation?.toLowerCase().includes(term)
           );
         }
-
-        this.currentPage = page.currentPage;
-        this.totalPages = page.totalPages;
-        this.totalElements = page.totalElements;
+        this.currentPage = page.currentPage ?? 0;
+        this.totalPages = page.totalPages ?? 0;
+        this.totalElements = page.totalElements ?? 0;
         this.isLoading = false;
       },
       error: (error) => {
@@ -410,7 +397,7 @@ export class ForTransitairePage implements OnInit {
     return d === true || d === 'true';
   }
 
-  /** True si le voyage est en état "À déclarer" (douane non déclaré ou passé non déclaré). Jamais true pour Archives (DECHARGER). */
+  /** True si le voyage est en état "À déclarer" (douane non déclaré ou passé non déclaré). Jamais true pour Archives. */
   isStatutADeclarer(voyage: VoyageDisplay): boolean {
     if (!voyage) return false;
     const statut = (voyage.statut || '').toString().toUpperCase();
@@ -420,15 +407,17 @@ export class ForTransitairePage implements OnInit {
     return (isDouane || isPasseNonDeclarer) && !this.isDeclared(voyage);
   }
 
-  /** Libellé du statut. Utilise isStatutADeclarer pour "À déclarer" (une seule source de vérité). */
-  getStatusLabel(statut: string | undefined, declarer?: boolean | string, passager?: string): string {
+  /** Libellé du statut (DRY: délègue à voyage-statut.utils + isStatutADeclarer). Passe le voyage pour afficher "Décharger" si déclaré + état validé. */
+  getStatusLabel(statut: string | undefined, voyageOrDeclarer?: VoyageDisplay | boolean | string | null, passager?: string): string {
     if (!statut) return 'N/A';
-    const v: VoyageDisplay = { statut, declarer, passager } as VoyageDisplay;
+    const v: VoyageDisplay = (voyageOrDeclarer && typeof voyageOrDeclarer === 'object' && 'statut' in voyageOrDeclarer)
+      ? voyageOrDeclarer
+      : { statut, declarer: voyageOrDeclarer, passager } as VoyageDisplay;
     if (this.isStatutADeclarer(v)) return 'À déclarer';
-    return getVoyageStatutLabel(statut, { liberer: declarer === true });
+    return getVoyageStatutLabel(statut, v);
   }
 
-  getStatusClass(statut: string, voyage?: { liberer?: boolean }): string {
+  getStatusClass(statut: string, voyage?: { liberer?: boolean; declarer?: boolean; etats?: Array<{ etat?: string; valider?: boolean }> }): string {
     return getVoyageStatutClass(statut, voyage);
   }
 

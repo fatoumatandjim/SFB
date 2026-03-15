@@ -115,6 +115,9 @@ public interface VoyageService {
 
         void deleteById(Long id);
 
+        /** Synchronise statut DECHARGER pour les voyages déclarés avec état "Décharger" validé (exécuté au démarrage). */
+        int syncStatutDechargerForDeclarerValides();
+
         // Voyages passés non déclarés
         List<VoyageDTO> findVoyagesPassesNonDeclares();
 

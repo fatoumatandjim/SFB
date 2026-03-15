@@ -3045,4 +3045,19 @@ public class VoyageServiceImpl implements VoyageService {
             paiement.setCategorieDepense(cat);
         }
     }
+
+    /**
+     * Synchronise le statut des voyages déjà déclarés avec état "Décharger" validé :
+     * met statut = DECHARGER pour que les listes Archives/En cours soient cohérentes (une seule source de vérité).
+     * Appelé au démarrage de l'application (une fois).
+     */
+    @Transactional
+    public int syncStatutDechargerForDeclarerValides() {
+        List<Voyage> toSync = voyageRepository.findVoyagesToSyncStatutDecharger();
+        for (Voyage v : toSync) {
+            v.setStatut(Voyage.StatutVoyage.DECHARGER);
+            voyageRepository.save(v);
+        }
+        return toSync.size();
+    }
 }

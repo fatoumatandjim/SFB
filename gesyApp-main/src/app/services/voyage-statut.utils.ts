@@ -99,6 +99,17 @@ export function isDechargerValide(voyage?: VoyagePourStatut): boolean {
   );
 }
 
+/** True si le voyage doit apparaître dans la liste Archives (statut DECHARGER ou déclaré + état Décharger validé). */
+export function isVoyageInArchives(voyage?: VoyagePourStatut & { statut?: string }): boolean {
+  if (!voyage) return false;
+  return voyage.statut === 'DECHARGER' || isDechargerValide(voyage);
+}
+
+/** True si le voyage doit apparaître dans la liste En cours (ni DECHARGER ni déclaré + Décharger validé). */
+export function isVoyageInEnCours(voyage?: VoyagePourStatut & { statut?: string }): boolean {
+  return !isVoyageInArchives(voyage);
+}
+
 /**
  * Libellé affiché pour un statut de voyage.
  * DOUANE + liberer → "Sortie de douane" (cohérent avec RECEPTIONNER).
