@@ -281,8 +281,8 @@ export class SuiviTransportComponent implements OnInit {
   }
 
   selectClient(client: Client) {
-    // Si on est dans le modal de statut (LIVRE), ajouter à livreClients
-    if (this.showStatutModal && this.selectedStatut === 'LIVRE') {
+    // Si on est dans le modal de statut (LIVRE ou Partiellement déchargé), ajouter à livreClients
+    if (this.showStatutModal && (this.selectedStatut === 'LIVRE' || this.selectedStatut === 'PARTIELLEMENT_DECHARGER')) {
       this.selectClientForLivre(client);
       return;
     }
@@ -1724,24 +1724,24 @@ export class SuiviTransportComponent implements OnInit {
       return;
     }
 
-    // Vérifier si le statut est "LIVRE"
-    if (this.selectedStatut === 'LIVRE') {
-      // Vérifier qu'au moins un client est assigné
+    // Vérifier si le statut est "LIVRE" ou "PARTIELLEMENT_DECHARGER" (ajout de clients avec quantités)
+    if (this.selectedStatut === 'LIVRE' || this.selectedStatut === 'PARTIELLEMENT_DECHARGER') {
       const hasExistingClients = this.voyageForStatutChange?.clientVoyages && this.voyageForStatutChange.clientVoyages.length > 0;
-      if (!hasExistingClients && (!this.livreClients || this.livreClients.length === 0)) {
-        this.toastService.warning('Veuillez sélectionner au moins un client pour livrer ce voyage');
+      const hasNewClients = this.livreClients && this.livreClients.length > 0;
+      if (!hasExistingClients && !hasNewClients) {
+        this.toastService.warning('Veuillez sélectionner au moins un client');
         return;
       }
-      // Vérifier que tous les clients ont une quantité
-      if (this.livreClients.some(c => !c.clientId || !c.quantite || c.quantite <= 0)) {
-        this.toastService.warning('Veuillez saisir une quantité valide pour tous les clients');
-        return;
-      }
-      // Vérifier que la somme des quantités ne dépasse pas la quantité du voyage
-      const totalQuantite = this.getTotalQuantiteClients();
-      if (this.voyageForStatutChange && this.voyageForStatutChange.quantite && totalQuantite > this.voyageForStatutChange.quantite) {
-        this.toastService.warning(`La somme des quantités (${totalQuantite}) dépasse la quantité du voyage (${this.voyageForStatutChange.quantite})`);
-        return;
+      if (hasNewClients) {
+        if (this.livreClients.some(c => !c.clientId || !c.quantite || c.quantite <= 0)) {
+          this.toastService.warning('Veuillez saisir une quantité valide pour tous les clients ajoutés');
+          return;
+        }
+        const totalQuantite = this.getTotalQuantiteClients();
+        if (this.voyageForStatutChange && this.voyageForStatutChange.quantite && totalQuantite > this.voyageForStatutChange.quantite) {
+          this.toastService.warning(`La somme des quantités (${totalQuantite}) dépasse la quantité du voyage (${this.voyageForStatutChange.quantite})`);
+          return;
+        }
       }
     }
 
@@ -1788,10 +1788,10 @@ export class SuiviTransportComponent implements OnInit {
       }
     }
 
-    // Préparer les paramètres pour le statut LIVRE ou DECHARGER
+    // Préparer les paramètres pour le statut LIVRE, PARTIELLEMENT_DECHARGER ou DECHARGER
     let params: any = undefined;
-    if (this.selectedStatut === 'LIVRE') {
-      // Pour LIVRE, envoyer tous les clients avec leurs quantités
+    if (this.selectedStatut === 'LIVRE' || this.selectedStatut === 'PARTIELLEMENT_DECHARGER') {
+      // Pour LIVRE ou PARTIELLEMENT_DECHARGER, envoyer tous les clients avec leurs quantités
       params = {};
       if (this.livreClients && this.livreClients.length > 0) {
         const clients = this.livreClients
