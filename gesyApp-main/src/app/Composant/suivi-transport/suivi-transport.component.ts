@@ -2187,10 +2187,6 @@ export class SuiviTransportComponent implements OnInit {
     return this.getQuantiteTotaleAttribuee() < (voyage.quantite ?? 0);
   }
 
-  // getQuantiteTotaleAttribuee(voyage: VoyageDisplay): number {
-  //   return voyage.clientVoyages?.map(cv => cv.quantite).reduce((sum, quantite) => sum + quantite, 0) || 0;
-  // }
-
   assignClient() {
     if (!this.selectedVoyage || !this.selectedVoyage.id) {
       this.toastService.error('Voyage introuvable');

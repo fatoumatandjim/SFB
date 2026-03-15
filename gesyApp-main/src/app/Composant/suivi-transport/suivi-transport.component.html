@@ -1099,8 +1099,8 @@
           }
         }
       </div>
-      <!-- Formulaire pour le statut LIVRE -->
-      @if (selectedStatut === 'LIVRE') {
+      <!-- Formulaire pour le statut LIVRE ou Partiellement déchargé (attribution / ajout de clients) -->
+      @if (selectedStatut === 'LIVRE' || selectedStatut === 'PARTIELLEMENT_DECHARGER') {
       <div class="livre-form">
         <h3>Informations d'attribution</h3>
 
