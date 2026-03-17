@@ -1638,7 +1638,6 @@ export class SuiviTransportComponent implements OnInit {
 
   getDefaultEtats(): EtatVoyage[] {
     return [
-      { etat: 'Chargement', dateHeure: '', valider: false },
       { etat: 'Chargé', dateHeure: '', valider: false },
       { etat: 'Départ', dateHeure: '', valider: false },
       { etat: 'Arrivé', dateHeure: '', valider: false },
@@ -1652,7 +1651,6 @@ export class SuiviTransportComponent implements OnInit {
   /** Correspondance état (libellé modal) → statut API (aligné backend getEtatTexteFromStatut). */
   getStatutFromEtat(etat: string): string {
     const mapping: { [key: string]: string } = {
-      'Chargement': 'CHARGEMENT',
       'Chargé': 'CHARGE',
       'Départ': 'DEPART',
       'Arrivé': 'ARRIVER',
@@ -1694,7 +1692,7 @@ export class SuiviTransportComponent implements OnInit {
       return [];
     }
 
-    const ordreEtats = ['Chargement', 'Chargé', 'Départ', 'Arrivé', 'Douane', 'Réceptionné', 'Livré', 'Décharger'];
+    const ordreEtats = ['Chargé', 'Départ', 'Arrivé', 'Douane', 'Réceptionné', 'Livré', 'Décharger'];
 
     const etatsTries: EtatVoyage[] = [];
     for (const etatNom of ordreEtats) {
@@ -1975,7 +1973,7 @@ export class SuiviTransportComponent implements OnInit {
   private static readonly STATUTS_LOGISTICIEN_MAX: readonly string[] = STATUTS_EN_COURS;
 
   /** États visibles/sélectionnables par le logisticien (jusqu'à Douane inclus). */
-  private static readonly ETATS_LOGISTICIEN = ['Chargement', 'Chargé', 'Départ', 'Arrivé', 'Douane'];
+  private static readonly ETATS_LOGISTICIEN = ['Chargé', 'Départ', 'Arrivé', 'Douane'];
 
   /** True si l'utilisateur peut ouvrir le modal et modifier le statut.
    * - Admin : toujours.

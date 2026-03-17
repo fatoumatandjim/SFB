@@ -118,7 +118,6 @@ public class Voyage {
 
     public enum StatutVoyage {
         EN_ATTENTE_CHARGEMENT,
-        CHARGEMENT,
         CHARGE,
         DEPART,
         ARRIVER,

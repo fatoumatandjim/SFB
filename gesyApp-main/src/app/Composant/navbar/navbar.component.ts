@@ -114,7 +114,7 @@ export class NavbarComponent implements OnInit {
         ['dashbord', 'camion', 'stock'].includes(item.id)
       );
       this.logistique = this.allLogistique.filter(item =>
-        ['suivi-transport', 'transitaire', 'axes', 'depot', 'email'].includes(item.id)
+        ['suivi-transport', 'axes', 'depot', 'email'].includes(item.id)
       );
       this.rapport = [];
     } else if (isLogisticien) {
@@ -136,8 +136,10 @@ export class NavbarComponent implements OnInit {
       );
       this.rapport = [];
     } else {
-      // Transitaire, Charger Depot ou autre : menus minimaux ou vides
-      this.menuPrincipal = [];
+      // Transitaire, Charger Depot ou autre : accès au tableau de bord uniquement
+      this.menuPrincipal = this.allMenuPrincipal.filter(item =>
+        ['dashbord'].includes(item.id)
+      );
       this.logistique = [];
       this.rapport = [];
     }

@@ -46,7 +46,7 @@ export interface Voyage {
   dateArrivee?: string;
   destination?: string;
   lieuDepart?: string;
-  statut?: 'EN_ATTENTE_CHARGEMENT' | 'CHARGEMENT' | 'CHARGE' | 'DEPART' | 'ARRIVER' | 'DOUANE' | 'RECEPTIONNER' | 'LIVRE' | 'PARTIELLEMENT_DECHARGER' | 'DECHARGER';
+  statut?: 'EN_ATTENTE_CHARGEMENT' | 'CHARGE' | 'DEPART' | 'ARRIVER' | 'DOUANE' | 'RECEPTIONNER' | 'LIVRE' | 'PARTIELLEMENT_DECHARGER' | 'DECHARGER';
   quantite?: number;
   manquant?: number;
   prixUnitaire?: number;

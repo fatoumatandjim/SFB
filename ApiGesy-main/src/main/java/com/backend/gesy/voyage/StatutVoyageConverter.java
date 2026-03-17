@@ -38,7 +38,7 @@ public class StatutVoyageConverter implements AttributeConverter<Voyage.StatutVo
                 return Voyage.StatutVoyage.EN_ATTENTE_CHARGEMENT;
             case "ASSIGNE_AU_CHARGEMENT":
             case "EN_CHARGEMENT":
-                return Voyage.StatutVoyage.CHARGEMENT;
+                return Voyage.StatutVoyage.EN_ATTENTE_CHARGEMENT;
             case "DEPART":
                 return Voyage.StatutVoyage.DEPART;
             case "EN_ROUTE_VERS_BAMAKO":
@@ -55,8 +55,8 @@ public class StatutVoyageConverter implements AttributeConverter<Voyage.StatutVo
             case "DEPOTE_EN_STATION":
                 return Voyage.StatutVoyage.LIVRE;
             default:
-                // Si aucun mapping trouvé, retourner CHARGEMENT par défaut
-                return Voyage.StatutVoyage.CHARGEMENT;
+                // Si aucun mapping trouvé, retourner EN_ATTENTE_CHARGEMENT par défaut
+                return Voyage.StatutVoyage.EN_ATTENTE_CHARGEMENT;
         }
     }
 }

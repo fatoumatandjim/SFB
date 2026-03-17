@@ -1732,7 +1732,7 @@ public class VoyageServiceImpl implements VoyageService {
         manquantRepository.findByVoyageIdOrderByDateCreationDesc(id).forEach(manquantRepository::delete);
 
         // 5. Remettre le stock utilisé à son état initial (dépôt)
-        if (statut != null && statut != Voyage.StatutVoyage.EN_ATTENTE_CHARGEMENT && statut != Voyage.StatutVoyage.CHARGEMENT
+        if (statut != null && statut != Voyage.StatutVoyage.EN_ATTENTE_CHARGEMENT
                 && voyage.getDepot() != null && voyage.getProduit() != null && voyage.getQuantite() != null && voyage.getQuantite() > 0) {
             double quantiteLivree = 0.0;
             List<ClientVoyage> clientVoyages = clientVoyageRepository.findByVoyageId(id);
@@ -1878,7 +1878,6 @@ public class VoyageServiceImpl implements VoyageService {
 
         switch (statutVoyage) {
             case EN_ATTENTE_CHARGEMENT:
-            case CHARGEMENT:
             case CHARGE:
             case DEPART:
             case ARRIVER:
@@ -1945,9 +1944,8 @@ public class VoyageServiceImpl implements VoyageService {
     private void createDefaultEtats(Voyage voyage) {
         LocalDateTime now = LocalDateTime.now();
 
-        // Créer les 8 états par défaut
+        // Créer les états par défaut
         String[] etats = {
-                "Chargement",
                 "Chargé",
                 "Départ",
                 "Arrivé",
@@ -1957,7 +1955,7 @@ public class VoyageServiceImpl implements VoyageService {
                 "Décharger"
         };
 
-        // En EN_ATTENTE_CHARGEMENT : aucun état validé. En CHARGEMENT ou plus : valider "Chargement"
+        // En EN_ATTENTE_CHARGEMENT : aucun état validé.
         boolean validerChargement = voyage.getStatut() != null
                 && voyage.getStatut() != Voyage.StatutVoyage.EN_ATTENTE_CHARGEMENT;
 
@@ -1967,9 +1965,7 @@ public class VoyageServiceImpl implements VoyageService {
             etatVoyage.setDateHeure(now);
             etatVoyage.setValider(false);
             etatVoyage.setVoyage(voyage);
-            if (etat.equals("Chargement") && validerChargement) {
-                etatVoyage.setValider(true);
-            }
+            // Aucun état supplémentaire pour le chargement dans la liste : aucun traitement spécifique
             etatVoyageRepository.save(etatVoyage);
         }
     }
@@ -2049,7 +2045,7 @@ public class VoyageServiceImpl implements VoyageService {
      */
     private String getEtatTexteFromStatut(String statut) {
         return switch (statut) {
-            case "CHARGEMENT" -> "Chargement";
+            case "CHARGEMENT" -> "En attente de chargement";
             case "CHARGE" -> "Chargé";
             case "DEPART" -> "Départ";
             case "ARRIVER" -> "Arrivé";
@@ -2994,7 +2990,7 @@ public class VoyageServiceImpl implements VoyageService {
                 return Voyage.StatutVoyage.EN_ATTENTE_CHARGEMENT;
             case "ASSIGNE_AU_CHARGEMENT":
             case "EN_CHARGEMENT":
-                return Voyage.StatutVoyage.CHARGEMENT;
+                return Voyage.StatutVoyage.EN_ATTENTE_CHARGEMENT;
             case "DEPART":
                 return Voyage.StatutVoyage.DEPART;
             case "EN_ROUTE_VERS_BAMAKO":
@@ -3017,8 +3013,8 @@ public class VoyageServiceImpl implements VoyageService {
                 try {
                     return Voyage.StatutVoyage.valueOf(statut);
                 } catch (IllegalArgumentException e) {
-                    // Si le statut n'existe pas, retourner CHARGEMENT par défaut
-                    return Voyage.StatutVoyage.CHARGEMENT;
+                    // Si le statut n'existe pas, retourner EN_ATTENTE_CHARGEMENT par défaut
+                    return Voyage.StatutVoyage.EN_ATTENTE_CHARGEMENT;
                 }
         }
     }

@@ -24,12 +24,11 @@
           <option value="">Tous les statuts</option>
           @if (activeTab === 'en-cours') {
           <option value="EN_ATTENTE_CHARGEMENT">En route (chargement)</option>
-          <option value="CHARGEMENT">Chargement</option>
           <option value="CHARGE">Chargé</option>
           <option value="DEPART">Départ</option>
           <option value="ARRIVER">Arriver à la frontière</option>
           <option value="DOUANE">À la douane</option>
-          <option value="RECEPTIONNER">Réceptionné</option>
+          <option value="RECEPTIONNER">Sortie de douane</option>
           <option value="LIVRE">Livré</option>
           <option value="PARTIELLEMENT_DECHARGER">Partiellement déchargé</option>
           } @else {
@@ -171,7 +170,7 @@
         <tr>
           @if (voyagesEnChargement.length > 0) {
           <td class="checkbox-cell">
-            @if (voyage.statut === 'EN_ATTENTE_CHARGEMENT' || voyage.statut === 'CHARGEMENT') {
+            @if (voyage.statut === 'EN_ATTENTE_CHARGEMENT') {
             <input type="checkbox" [checked]="isVoyageSelected(voyage.id)" (change)="toggleVoyageSelection(voyage.id)"
               title="Sélectionner pour générer le bon d'enlèvement" />
             }

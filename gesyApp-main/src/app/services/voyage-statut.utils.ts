@@ -6,7 +6,6 @@
 /** Ordre d'affichage des statuts (aligné backend). */
 export const STATUTS_VOYAGE_ORDER: readonly string[] = [
   'EN_ATTENTE_CHARGEMENT',
-  'CHARGEMENT',
   'CHARGE',
   'DEPART',
   'ARRIVER',
@@ -19,7 +18,6 @@ export const STATUTS_VOYAGE_ORDER: readonly string[] = [
 
 export const STATUT_VOYAGE_LABELS: Readonly<Record<string, string>> = {
   EN_ATTENTE_CHARGEMENT: 'En route (chargement)',
-  CHARGEMENT: 'Chargement',
   CHARGE: 'Chargé',
   DEPART: 'Départ',
   ARRIVER: 'Arriver à la frontière',
@@ -32,7 +30,6 @@ export const STATUT_VOYAGE_LABELS: Readonly<Record<string, string>> = {
 
 export const STATUT_VOYAGE_CLASSES: Readonly<Record<string, string>> = {
   EN_ATTENTE_CHARGEMENT: 'badge-gray',
-  CHARGEMENT: 'badge-blue',
   CHARGE: 'badge-orange',
   DEPART: 'badge-purple',
   ARRIVER: 'badge-green',
@@ -58,12 +55,11 @@ export interface VoyagePourStatut extends VoyageLiberer {
 }
 
 /** Statuts considérés "en chargement" (bon d'enlèvement, Excel, etc.). */
-export const STATUTS_EN_CHARGEMENT: readonly string[] = ['EN_ATTENTE_CHARGEMENT', 'CHARGEMENT'];
+export const STATUTS_EN_CHARGEMENT: readonly string[] = ['EN_ATTENTE_CHARGEMENT'];
 
 /** Statuts considérés "en cours" pour les indicateurs (dashboard, camion). */
 export const STATUTS_EN_COURS: readonly string[] = [
   'EN_ATTENTE_CHARGEMENT',
-  'CHARGEMENT',
   'CHARGE',
   'DEPART',
   'ARRIVER',

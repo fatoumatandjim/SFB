@@ -131,7 +131,7 @@ public class DashboardDTO {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class VoyagesStatsDTO {
-        private Integer totalVoyagesEnCours; // Voyages en cours (EN_CHARGEMENT, DEPART)
+        private Integer totalVoyagesEnCours; // Voyages en cours
         private Integer voyagesArrives; // Voyages arrivés (EN_DEPOT_SORTIE_DEPOT)
         private Integer voyagesALaDouane; // Voyages à la douane (A_LA_DOUANE, SORTIE_A_LA_DOUANE, DECLARE)
         private Integer voyagesLivre; // Voyages livrés (LIVRE, DEPOTE_EN_STATION)
@@ -157,7 +157,7 @@ public class DashboardDTO {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class StatutVoyageCountDTO {
-        private String statut; // CHARGEMENT, CHARGE, etc.
+        private String statut; // Statut du voyage (enum Voyage.StatutVoyage.name())
         private Integer count;
     }
 

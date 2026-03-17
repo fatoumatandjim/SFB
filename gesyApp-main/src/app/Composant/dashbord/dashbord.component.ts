@@ -21,7 +21,7 @@ export class DashbordComponent implements OnInit {
 
   /** True si l'utilisateur doit voir la section voyages/statuts (admin, responsable logistique ou logisticien) */
   get showVoyagesSection(): boolean {
-    return this.isAdmin || this.isLogisticien || this.isResponsableLogistique;
+    return true;
   }
 
   constructor(

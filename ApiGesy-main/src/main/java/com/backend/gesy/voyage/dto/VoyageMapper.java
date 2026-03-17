@@ -208,7 +208,7 @@ public class VoyageMapper {
                 return Voyage.StatutVoyage.EN_ATTENTE_CHARGEMENT;
             case "ASSIGNE_AU_CHARGEMENT":
             case "EN_CHARGEMENT":
-                return Voyage.StatutVoyage.CHARGEMENT;
+                return Voyage.StatutVoyage.EN_ATTENTE_CHARGEMENT;
             case "DEPART":
                 return Voyage.StatutVoyage.DEPART;
             case "EN_ROUTE_VERS_BAMAKO":
@@ -229,8 +229,8 @@ public class VoyageMapper {
                 try {
                     return Voyage.StatutVoyage.valueOf(statut);
                 } catch (IllegalArgumentException e) {
-                    // Si le statut n'existe pas, retourner CHARGEMENT par défaut
-                    return Voyage.StatutVoyage.CHARGEMENT;
+                    // Si le statut n'existe pas, retourner EN_ATTENTE_CHARGEMENT par défaut
+                    return Voyage.StatutVoyage.EN_ATTENTE_CHARGEMENT;
                 }
         }
     }
