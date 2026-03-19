@@ -425,7 +425,10 @@ public class DashboardServiceImpl implements DashboardService {
         }
 
         /**
-         * Totaux par statut des voyages dont la date de départ est dans le mois en cours.
+         * Totaux par statut des voyages du mois en cours.
+         * - Voyages avec dateDepart : filtrés par dateDepart dans le mois.
+         * - Voyages EN_ATTENTE_CHARGEMENT / CHARGE sans dateDepart : filtrés par dateCreation dans le mois
+         *   (car dateDepart n'est définie qu'au passage au statut DEPART).
          */
         private List<DashboardDTO.StatutVoyageCountDTO> calculateStatutsVoyageMoisCourant() {
                 LocalDate now = LocalDate.now();
@@ -435,9 +438,21 @@ public class DashboardServiceImpl implements DashboardService {
 
                 Map<Voyage.StatutVoyage, Long> counts = voyageRepository.findAll().stream()
                                 .filter(v -> !v.isCession())
-                                .filter(v -> v.getDateDepart() != null)
-                                .filter(v -> !v.getDateDepart().isBefore(startOfMonthDateTime)
-                                                && !v.getDateDepart().isAfter(endOfMonthDateTime))
+                                .filter(v -> v.getStatut() != null)
+                                .filter(v -> {
+                                        // Pour les statuts avant départ (En route, Chargé), dateDepart est souvent null
+                                        if (v.getStatut() == Voyage.StatutVoyage.EN_ATTENTE_CHARGEMENT
+                                                        || v.getStatut() == Voyage.StatutVoyage.CHARGE) {
+                                                LocalDateTime ref = v.getDateDepart() != null ? v.getDateDepart()
+                                                                : (v.getDateCreation() != null ? v.getDateCreation() : null);
+                                                return ref != null && !ref.isBefore(startOfMonthDateTime)
+                                                                && !ref.isAfter(endOfMonthDateTime);
+                                        }
+                                        // Pour les autres statuts : dateDepart obligatoire
+                                        return v.getDateDepart() != null
+                                                        && !v.getDateDepart().isBefore(startOfMonthDateTime)
+                                                        && !v.getDateDepart().isAfter(endOfMonthDateTime);
+                                })
                                 .collect(Collectors.groupingBy(Voyage::getStatut, Collectors.counting()));
 
                 return counts.entrySet().stream()
