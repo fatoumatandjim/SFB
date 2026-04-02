@@ -6,7 +6,8 @@ import { environment } from '../../environments/environment';
 export interface CompteBancaire {
   id?: number;
   numero: string;
-  type: 'BANQUE' | 'CAISSE' | 'MOBILE_MONEY';
+  /** BANQUE ou MOBILE_MONEY ; la caisse physique = entité Caisse (/caisses). */
+  type: 'BANQUE' | 'MOBILE_MONEY';
   solde: number;
   banque: string;
   numeroCompteBancaire?: string;

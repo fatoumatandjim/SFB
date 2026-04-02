@@ -41,9 +41,9 @@ public class CompteBancaire {
 
     private String description;
 
+    /** Compte bancaire ou portefeuille mobile ; la caisse physique est l'entité {@link com.backend.gesy.caisse.Caisse}. */
     public enum TypeCompte {
         BANQUE,
-        CAISSE,
         MOBILE_MONEY
     }
 
@@ -53,4 +53,3 @@ public class CompteBancaire {
         SUSPENDU
     }
 }
-

@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Observable } from 'rxjs';
 import { ComptesBancairesService, CompteBancaire, BanqueCaisseStats } from '../../services/comptes-bancaires.service';
 import { TransactionsService, Transaction as TransactionAPI, VirementRequest, TransactionPage } from '../../services/transactions.service';
-import { CaissesService } from '../../services/caisses.service';
+import { CaissesService, Caisse } from '../../services/caisses.service';
 import { AlertService } from '../../nativeComp/alert/alert.service';
 import { ToastService } from '../../nativeComp/toast/toast.service';
 
@@ -21,7 +21,7 @@ interface CompteBancaireDisplay {
 
 interface NewCompteBancaire {
   numero: string;
-  type: 'BANQUE' | 'CAISSE' | 'MOBILE_MONEY';
+  type: 'BANQUE' | 'MOBILE_MONEY';
   solde: number;
   banque: string;
   numeroCompteBancaire?: string;
@@ -69,6 +69,7 @@ export class BanqueCaisseComponent implements OnInit {
   showDetailModal: boolean = false;
   selectedTransaction: TransactionAPI | null = null;
   isLoading: boolean = false;
+  isLoadingCaisses: boolean = false;
   isLoadingTransactions: boolean = false;
 
   // Transactions récentes
@@ -110,7 +111,7 @@ export class BanqueCaisseComponent implements OnInit {
   };
 
   comptesBancaires: CompteBancaireDisplay[] = [];
-  caisses: any[] = [];
+  caisses: Caisse[] = [];
   caissePrincipaleId: number | undefined;
 
   newCompteBancaire: Partial<NewCompteBancaire> = {
@@ -144,23 +145,15 @@ export class BanqueCaisseComponent implements OnInit {
     private toastService: ToastService
   ) { }
 
+  /** Comparaison insensible à la casse (ex. ACTIF / actif). */
+  private isStatutActif(statut: string | undefined | null): boolean {
+    return (statut ?? '').trim().toLowerCase() === 'actif';
+  }
+
   ngOnInit() {
     this.loadComptesBancaires();
-    this.loadCaissePrincipale();
     this.loadStats();
-    // Charger les caisses d'abord pour le mapping des transactions
-    this.caissesService.getAllCaisses().subscribe({
-      next: (caisses: any[]) => {
-        this.caisses = caisses;
-        // Charger les transactions récentes après avoir chargé les caisses
-        this.loadTransactionsRecentes();
-      },
-      error: (err: any) => {
-        console.error('Erreur lors du chargement des caisses:', err);
-        // Charger quand même les transactions
-        this.loadTransactionsRecentes();
-      }
-    });
+    this.loadCaisses();
   }
 
   loadStats() {
@@ -174,30 +167,33 @@ export class BanqueCaisseComponent implements OnInit {
     });
   }
 
-  loadCaissePrincipale() {
-    // Charger la caisse principale (créée automatiquement au démarrage)
-    this.caissesService.getCaisseByNom('Caisse Principale').subscribe({
-      next: (caisse) => {
-        this.caissePrincipaleId = caisse.id;
-        if (!this.caisses.find((c: any) => c.id === caisse.id)) {
-          this.caisses.push(caisse);
-        }
+  /**
+   * Charge les caisses (entité Caisse) et l’id de la caisse principale pour les formulaires de transaction.
+   */
+  loadCaisses() {
+    this.isLoadingCaisses = true;
+    this.caissesService.getAllCaisses().subscribe({
+      next: (caisses: Caisse[]) => {
+        this.caisses = caisses;
+        const principale = caisses.find((c) => c.nom === 'Caisse Principale');
+        const active = caisses.find((c) => this.isStatutActif(c.statut));
+        this.caissePrincipaleId = principale?.id ?? active?.id;
+        this.isLoadingCaisses = false;
+        this.loadTransactionsRecentes();
       },
-      error: (error) => {
-        console.error('Erreur lors du chargement de la caisse principale:', error);
-        // Essayer de charger toutes les caisses et prendre la première active
-        this.caissesService.getAllCaisses().subscribe({
-          next: (caisses: any[]) => {
-            this.caisses = caisses;
-            const caisseActive = caisses.find((c: any) => c.statut === 'ACTIF');
-            if (caisseActive) {
-              this.caissePrincipaleId = caisseActive.id;
-            }
+      error: (err: unknown) => {
+        console.error('Erreur lors du chargement des caisses:', err);
+        this.isLoadingCaisses = false;
+        this.caissesService.getCaisseByNom('Caisse Principale').subscribe({
+          next: (caisse) => {
+            this.caissePrincipaleId = caisse.id;
+            this.caisses = [caisse];
           },
-          error: (err) => {
-            console.error('Erreur lors du chargement des caisses:', err);
+          error: () => {
+            /* ignore */
           }
         });
+        this.loadTransactionsRecentes();
       }
     });
   }
@@ -228,14 +224,9 @@ export class BanqueCaisseComponent implements OnInit {
   getTypeLabel(type: string): string {
     const labels: { [key: string]: string } = {
       'BANQUE': 'Banque',
-      'CAISSE': 'Caisse',
       'MOBILE_MONEY': 'Mobile Money'
     };
     return labels[type] || type;
-  }
-
-  get soldeTotal(): number {
-    return this.comptesBancaires.reduce((sum, compte) => sum + compte.solde, 0);
   }
 
   get filteredTransactions(): Transaction[] {
@@ -302,8 +293,8 @@ export class BanqueCaisseComponent implements OnInit {
     };
   }
 
-  getCaissesDisponibles(): any[] {
-    return this.caisses.filter((c: any) => c.statut === 'ACTIF' || c.statut === 'actif');
+  getCaissesDisponibles(): Caisse[] {
+    return this.caisses.filter((c) => this.isStatutActif(c.statut));
   }
 
   saveTransaction() {
@@ -399,6 +390,7 @@ export class BanqueCaisseComponent implements OnInit {
         // Recharger les comptes bancaires et les stats pour afficher les nouveaux soldes
         this.loadComptesBancaires();
         this.loadStats();
+        this.loadCaisses();
       },
       error: (error) => {
         console.error('Erreur lors de la création de la transaction:', error);
@@ -436,7 +428,7 @@ export class BanqueCaisseComponent implements OnInit {
   }
 
   getComptesDisponibles(): CompteBancaireDisplay[] {
-    return this.comptesBancaires.filter(c => c.statut === 'ACTIF' || c.statut === 'actif');
+    return this.comptesBancaires.filter((c) => this.isStatutActif(c.statut));
   }
 
   getComptesSource(): CompteBancaireDisplay[] {
@@ -780,7 +772,7 @@ export class BanqueCaisseComponent implements OnInit {
     if (transaction.compteId) {
       compteNom = this.getCompteNom(transaction.compteId);
     } else if (transaction.caisseId) {
-      const caisse = this.caisses.find((c: any) => c.id === transaction.caisseId);
+      const caisse = this.caisses.find((c) => c.id === transaction.caisseId);
       compteNom = caisse ? caisse.nom : 'Caisse inconnue';
     }
 
@@ -861,7 +853,7 @@ export class BanqueCaisseComponent implements OnInit {
     if (transaction.compteId) {
       return this.getCompteNom(transaction.compteId);
     } else if (transaction.caisseId) {
-      const caisse = this.caisses.find((c: any) => c.id === transaction.caisseId);
+      const caisse = this.caisses.find((c) => c.id === transaction.caisseId);
       return caisse ? caisse.nom : 'Caisse inconnue';
     }
     return 'N/A';

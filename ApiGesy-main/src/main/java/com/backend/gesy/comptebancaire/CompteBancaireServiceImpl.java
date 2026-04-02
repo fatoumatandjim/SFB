@@ -69,12 +69,10 @@ public class CompteBancaireServiceImpl implements CompteBancaireService {
 
     @Override
     public BanqueCaisseStatsDTO getStats() {
-        // Récupérer tous les comptes bancaires
         List<CompteBancaire> allComptes = compteBancaireRepository.findAll();
-        
-        // Calculer le solde total de tous les comptes bancaires
+
+        // Solde total = somme des soldes de tous les comptes bancaires (aligné avec la grille)
         BigDecimal soldeTotal = allComptes.stream()
-            .filter(c -> c.getStatut() == CompteBancaire.StatutCompte.ACTIF)
             .map(CompteBancaire::getSolde)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
@@ -139,31 +137,27 @@ public class CompteBancaireServiceImpl implements CompteBancaireService {
             evolution = "+100%";
         }
 
-        // Récupérer la caisse principale
-        Optional<Caisse> caissePrincipaleOpt = caisseRepository.findByNom("Caisse Principale");
-        BigDecimal soldeCaisse = BigDecimal.ZERO;
+        // Caisses : entité Caisse uniquement (même périmètre que la liste affichée côté UI)
+        List<Caisse> toutesLesCaisses = caisseRepository.findAll();
+
+        BigDecimal soldeCaisse = toutesLesCaisses.stream()
+            .map(Caisse::getSolde)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
         BigDecimal entreesCaisse = BigDecimal.ZERO;
         BigDecimal sortiesCaisse = BigDecimal.ZERO;
-
-        if (caissePrincipaleOpt.isPresent()) {
-            Caisse caissePrincipale = caissePrincipaleOpt.get();
-            soldeCaisse = caissePrincipale.getSolde();
-
-            // Calculer les entrées et sorties de la caisse (transactions validées)
-            List<Transaction> transactionsCaisse = transactionRepository.findByCaisse(caissePrincipale);
-            List<Transaction> transactionsCaisseValidees = transactionsCaisse.stream()
+        for (Caisse caisse : toutesLesCaisses) {
+            List<Transaction> transactionsCaisseValidees = transactionRepository.findByCaisse(caisse).stream()
                 .filter(t -> t.getStatut() == Transaction.StatutTransaction.VALIDE)
                 .toList();
-
-            entreesCaisse = transactionsCaisseValidees.stream()
+            entreesCaisse = entreesCaisse.add(transactionsCaisseValidees.stream()
                 .filter(t -> t.getType() == Transaction.TypeTransaction.DEPOT)
                 .map(Transaction::getMontant)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-            sortiesCaisse = transactionsCaisseValidees.stream()
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
+            sortiesCaisse = sortiesCaisse.add(transactionsCaisseValidees.stream()
                 .filter(t -> t.getType() == Transaction.TypeTransaction.RETRAIT)
                 .map(Transaction::getMontant)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                .reduce(BigDecimal.ZERO, BigDecimal::add));
         }
 
         // Calculer les totaux d'entrées et sorties (toutes les transactions validées)

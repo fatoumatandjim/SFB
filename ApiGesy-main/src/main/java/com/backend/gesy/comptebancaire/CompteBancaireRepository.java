@@ -9,4 +9,3 @@ import java.util.Optional;
 public interface CompteBancaireRepository extends JpaRepository<CompteBancaire, Long> {
     Optional<CompteBancaire> findByNumero(String numero);
 }
-

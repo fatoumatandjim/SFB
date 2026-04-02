@@ -14,7 +14,7 @@
         </div>
         <span class="stat-badge blue positive">{{ stats.soldeTotal.evolution }}</span>
       </div>
-      <div class="stat-value">{{ soldeTotal | number }} F</div>
+      <div class="stat-value">{{ stats.soldeTotal.montant | number }} F</div>
       <div class="stat-label">Solde Total Banque</div>
       <div class="stat-details">
         <span>{{ stats.comptesBancaires.total }} comptes bancaires</span>
@@ -162,6 +162,54 @@
   </div>
   }
 
+  @if (activeTab === 'caisse') {
+  <div class="comptes-section">
+    <div class="section-header section-header--stacked">
+      <h2>Caisses</h2>
+      <p class="section-subtitle">Soldes issus de l’entité Caisse (distincte des comptes bancaires)</p>
+    </div>
+    @if (isLoadingCaisses) {
+      <div class="loading-state">
+        <div class="loading-spinner"></div>
+        <p>Chargement des caisses...</p>
+      </div>
+    } @else if (!isLoadingCaisses && caisses.length === 0) {
+      <div class="empty-state">
+        <div class="empty-icon">💵</div>
+        <p class="empty-message">Aucune caisse enregistrée.</p>
+      </div>
+    } @else {
+      <div class="comptes-grid">
+        @for (caisse of caisses; track caisse.id) {
+        <div class="compte-card">
+          <div class="compte-header">
+            <div class="compte-info">
+              <h3>{{ caisse.nom }}</h3>
+              <p class="compte-banque">Caisse</p>
+            </div>
+            <span class="compte-status" [class]="'status-' + caisse.statut.toLowerCase()">
+              @if (caisse.statut === 'ACTIF') { Actif }
+              @else if (caisse.statut === 'FERME') { Fermé }
+              @else if (caisse.statut === 'SUSPENDU') { Suspendu }
+              @else { {{ caisse.statut }} }
+            </span>
+          </div>
+          @if (caisse.description) {
+            <div class="compte-details">
+              <div class="compte-type">{{ caisse.description }}</div>
+            </div>
+          }
+          <div class="compte-solde">
+            <span class="solde-label">Solde</span>
+            <span class="solde-value">{{ caisse.solde | number }} FCFA</span>
+          </div>
+        </div>
+        }
+      </div>
+    }
+  </div>
+  }
+
   <div class="transactions-section">
     <div class="section-header-movements">
       <h2>Transactions Récentes</h2>
@@ -292,7 +340,6 @@
                 class="form-select"
               >
                 <option value="BANQUE">Banque</option>
-                <option value="CAISSE">Caisse</option>
                 <option value="MOBILE_MONEY">Mobile Money</option>
               </select>
             </div>

@@ -41,7 +41,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     @Query("SELECT t FROM Transaction t WHERE t.caisse.id = :caisseId ORDER BY t.date DESC")
     Page<Transaction> findByCaisseId(@Param("caisseId") Long caisseId, Pageable pageable);
     
-    // Filtrer uniquement les transactions de comptes bancaires (pas de caisse) avec pagination
+    // Transactions liées à un compte bancaire (hors entité Caisse)
     @Query("SELECT t FROM Transaction t WHERE t.compte IS NOT NULL AND t.caisse IS NULL ORDER BY t.date DESC")
     Page<Transaction> findByComptesBancairesOnly(Pageable pageable);
     

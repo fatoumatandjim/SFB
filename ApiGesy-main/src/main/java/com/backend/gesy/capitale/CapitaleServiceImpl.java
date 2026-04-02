@@ -106,9 +106,9 @@ public class CapitaleServiceImpl implements CapitaleService {
     }
 
     private CapitaleDTO.FondsDTO calculateFonds() {
-        // Total des comptes bancaires (type BANQUE uniquement)
+        // Total des comptes bancaires (la caisse = entité Caisse)
         BigDecimal totalBanques = compteBancaireRepository.findAll().stream()
-                .filter(cb -> cb.getType() == CompteBancaire.TypeCompte.BANQUE && cb.getStatut() == CompteBancaire.StatutCompte.ACTIF)
+                .filter(cb -> cb.getStatut() == CompteBancaire.StatutCompte.ACTIF)
                 .map(CompteBancaire::getSolde)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
