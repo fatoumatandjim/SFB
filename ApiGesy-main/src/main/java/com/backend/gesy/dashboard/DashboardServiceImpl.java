@@ -440,18 +440,10 @@ public class DashboardServiceImpl implements DashboardService {
                                 .filter(v -> !v.isCession())
                                 .filter(v -> v.getStatut() != null)
                                 .filter(v -> {
-                                        // Pour les statuts avant départ (En route, Chargé), dateDepart est souvent null
-                                        if (v.getStatut() == Voyage.StatutVoyage.EN_ATTENTE_CHARGEMENT
-                                                        || v.getStatut() == Voyage.StatutVoyage.CHARGE) {
-                                                LocalDateTime ref = v.getDateDepart() != null ? v.getDateDepart()
-                                                                : (v.getDateCreation() != null ? v.getDateCreation() : null);
-                                                return ref != null && !ref.isBefore(startOfMonthDateTime)
-                                                                && !ref.isAfter(endOfMonthDateTime);
-                                        }
-                                        // Pour les autres statuts : dateDepart obligatoire
-                                        return v.getDateDepart() != null
-                                                        && !v.getDateDepart().isBefore(startOfMonthDateTime)
-                                                        && !v.getDateDepart().isAfter(endOfMonthDateTime);
+                                        LocalDateTime referenceDate = getVoyageReferenceDate(v);
+                                        return referenceDate != null
+                                                        && !referenceDate.isBefore(startOfMonthDateTime)
+                                                        && !referenceDate.isAfter(endOfMonthDateTime);
                                 })
                                 .collect(Collectors.groupingBy(Voyage::getStatut, Collectors.counting()));
 
@@ -462,6 +454,17 @@ public class DashboardServiceImpl implements DashboardService {
                                                 .build())
                                 .sorted((a, b) -> a.getStatut().compareTo(b.getStatut()))
                                 .collect(Collectors.toList());
+        }
+
+        /**
+         * Date de référence pour les stats mensuelles de statut.
+         * Priorité à dateDepart (quand disponible), sinon fallback sur dateCreation.
+         */
+        private LocalDateTime getVoyageReferenceDate(Voyage voyage) {
+                if (voyage == null) {
+                        return null;
+                }
+                return voyage.getDateDepart() != null ? voyage.getDateDepart() : voyage.getDateCreation();
         }
 
         private String formatBigDecimal(BigDecimal value) {
