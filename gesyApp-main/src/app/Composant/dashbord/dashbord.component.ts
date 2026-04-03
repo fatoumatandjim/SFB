@@ -88,13 +88,12 @@ export class DashbordComponent implements OnInit {
     };
   }
 
-  get statutsMoisCourant() {
-    return this.stats?.statutsVoyageMoisCourant || [];
-  }
-
-  /** Tous les statuts avec leur total du mois (0 si absent de l’API). */
-  get statutsMoisCourantComplet(): { statut: string; count: number }[] {
-    const fromApi = this.stats?.statutsVoyageMoisCourant || [];
+  /**
+   * Totaux par statut pour la grille : aligné sur `STATUTS_VOYAGE_ORDER`,
+   * compteur 0 si l’API n’expose pas une entrée pour ce statut.
+   */
+  get statutsVoyageOrdonnes(): { statut: string; count: number }[] {
+    const fromApi = this.stats?.statutsVoyage || [];
     const countByStatut = new Map(fromApi.map((x) => [x.statut, x.count]));
     return STATUTS_VOYAGE_ORDER.map((statut) => ({
       statut,

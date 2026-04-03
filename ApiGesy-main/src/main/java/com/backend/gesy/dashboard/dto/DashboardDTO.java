@@ -19,8 +19,11 @@ public class DashboardDTO {
     private FinancesDTO finances;
     private VoyagesStatsDTO voyagesStats;
     private DouaneStatsDTO douaneStats;
-    /** Totaux par statut des voyages du mois en cours (dateDepart dans le mois) */
-    private List<StatutVoyageCountDTO> statutsVoyageMoisCourant;
+    /**
+     * Totaux par statut : tous voyages hors cession pour chaque statut sauf DECHARGER (tout historique) ;
+     * pour DECHARGER, uniquement le mois en cours (voir DashboardServiceImpl).
+     */
+    private List<StatutVoyageCountDTO> statutsVoyage;
 
     @Data
     @Builder

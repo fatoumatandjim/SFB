@@ -28,9 +28,12 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -56,7 +59,7 @@ public class DashboardServiceImpl implements DashboardService {
                                 .finances(calculateFinances())
                                 .voyagesStats(calculateVoyagesStats())
                                 .douaneStats(calculateDouaneStats())
-                                .statutsVoyageMoisCourant(calculateStatutsVoyageMoisCourant())
+                                .statutsVoyage(calculateStatutsVoyagePourDashboard())
                                 .build();
         }
 
@@ -425,46 +428,64 @@ public class DashboardServiceImpl implements DashboardService {
         }
 
         /**
-         * Totaux par statut des voyages du mois en cours.
-         * - Voyages avec dateDepart : filtrés par dateDepart dans le mois.
-         * - Voyages EN_ATTENTE_CHARGEMENT / CHARGE sans dateDepart : filtrés par dateCreation dans le mois
-         *   (car dateDepart n'est définie qu'au passage au statut DEPART).
+         * Totaux par statut de voyage (hors cession).
+         * <ul>
+         *   <li>Pour tout statut autre que {@link Voyage.StatutVoyage#DECHARGER} : compte tous les voyages
+         *       actuellement dans ce statut (mois en cours et passés).</li>
+         *   <li>Pour {@link Voyage.StatutVoyage#DECHARGER} uniquement : compte seulement les voyages
+         *       déchargés dont au moins une date (création, départ, arrivée) tombe dans le mois en cours
+         *       [début du mois, maintenant].</li>
+         * </ul>
+         * Retourne une entrée pour chaque valeur de {@link Voyage.StatutVoyage} (count 0 si aucun).
          */
-        private List<DashboardDTO.StatutVoyageCountDTO> calculateStatutsVoyageMoisCourant() {
+        private List<DashboardDTO.StatutVoyageCountDTO> calculateStatutsVoyagePourDashboard() {
                 LocalDate now = LocalDate.now();
                 LocalDate startOfMonth = now.withDayOfMonth(1);
                 LocalDateTime startOfMonthDateTime = startOfMonth.atStartOfDay();
                 LocalDateTime endOfMonthDateTime = now.atTime(23, 59, 59);
 
-                Map<Voyage.StatutVoyage, Long> counts = voyageRepository.findAll().stream()
-                                .filter(v -> !v.isCession())
-                                .filter(v -> v.getStatut() != null)
-                                .filter(v -> {
-                                        LocalDateTime referenceDate = getVoyageReferenceDate(v);
-                                        return referenceDate != null
-                                                        && !referenceDate.isBefore(startOfMonthDateTime)
-                                                        && !referenceDate.isAfter(endOfMonthDateTime);
-                                })
-                                .collect(Collectors.groupingBy(Voyage::getStatut, Collectors.counting()));
+                Map<Voyage.StatutVoyage, Long> counts = new EnumMap<>(Voyage.StatutVoyage.class);
+                for (Voyage.StatutVoyage s : Voyage.StatutVoyage.values()) {
+                        counts.put(s, 0L);
+                }
+
+                voyageRepository.findAll().stream()
+                                .filter(v -> isVoyageIncludedForStatutDashboard(v, startOfMonthDateTime, endOfMonthDateTime))
+                                .forEach(v -> counts.merge(v.getStatut(), 1L, Long::sum));
 
                 return counts.entrySet().stream()
+                                .sorted(Map.Entry.comparingByKey())
                                 .map(e -> DashboardDTO.StatutVoyageCountDTO.builder()
                                                 .statut(e.getKey().name())
                                                 .count(e.getValue().intValue())
                                                 .build())
-                                .sorted((a, b) -> a.getStatut().compareTo(b.getStatut()))
                                 .collect(Collectors.toList());
         }
 
         /**
-         * Date de référence pour les stats mensuelles de statut.
-         * Priorité à dateDepart (quand disponible), sinon fallback sur dateCreation.
+         * Règle : tous statuts sauf DECHARGER = tous les voyages (hors cession) ;
+         * DECHARGER = uniquement si une date clé tombe dans le mois en cours.
          */
-        private LocalDateTime getVoyageReferenceDate(Voyage voyage) {
-                if (voyage == null) {
-                        return null;
+        private boolean isVoyageIncludedForStatutDashboard(
+                        Voyage v,
+                        LocalDateTime startOfMonthDateTime,
+                        LocalDateTime endOfMonthDateTime) {
+                if (v == null || v.isCession() || v.getStatut() == null) {
+                        return false;
                 }
-                return voyage.getDateDepart() != null ? voyage.getDateDepart() : voyage.getDateCreation();
+                if (v.getStatut() == Voyage.StatutVoyage.DECHARGER) {
+                        return hasAnyVoyageDateInWindow(v, startOfMonthDateTime, endOfMonthDateTime);
+                }
+                return true;
+        }
+
+        private boolean hasAnyVoyageDateInWindow(
+                        Voyage v,
+                        LocalDateTime start,
+                        LocalDateTime end) {
+                return Stream.of(v.getDateCreation(), v.getDateDepart(), v.getDateArrivee())
+                                .filter(Objects::nonNull)
+                                .anyMatch(d -> !d.isBefore(start) && !d.isAfter(end));
         }
 
         private String formatBigDecimal(BigDecimal value) {
