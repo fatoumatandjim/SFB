@@ -8,6 +8,19 @@ import { CamionsService, CamionWithVoyagesCount } from '../../services/camions.s
 import { VoyagesService, Voyage } from '../../services/voyages.service';
 import { AlertService } from '../../nativeComp/alert/alert.service';
 import { ToastService } from '../../nativeComp/toast/toast.service';
+import {
+  buildAvatarFromNom,
+  CLIENT_TYPE_OPTIONS,
+  createEmptyNewClient,
+  createEmptyNewFournisseur,
+  FOURNISSEUR_TYPE_OPTIONS,
+  isValidTypeClient,
+  isValidTypeFournisseur,
+  libelleTypeFournisseur,
+  NewClientFormState,
+  NewFournisseurFormState,
+  normalizeTypeFournisseur
+} from '../../utils/contact.utils';
 
 interface Contact {
   id?: number;
@@ -28,6 +41,8 @@ interface Contact {
   ville?: string;
   pays?: string;
   contactPersonne?: string;
+  /** Présent uniquement pour les fournisseurs (aligné sur `Fournisseur.typeFournisseur`) */
+  typeFournisseur?: 'ACHAT' | 'TRANSPORT';
 }
 
 @Component({
@@ -38,6 +53,11 @@ interface Contact {
   imports: [CommonModule, FormsModule]
 })
 export class ClientFournisseurComponent implements OnInit {
+  /** Exposés au template : options des `<select>` (DRY) */
+  readonly clientTypeOptions = CLIENT_TYPE_OPTIONS;
+  readonly fournisseurTypeOptions = FOURNISSEUR_TYPE_OPTIONS;
+  readonly libelleTypeFournisseur = libelleTypeFournisseur;
+
   activeTab: 'clients' | 'fournisseurs' = 'clients';
   searchTerm: string = '';
   activeFilter: string = 'tous';
@@ -51,8 +71,8 @@ export class ClientFournisseurComponent implements OnInit {
     },
     fournisseurs: {
       total: 0,
-      actifs: 0,
-      principaux: 0
+      achat: 0,
+      transport: 0
     }
   };
 
@@ -105,13 +125,7 @@ export class ClientFournisseurComponent implements OnInit {
   }
 
   mapClientToContact(client: Client): Contact {
-    const words = client.nom.split(' ');
-    const initiales = words.length >= 2
-      ? (words[0][0] + words[1][0]).toUpperCase()
-      : client.nom.substring(0, 2).toUpperCase();
-
-    const colors = ['blue', 'green', 'purple', 'orange', 'red', 'teal', 'pink', 'indigo'];
-    const colorIndex = client.nom.charCodeAt(0) % colors.length;
+    const { initiales, couleur } = buildAvatarFromNom(client.nom);
 
     return {
       id: client.id,
@@ -120,8 +134,8 @@ export class ClientFournisseurComponent implements OnInit {
       telephone: client.telephone,
       adresse: client.adresse,
       type: 'client',
-      initiales: initiales,
-      couleur: colors[colorIndex],
+      initiales,
+      couleur,
       codeClient: client.codeClient,
       typeClient: client.type,
       ville: client.ville,
@@ -130,13 +144,7 @@ export class ClientFournisseurComponent implements OnInit {
   }
 
   mapFournisseurToContact(fournisseur: Fournisseur): Contact {
-    const words = fournisseur.nom.split(' ');
-    const initiales = words.length >= 2
-      ? (words[0][0] + words[1][0]).toUpperCase()
-      : fournisseur.nom.substring(0, 2).toUpperCase();
-
-    const colors = ['blue', 'green', 'purple', 'orange', 'red', 'teal', 'pink', 'indigo'];
-    const colorIndex = fournisseur.nom.charCodeAt(0) % colors.length;
+    const { initiales, couleur } = buildAvatarFromNom(fournisseur.nom);
 
     return {
       id: fournisseur.id,
@@ -145,12 +153,13 @@ export class ClientFournisseurComponent implements OnInit {
       telephone: fournisseur.telephone,
       adresse: fournisseur.adresse,
       type: 'fournisseur',
-      initiales: initiales,
-      couleur: colors[colorIndex],
+      initiales,
+      couleur,
       codeFournisseur: fournisseur.codeFournisseur,
       ville: fournisseur.ville,
       pays: fournisseur.pays,
-      contactPersonne: fournisseur.contactPersonne
+      contactPersonne: fournisseur.contactPersonne,
+      typeFournisseur: normalizeTypeFournisseur(fournisseur.typeFournisseur)
     };
   }
 
@@ -158,7 +167,12 @@ export class ClientFournisseurComponent implements OnInit {
     this.stats.clients.total = this.clients.length;
     this.stats.clients.actifs = this.clients.length; // Tous actifs par défaut
     this.stats.fournisseurs.total = this.fournisseurs.length;
-    this.stats.fournisseurs.actifs = this.fournisseurs.length; // Tous actifs par défaut
+    this.stats.fournisseurs.achat = this.fournisseurs.filter(
+      (c) => normalizeTypeFournisseur(c.typeFournisseur) === 'ACHAT'
+    ).length;
+    this.stats.fournisseurs.transport = this.fournisseurs.filter(
+      (c) => normalizeTypeFournisseur(c.typeFournisseur) === 'TRANSPORT'
+    ).length;
   }
 
   setTab(tab: 'clients' | 'fournisseurs') {
@@ -209,65 +223,15 @@ export class ClientFournisseurComponent implements OnInit {
   isLoadingVoyages: boolean = false;
   showCamionVoyagesModal: boolean = false;
 
-  newClient: {
-    nom: string;
-    email: string;
-    telephone: string;
-    adresse: string;
-    type: 'PARTICULIER' | 'ENTREPRISE' | 'GOUVERNEMENT';
-    ville?: string;
-    pays?: string;
-  } = {
-    nom: '',
-    email: '',
-    telephone: '',
-    adresse: '',
-    type: 'ENTREPRISE',
-    ville: '',
-    pays: ''
-  };
+  newClient: NewClientFormState = createEmptyNewClient();
 
-  newFournisseur: {
-    nom: string;
-    email: string;
-    telephone: string;
-    adresse: string;
-    ville?: string;
-    pays?: string;
-    contactPersonne?: string;
-    typeFournisseur?: 'ACHAT' | 'TRANSPORT';
-  } = {
-    nom: '',
-    email: '',
-    telephone: '',
-    adresse: '',
-    ville: '',
-    pays: '',
-    contactPersonne: '',
-    typeFournisseur: 'ACHAT'
-  };
+  newFournisseur: NewFournisseurFormState = createEmptyNewFournisseur();
 
   nouveauContact() {
     if (this.activeTab === 'clients') {
-      this.newClient = {
-        nom: '',
-        email: '',
-        telephone: '',
-        adresse: '',
-        type: 'ENTREPRISE',
-        ville: '',
-        pays: ''
-      };
+      this.newClient = createEmptyNewClient();
     } else {
-      this.newFournisseur = {
-        nom: '',
-        email: '',
-        telephone: '',
-        adresse: '',
-        ville: '',
-        pays: '',
-        contactPersonne: ''
-      };
+      this.newFournisseur = createEmptyNewFournisseur();
     }
     this.showAddModal = true;
   }
@@ -275,26 +239,9 @@ export class ClientFournisseurComponent implements OnInit {
   closeAddModal() {
     this.showAddModal = false;
     if (this.activeTab === 'clients') {
-      this.newClient = {
-        nom: '',
-        email: '',
-        telephone: '',
-        adresse: '',
-        type: 'ENTREPRISE',
-        ville: '',
-        pays: ''
-      };
+      this.newClient = createEmptyNewClient();
     } else {
-      this.newFournisseur = {
-        nom: '',
-        email: '',
-        telephone: '',
-        adresse: '',
-        ville: '',
-        pays: '',
-        contactPersonne: '',
-        typeFournisseur: 'ACHAT'
-      };
+      this.newFournisseur = createEmptyNewFournisseur();
     }
   }
 
@@ -315,6 +262,10 @@ export class ClientFournisseurComponent implements OnInit {
       this.toastService.warning('Veuillez saisir l\'adresse du client');
       return false;
     }
+    if (!isValidTypeClient(this.newClient.type)) {
+      this.toastService.warning('Veuillez sélectionner un type de client');
+      return false;
+    }
     return true;
   }
 
@@ -333,6 +284,10 @@ export class ClientFournisseurComponent implements OnInit {
     }
     if (!this.newFournisseur.adresse || this.newFournisseur.adresse.trim() === '') {
       this.toastService.warning('Veuillez saisir l\'adresse du fournisseur');
+      return false;
+    }
+    if (!isValidTypeFournisseur(this.newFournisseur.typeFournisseur)) {
+      this.toastService.warning('Veuillez sélectionner un type de fournisseur (achat ou transport)');
       return false;
     }
     return true;
@@ -387,7 +342,7 @@ export class ClientFournisseurComponent implements OnInit {
       ville: this.newFournisseur.ville?.trim() || undefined,
       pays: this.newFournisseur.pays?.trim() || undefined,
       contactPersonne: this.newFournisseur.contactPersonne?.trim() || undefined,
-      typeFournisseur: this.newFournisseur.typeFournisseur || 'ACHAT'
+      typeFournisseur: normalizeTypeFournisseur(this.newFournisseur.typeFournisseur)
       // codeFournisseur sera généré automatiquement par le backend
     };
 
@@ -673,7 +628,8 @@ export class ClientFournisseurComponent implements OnInit {
             adresse: fournisseur.adresse,
             ville: fournisseur.ville,
             pays: fournisseur.pays,
-            contactPersonne: fournisseur.contactPersonne
+            contactPersonne: fournisseur.contactPersonne,
+            typeFournisseur: normalizeTypeFournisseur(fournisseur.typeFournisseur)
           };
           this.showEditModal = true;
         },
@@ -755,7 +711,8 @@ export class ClientFournisseurComponent implements OnInit {
       ville: this.editFournisseur.ville?.trim() || undefined,
       pays: this.editFournisseur.pays?.trim() || undefined,
       contactPersonne: this.editFournisseur.contactPersonne?.trim() || undefined,
-      codeFournisseur: this.selectedFournisseur.codeFournisseur
+      codeFournisseur: this.selectedFournisseur.codeFournisseur,
+      typeFournisseur: normalizeTypeFournisseur(this.editFournisseur.typeFournisseur)
     };
 
     this.fournisseursService.updateFournisseur(this.selectedFournisseur.id, fournisseurToUpdate).subscribe({
@@ -791,6 +748,10 @@ export class ClientFournisseurComponent implements OnInit {
       this.toastService.warning('Veuillez saisir l\'adresse du client');
       return false;
     }
+    if (!isValidTypeClient(this.editClient.type)) {
+      this.toastService.warning('Veuillez sélectionner un type de client');
+      return false;
+    }
     return true;
   }
 
@@ -809,6 +770,10 @@ export class ClientFournisseurComponent implements OnInit {
     }
     if (!this.editFournisseur.adresse || this.editFournisseur.adresse.trim() === '') {
       this.toastService.warning('Veuillez saisir l\'adresse du fournisseur');
+      return false;
+    }
+    if (!isValidTypeFournisseur(this.editFournisseur.typeFournisseur)) {
+      this.toastService.warning('Veuillez sélectionner un type de fournisseur (achat ou transport)');
       return false;
     }
     return true;

@@ -35,8 +35,8 @@ public class ClientMapper {
         client.setEmail(dto.getEmail());
         client.setTelephone(dto.getTelephone());
         client.setAdresse(dto.getAdresse());
-        if (dto.getType() != null) {
-            client.setType(Client.TypeClient.valueOf(dto.getType()));
+        if (dto.getType() != null && !dto.getType().isBlank()) {
+            client.setType(Client.TypeClient.valueOf(dto.getType().trim()));
         }
         client.setCodeClient(dto.getCodeClient());
         client.setVille(dto.getVille());

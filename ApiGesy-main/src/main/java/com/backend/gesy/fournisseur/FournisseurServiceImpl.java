@@ -53,7 +53,10 @@ public class FournisseurServiceImpl implements FournisseurService {
     @Override
     public FournisseurDTO save(FournisseurDTO fournisseurDTO) {
         Fournisseur fournisseur = fournisseurMapper.toEntity(fournisseurDTO);
-        
+        if (fournisseur.getTypeFournisseur() == null) {
+            fournisseur.setTypeFournisseur(Fournisseur.TypeFournisseur.ACHAT);
+        }
+
         // Générer un code fournisseur unique si non fourni
         if (fournisseur.getCodeFournisseur() == null || fournisseur.getCodeFournisseur().trim().isEmpty()) {
             String codeFournisseur = generateUniqueCodeFournisseur();
@@ -109,7 +112,10 @@ public class FournisseurServiceImpl implements FournisseurService {
             .orElseThrow(() -> new RuntimeException("Fournisseur non trouvé avec l'id: " + id));
         Fournisseur fournisseur = fournisseurMapper.toEntity(fournisseurDTO);
         fournisseur.setId(existingFournisseur.getId());
-        
+        if (fournisseur.getTypeFournisseur() == null) {
+            fournisseur.setTypeFournisseur(existingFournisseur.getTypeFournisseur());
+        }
+
         // Si le code fournisseur change, vérifier l'unicité
         if (fournisseur.getCodeFournisseur() != null && !fournisseur.getCodeFournisseur().equals(existingFournisseur.getCodeFournisseur())) {
             if (fournisseurRepository.findByCodeFournisseur(fournisseur.getCodeFournisseur()).isPresent()) {

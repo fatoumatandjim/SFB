@@ -45,9 +45,9 @@
       </div>
       <div class="stat-value">{{ stats.fournisseurs.total }}</div>
       <div class="stat-label">Fournisseurs</div>
-      <div class="stat-details">
-        <span>Actifs: {{ stats.fournisseurs.actifs }}</span>
-        <!-- <span>Principaux: {{ stats.fournisseurs.principaux }}</span> -->
+      <div class="stat-details stat-details-fournisseur-types">
+        <span>Fournisseurs d'achat : <strong>{{ stats.fournisseurs.achat }}</strong></span>
+        <span>Transport : <strong>{{ stats.fournisseurs.transport }}</strong></span>
       </div>
     </div>
   </div>
@@ -278,9 +278,9 @@
                     required
                     aria-label="Type de client"
                   >
-                    <option value="ENTREPRISE">Entreprise</option>
-                    <option value="PARTICULIER">Particulier</option>
-                    <option value="GOUVERNEMENT">Gouvernement</option>
+                    @for (opt of clientTypeOptions; track opt.value) {
+                      <option [value]="opt.value">{{ opt.label }}</option>
+                    }
                   </select>
                 </div>
               </div>
@@ -405,8 +405,9 @@
                     name="fournisseur-type"
                     required
                   >
-                    <option value="ACHAT">Fournisseur d'achat</option>
-                    <option value="TRANSPORT">Fournisseur transport</option>
+                    @for (opt of fournisseurTypeOptions; track opt.value) {
+                      <option [value]="opt.value">{{ opt.label }}</option>
+                    }
                   </select>
                 </div>
               </div>
@@ -698,6 +699,10 @@
                   <span class="detail-label">Téléphone</span>
                   <span class="detail-value">{{ selectedFournisseur.telephone }}</span>
                 </div>
+                <div class="detail-item">
+                  <span class="detail-label">Type</span>
+                  <span class="detail-value">{{ libelleTypeFournisseur(selectedFournisseur.typeFournisseur) }}</span>
+                </div>
                 @if (selectedFournisseur.contactPersonne) {
                 <div class="detail-item">
                   <span class="detail-label">Personne de contact</span>
@@ -942,9 +947,9 @@
                     name="edit-client-type"
                     required
                   >
-                    <option value="ENTREPRISE">Entreprise</option>
-                    <option value="PARTICULIER">Particulier</option>
-                    <option value="GOUVERNEMENT">Gouvernement</option>
+                    @for (opt of clientTypeOptions; track opt.value) {
+                      <option [value]="opt.value">{{ opt.label }}</option>
+                    }
                   </select>
                 </div>
               </div>
@@ -1059,6 +1064,23 @@
                     name="edit-fournisseur-contact"
                     placeholder="Nom du contact"
                   />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="edit-fournisseur-type">Type de fournisseur *</label>
+                  <select
+                    id="edit-fournisseur-type"
+                    [(ngModel)]="editFournisseur.typeFournisseur"
+                    name="edit-fournisseur-type"
+                    required
+                    aria-label="Type de fournisseur"
+                  >
+                    @for (opt of fournisseurTypeOptions; track opt.value) {
+                      <option [value]="opt.value">{{ opt.label }}</option>
+                    }
+                  </select>
                 </div>
               </div>
 

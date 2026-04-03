@@ -9,7 +9,7 @@ export interface Client {
   email: string;
   telephone: string;
   adresse: string;
-  type: string;
+  type: 'PARTICULIER' | 'ENTREPRISE' | 'GOUVERNEMENT';
   codeClient?: string;
   ville?: string;
   pays?: string;

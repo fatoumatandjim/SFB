@@ -52,7 +52,10 @@ public class ClientServiceImpl implements ClientService {
     @Override
     public ClientDTO save(ClientDTO clientDTO) {
         Client client = clientMapper.toEntity(clientDTO);
-        
+        if (client.getType() == null) {
+            client.setType(Client.TypeClient.ENTREPRISE);
+        }
+
         // Générer un code client unique si non fourni
         if (client.getCodeClient() == null || client.getCodeClient().trim().isEmpty()) {
             String codeClient = generateUniqueCodeClient();
@@ -108,7 +111,10 @@ public class ClientServiceImpl implements ClientService {
             .orElseThrow(() -> new RuntimeException("Client non trouvé avec l'id: " + id));
         Client client = clientMapper.toEntity(clientDTO);
         client.setId(existingClient.getId());
-        
+        if (client.getType() == null) {
+            client.setType(existingClient.getType());
+        }
+
         // Si le code client change, vérifier l'unicité
         if (client.getCodeClient() != null && !client.getCodeClient().equals(existingClient.getCodeClient())) {
             if (clientRepository.findByCodeClient(client.getCodeClient()).isPresent()) {

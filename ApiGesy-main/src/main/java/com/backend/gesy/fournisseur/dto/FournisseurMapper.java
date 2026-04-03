@@ -40,12 +40,10 @@ public class FournisseurMapper {
         fournisseur.setVille(dto.getVille());
         fournisseur.setPays(dto.getPays());
         fournisseur.setContactPersonne(dto.getContactPersonne());
-        if (dto.getTypeFournisseur() != null && !dto.getTypeFournisseur().isEmpty()) {
-            fournisseur.setTypeFournisseur(Fournisseur.TypeFournisseur.valueOf(dto.getTypeFournisseur()));
-        } else {
-            fournisseur.setTypeFournisseur(Fournisseur.TypeFournisseur.ACHAT);
+        if (dto.getTypeFournisseur() != null && !dto.getTypeFournisseur().isBlank()) {
+            fournisseur.setTypeFournisseur(Fournisseur.TypeFournisseur.valueOf(dto.getTypeFournisseur().trim()));
         }
-        
+
         return fournisseur;
     }
 }
