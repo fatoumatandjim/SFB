@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, HostListener, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CamionsService, Camion } from '../../services/camions.service';
@@ -20,6 +20,10 @@ import { AuthService } from '../../services/auth.service';
 import { UtilisateursService, Utilisateur } from '../../services/utilisateurs.service';
 import { EditPrixTransportModalComponent, VoyagePrixRef } from '../shared/edit-prix-transport-modal/edit-prix-transport-modal.component';
 import { getVoyageStatutLabel, getVoyageStatutClass, isVoyageEnCours } from '../../services/voyage-statut.utils';
+import { camionMatchesSearch, formatCamionLabel } from '../../utils/camion-label.utils';
+
+/** Délai avant fermeture du panneau combobox après blur (laisse le temps au mousedown sur une option) */
+const VOYAGE_CAMION_COMBOBOX_BLUR_MS = 200;
 
 interface CamionDisplay extends Camion {
   couleur: string;
@@ -33,6 +37,9 @@ interface CamionDisplay extends Camion {
   imports: [CommonModule, FormsModule, EditPrixTransportModalComponent]
 })
 export class CamionComponent implements OnInit {
+  /** Exposé au template pour le libellé camion (DRY avec `camion-label.utils`) */
+  readonly formatCamionLabel = formatCamionLabel;
+
   searchTerm: string = '';
   activeFilter: string = 'tous';
   showAddModal: boolean = false;
@@ -57,6 +64,12 @@ export class CamionComponent implements OnInit {
   comptesBancaires: CompteBancaire[] = [];
   caisses: Caisse[] = [];
   camionsDisponibles: CamionDisplay[] = [];
+  /** Texte du combobox camion (modal création de voyage) : saisie = filtre, ou libellé après choix */
+  voyageCamionSearchTerm = '';
+  /** Libellé figé après sélection dans la liste (pour savoir si l’utilisateur a modifié la saisie) */
+  private voyageCamionLabelSelected: string | null = null;
+  /** Panneau liste du combobox camion ouvert */
+  camionComboboxOpen = false;
   /** Clients ayant au moins un achat (pour voyage de type cession) */
   clientsWithAchat: Client[] = [];
   voyages: Voyage[] = [];
@@ -416,15 +429,106 @@ export class CamionComponent implements OnInit {
     }
 
     if (this.searchTerm) {
-      filtered = filtered.filter(c =>
-        c.immatriculation.toLowerCase().includes(this.searchTerm.toLowerCase())
-      );
+      filtered = filtered.filter((c) => camionMatchesSearch(c, this.searchTerm));
     }
 
     return filtered;
   }
 
+  /** Camions disponibles pour le voyage, filtrés par la saisie. Le camion déjà choisi reste listé même s’il ne correspond pas au filtre. */
+  get camionsDisponiblesFiltres(): CamionDisplay[] {
+    const q = this.voyageCamionSearchTerm;
+    const list = this.camionsDisponibles;
+    if (!q.trim()) {
+      return list;
+    }
+    const matches = (c: CamionDisplay) => camionMatchesSearch(c, q);
+    const filtered = list.filter(matches);
+    const selectedId = this.newVoyage.camionId;
+    if (selectedId && selectedId > 0) {
+      const selected = list.find((c) => c.id === selectedId);
+      if (selected && !matches(selected)) {
+        return [selected, ...filtered];
+      }
+    }
+    return filtered;
+  }
+
+  selectCamionVoyage(camion: CamionDisplay): void {
+    if (camion.id == null) {
+      return;
+    }
+    this.newVoyage.camionId = camion.id;
+    this.voyageCamionSearchTerm = formatCamionLabel(camion);
+    this.voyageCamionLabelSelected = this.voyageCamionSearchTerm;
+    this.camionComboboxOpen = false;
+    this.onVoyageCamionSelect(camion.id);
+  }
+
+  onVoyageCamionInputChange(): void {
+    const q = this.voyageCamionSearchTerm.trim();
+    const lockedLabel = this.voyageCamionLabelSelected?.trim() ?? '';
+
+    if (this.voyageCamionLabelSelected !== null && q !== lockedLabel) {
+      this.clearVoyageCamionSelection();
+    }
+    if (q === '') {
+      this.clearVoyageCamionSelection();
+    }
+    const selectionLocked =
+      this.voyageCamionLabelSelected !== null &&
+      q === this.voyageCamionLabelSelected.trim() &&
+      !!this.newVoyage.camionId &&
+      this.newVoyage.camionId > 0;
+    if (!selectionLocked) {
+      this.camionComboboxOpen = true;
+    }
+  }
+
+  onVoyageCamionFocus(ev: FocusEvent): void {
+    this.camionComboboxOpen = true;
+    const id = this.newVoyage.camionId;
+    if (id && id > 0) {
+      (ev.target as HTMLInputElement).select();
+    }
+  }
+
+  onVoyageCamionBlur(): void {
+    setTimeout(() => {
+      this.camionComboboxOpen = false;
+    }, VOYAGE_CAMION_COMBOBOX_BLUR_MS);
+  }
+
+  onCamionOptionMouseDown(event: MouseEvent, camion: CamionDisplay): void {
+    event.preventDefault();
+    this.selectCamionVoyage(camion);
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClickVoyageCamion(event: MouseEvent): void {
+    if (!this.showAddVoyageModal || !this.camionComboboxOpen) {
+      return;
+    }
+    const t = event.target as HTMLElement;
+    if (!t.closest('.camion-combobox')) {
+      this.camionComboboxOpen = false;
+    }
+  }
+
+  /** Réinitialise uniquement l’état du combobox camion (saisie + panneau). */
+  private resetVoyageCamionCombobox(): void {
+    this.voyageCamionSearchTerm = '';
+    this.voyageCamionLabelSelected = null;
+    this.camionComboboxOpen = false;
+  }
+
+  private clearVoyageCamionSelection(): void {
+    this.newVoyage.camionId = 0;
+    this.voyageCamionLabelSelected = null;
+  }
+
   nouveauVoyage() {
+    this.resetVoyageCamionCombobox();
     // Charger les camions disponibles pour le voyage
     this.camionsDisponibles = this.camions.filter(c =>
       c.statut === 'DISPONIBLE'
@@ -463,6 +567,7 @@ export class CamionComponent implements OnInit {
 
   closeAddVoyageModal() {
     this.showAddVoyageModal = false;
+    this.resetVoyageCamionCombobox();
     this.newVoyage = {
       camionId: 0,
       clientId: undefined,

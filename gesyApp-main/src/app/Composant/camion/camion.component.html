@@ -986,27 +986,67 @@
       <div class="modal-body">
         <form (ngSubmit)="addVoyage()">
           <div class="form-row">
-            <div class="form-group">
+            <div class="form-group camion-combobox">
               <label for="camion-voyage">Camion *</label>
-              <select
-                id="camion-voyage"
-                [(ngModel)]="newVoyage.camionId"
-                name="camionId"
-                required
-                (ngModelChange)="onVoyageCamionSelect($event)"
+              <div
+                class="camion-combobox-wrap"
+                [class.open]="camionComboboxOpen"
                 [class.error]="voyageErrors['camionId']"
               >
-                <option value="0">Sélectionner un camion</option>
-                @for (camion of camionsDisponibles; track camion.id) {
-                <option [value]="camion.id">
-                  {{ camion.immatriculation }} - {{ camion.marque }} {{ camion.modele }}
-                </option>
+                <input
+                  id="camion-voyage"
+                  type="text"
+                  name="voyageCamionSearch"
+                  [(ngModel)]="voyageCamionSearchTerm"
+                  (ngModelChange)="onVoyageCamionInputChange()"
+                  (focus)="onVoyageCamionFocus($event)"
+                  (blur)="onVoyageCamionBlur()"
+                  placeholder="Tapez pour filtrer, puis choisissez un camion…"
+                  autocomplete="off"
+                  role="combobox"
+                  [attr.aria-expanded]="camionComboboxOpen"
+                  aria-haspopup="listbox"
+                  aria-controls="camion-voyage-list"
+                />
+                <span class="camion-combobox-chevron" aria-hidden="true"></span>
+                @if (camionComboboxOpen) {
+                  @if (camionsDisponiblesFiltres.length > 0) {
+                    <ul
+                      class="camion-combobox-panel"
+                      id="camion-voyage-list"
+                      role="listbox"
+                    >
+                      @for (camion of camionsDisponiblesFiltres; track camion.id) {
+                        <li
+                          role="option"
+                          [class.active]="newVoyage.camionId === camion.id"
+                          (mousedown)="onCamionOptionMouseDown($event, camion)"
+                        >
+                          {{ formatCamionLabel(camion) }}
+                        </li>
+                      }
+                    </ul>
+                  } @else {
+                    <ul
+                      class="camion-combobox-panel camion-combobox-empty"
+                      id="camion-voyage-list"
+                      role="listbox"
+                    >
+                      <li role="presentation">
+                        @if (camionsDisponibles.length === 0) {
+                          Aucun camion disponible
+                        } @else {
+                          Aucun résultat pour cette recherche
+                        }
+                      </li>
+                    </ul>
+                  }
                 }
-              </select>
+              </div>
               @if (voyageErrors['camionId']) {
                 <p class="form-error">{{ voyageErrors['camionId'] }}</p>
               } @else {
-                <p class="form-hint">Seuls les camions disponibles sont affichés</p>
+                <p class="form-hint">Liste des camions disponibles — saisie pour filtrer</p>
               }
             </div>
 
