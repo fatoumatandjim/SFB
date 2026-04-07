@@ -95,13 +95,13 @@ export function isDechargerValide(voyage?: VoyagePourStatut): boolean {
   );
 }
 
-/** True si le voyage doit apparaître dans la liste Archives (statut DECHARGER ou déclaré + état Décharger validé). */
+/** True si le voyage doit apparaître dans la liste Archives (uniquement statut DECHARGER). */
 export function isVoyageInArchives(voyage?: VoyagePourStatut & { statut?: string }): boolean {
   if (!voyage) return false;
-  return voyage.statut === 'DECHARGER' || isDechargerValide(voyage);
+  return voyage.statut === 'DECHARGER';
 }
 
-/** True si le voyage doit apparaître dans la liste En cours (ni DECHARGER ni déclaré + Décharger validé). */
+/** True si le voyage doit apparaître dans la liste En cours (tout sauf DECHARGER). */
 export function isVoyageInEnCours(voyage?: VoyagePourStatut & { statut?: string }): boolean {
   return !isVoyageInArchives(voyage);
 }

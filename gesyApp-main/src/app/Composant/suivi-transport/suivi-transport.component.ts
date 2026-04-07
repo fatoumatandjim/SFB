@@ -1710,8 +1710,14 @@ export class SuiviTransportComponent implements OnInit {
     }
 
     // Logisticien (sans Admin) : ne peut mettre à jour que jusqu'à Douane ; le transitaire fait le reste
+    // Exception : en PARTIELLEMENT_DECHARGER, le responsable logisticien peut finaliser le déchargement (DECHARGER)
     if (this.authService.isLogisticien() && !this.authService.isAdmin()) {
-      result = result.filter(e => SuiviTransportComponent.ETATS_LOGISTICIEN.includes(e.etat));
+      if (this.voyageForStatutChange?.statut !== 'PARTIELLEMENT_DECHARGER') {
+        result = result.filter(e => SuiviTransportComponent.ETATS_LOGISTICIEN.includes(e.etat));
+      } else {
+        // En PARTIELLEMENT_DECHARGER : garder uniquement Décharger pour permettre la finalisation
+        result = result.filter(e => e.etat === 'Décharger');
+      }
     }
 
     // Responsable = identifiant connecté === voyage.responsableIdentifiant (ou Admin/Contrôleur)

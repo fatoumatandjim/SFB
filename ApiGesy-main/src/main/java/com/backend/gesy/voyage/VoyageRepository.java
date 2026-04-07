@@ -111,43 +111,40 @@ public interface VoyageRepository extends JpaRepository<Voyage, Long> {
                      @Param("endDate") LocalDateTime endDate,
                      Pageable pageable);
 
-       // Pagination pour tous les voyages archivés : DECHARGER ou déclaré + état "Décharger" validé
-       @Query(value = "SELECT v FROM Voyage v WHERE (v.statut = 'DECHARGER' OR (v.declarer = true AND EXISTS (SELECT 1 FROM EtatVoyage e WHERE e.voyage = v AND e.etat = 'Décharger' AND e.valider = true))) " +
+       // Pagination pour tous les voyages archivés : uniquement statut DECHARGER
+       @Query(value = "SELECT v FROM Voyage v WHERE v.statut = 'DECHARGER' " +
                      "ORDER BY COALESCE(v.dateCreation, v.dateDepart) DESC, v.id DESC",
-                     countQuery = "SELECT COUNT(v) FROM Voyage v WHERE (v.statut = 'DECHARGER' OR (v.declarer = true AND EXISTS (SELECT 1 FROM EtatVoyage e WHERE e.voyage = v AND e.etat = 'Décharger' AND e.valider = true)))")
+                     countQuery = "SELECT COUNT(v) FROM Voyage v WHERE v.statut = 'DECHARGER'")
        Page<Voyage> findArchivedVoyages(Pageable pageable);
        
        // Voyages partiellement déchargés — tri par date de création
        @Query("SELECT v FROM Voyage v WHERE v.statut = 'PARTIELLEMENT_DECHARGER' ORDER BY COALESCE(v.dateCreation, v.dateDepart) DESC, v.id DESC")
        Page<Voyage> findVoyagesPartiellementDecharges(Pageable pageable);
        
-       // Voyages en cours (non déchargés) : exclut aussi déclaré + état "Décharger" validé
-       @Query(value = "SELECT v FROM Voyage v WHERE (v.statut IS NULL OR v.statut <> 'DECHARGER') " +
-                     "AND (v.declarer = false OR v.declarer IS NULL OR NOT EXISTS (SELECT 1 FROM EtatVoyage e WHERE e.voyage = v AND e.etat = 'Décharger' AND e.valider = true)) " +
+       // Voyages en cours (non déchargés) : tous les voyages sauf DECHARGER
+       @Query(value = "SELECT v FROM Voyage v WHERE v.statut <> 'DECHARGER' " +
                      "ORDER BY COALESCE(v.dateCreation, v.dateDepart) DESC, v.id DESC",
-                     countQuery = "SELECT COUNT(v) FROM Voyage v WHERE (v.statut IS NULL OR v.statut <> 'DECHARGER') " +
-                                   "AND (v.declarer = false OR v.declarer IS NULL OR NOT EXISTS (SELECT 1 FROM EtatVoyage e WHERE e.voyage = v AND e.etat = 'Décharger' AND e.valider = true))")
+                     countQuery = "SELECT COUNT(v) FROM Voyage v WHERE v.statut <> 'DECHARGER'")
        Page<Voyage> findVoyagesEnCours(Pageable pageable);
 
        // Voyages en cours (non déchargés) avec au moins un client assigné (pour rapport PDF)
        @Query("SELECT DISTINCT v FROM Voyage v JOIN v.clientVoyages cv " +
-                     "WHERE (v.statut IS NULL OR v.statut <> 'DECHARGER') " +
-                     "AND (v.declarer = false OR v.declarer IS NULL OR NOT EXISTS (SELECT 1 FROM EtatVoyage e WHERE e.voyage = v AND e.etat = 'Décharger' AND e.valider = true)) " +
+                     "WHERE v.statut <> 'DECHARGER' " +
                      "ORDER BY v.dateDepart DESC, v.id DESC")
        List<Voyage> findVoyagesEnCoursAvecClients();
 
-       // Pagination avec filtre par date pour tous les voyages archivés : DECHARGER ou déclaré + Décharger validé
-       @Query(value = "SELECT v FROM Voyage v WHERE (v.statut = 'DECHARGER' OR (v.declarer = true AND EXISTS (SELECT 1 FROM EtatVoyage e WHERE e.voyage = v AND e.etat = 'Décharger' AND e.valider = true))) " +
+       // Pagination avec filtre par date pour tous les voyages archivés : uniquement statut DECHARGER
+       @Query(value = "SELECT v FROM Voyage v WHERE v.statut = 'DECHARGER' " +
                      "AND DATE(v.dateDepart) = DATE(:date) " +
                      "ORDER BY COALESCE(v.dateCreation, v.dateDepart) DESC, v.id DESC",
-                     countQuery = "SELECT COUNT(v) FROM Voyage v WHERE (v.statut = 'DECHARGER' OR (v.declarer = true AND EXISTS (SELECT 1 FROM EtatVoyage e WHERE e.voyage = v AND e.etat = 'Décharger' AND e.valider = true))) AND DATE(v.dateDepart) = DATE(:date)")
+                     countQuery = "SELECT COUNT(v) FROM Voyage v WHERE v.statut = 'DECHARGER' AND DATE(v.dateDepart) = DATE(:date)")
        Page<Voyage> findArchivedVoyagesByDate(@Param("date") LocalDateTime date, Pageable pageable);
 
-       // Pagination avec filtre par intervalle de dates pour tous les voyages archivés
-       @Query(value = "SELECT v FROM Voyage v WHERE (v.statut = 'DECHARGER' OR (v.declarer = true AND EXISTS (SELECT 1 FROM EtatVoyage e WHERE e.voyage = v AND e.etat = 'Décharger' AND e.valider = true))) " +
+       // Pagination avec filtre par intervalle de dates pour tous les voyages archivés : uniquement statut DECHARGER
+       @Query(value = "SELECT v FROM Voyage v WHERE v.statut = 'DECHARGER' " +
                      "AND v.dateDepart >= :startDate AND v.dateDepart <= :endDate " +
                      "ORDER BY COALESCE(v.dateCreation, v.dateDepart) DESC, v.id DESC",
-                     countQuery = "SELECT COUNT(v) FROM Voyage v WHERE (v.statut = 'DECHARGER' OR (v.declarer = true AND EXISTS (SELECT 1 FROM EtatVoyage e WHERE e.voyage = v AND e.etat = 'Décharger' AND e.valider = true))) AND v.dateDepart >= :startDate AND v.dateDepart <= :endDate")
+                     countQuery = "SELECT COUNT(v) FROM Voyage v WHERE v.statut = 'DECHARGER' AND v.dateDepart >= :startDate AND v.dateDepart <= :endDate")
        Page<Voyage> findArchivedVoyagesByDateRange(
                      @Param("startDate") LocalDateTime startDate,
                      @Param("endDate") LocalDateTime endDate,
@@ -240,30 +237,28 @@ public interface VoyageRepository extends JpaRepository<Voyage, Long> {
                      "ORDER BY v.dateDepart DESC, v.id DESC")
        List<Voyage> findVoyagesADeclarerByTransitaire(@Param("transitaire") Transitaire transitaire);
 
-       /** Voyages en cours du transitaire : exclut DECHARGER et déclaré + état "Décharger" validé (une seule source de vérité). */
+       /** Voyages en cours du transitaire : à partir de l'état CHARGE (exclut EN_ATTENTE_CHARGEMENT et DECHARGER). */
        @Query(value = "SELECT v FROM Voyage v WHERE v.transitaire = :transitaire " +
-                     "AND (v.statut IS NULL OR v.statut <> 'DECHARGER') " +
-                     "AND (v.declarer = false OR v.declarer IS NULL OR NOT EXISTS (SELECT 1 FROM EtatVoyage e WHERE e.voyage = v AND e.etat = 'Décharger' AND e.valider = true)) " +
+                     "AND v.statut NOT IN ('DECHARGER', 'EN_ATTENTE_CHARGEMENT') " +
                      "ORDER BY v.dateDepart DESC, v.id DESC",
                      countQuery = "SELECT COUNT(v) FROM Voyage v WHERE v.transitaire = :transitaire " +
-                                   "AND (v.statut IS NULL OR v.statut <> 'DECHARGER') " +
-                                   "AND (v.declarer = false OR v.declarer IS NULL OR NOT EXISTS (SELECT 1 FROM EtatVoyage e WHERE e.voyage = v AND e.etat = 'Décharger' AND e.valider = true))")
+                                   "AND v.statut NOT IN ('DECHARGER', 'EN_ATTENTE_CHARGEMENT')")
        Page<Voyage> findVoyagesEnCoursByTransitaire(@Param("transitaire") Transitaire transitaire, Pageable pageable);
 
-       /** Voyages archivés du transitaire : statut DECHARGER ou (déclaré + état "Décharger" validé). */
+       /** Voyages archivés du transitaire : uniquement statut DECHARGER. */
        @Query(value = "SELECT v FROM Voyage v WHERE v.transitaire = :transitaire " +
-                     "AND (v.statut = 'DECHARGER' OR (v.declarer = true AND EXISTS (SELECT 1 FROM EtatVoyage e WHERE e.voyage = v AND e.etat = 'Décharger' AND e.valider = true))) " +
+                     "AND v.statut = 'DECHARGER' " +
                      "ORDER BY v.dateDepart DESC, v.id DESC",
                      countQuery = "SELECT COUNT(v) FROM Voyage v WHERE v.transitaire = :transitaire " +
-                                   "AND (v.statut = 'DECHARGER' OR (v.declarer = true AND EXISTS (SELECT 1 FROM EtatVoyage e WHERE e.voyage = v AND e.etat = 'Décharger' AND e.valider = true)))")
+                                   "AND v.statut = 'DECHARGER'")
        Page<Voyage> findVoyagesArchivesByTransitaire(@Param("transitaire") Transitaire transitaire, Pageable pageable);
 
        @Query(value = "SELECT v FROM Voyage v WHERE v.transitaire = :transitaire " +
-                     "AND (v.statut = 'DECHARGER' OR (v.declarer = true AND EXISTS (SELECT 1 FROM EtatVoyage e WHERE e.voyage = v AND e.etat = 'Décharger' AND e.valider = true))) " +
+                     "AND v.statut = 'DECHARGER' " +
                      "AND v.dateDepart IS NOT NULL AND v.dateDepart >= :startOfDay AND v.dateDepart < :endOfDay " +
                      "ORDER BY v.dateDepart DESC, v.id DESC",
                      countQuery = "SELECT COUNT(v) FROM Voyage v WHERE v.transitaire = :transitaire " +
-                                   "AND (v.statut = 'DECHARGER' OR (v.declarer = true AND EXISTS (SELECT 1 FROM EtatVoyage e WHERE e.voyage = v AND e.etat = 'Décharger' AND e.valider = true))) " +
+                                   "AND v.statut = 'DECHARGER' " +
                                    "AND v.dateDepart IS NOT NULL AND v.dateDepart >= :startOfDay AND v.dateDepart < :endOfDay")
        Page<Voyage> findVoyagesArchivesByTransitaireAndDate(
                      @Param("transitaire") Transitaire transitaire,
@@ -272,11 +267,11 @@ public interface VoyageRepository extends JpaRepository<Voyage, Long> {
                      Pageable pageable);
 
        @Query(value = "SELECT v FROM Voyage v WHERE v.transitaire = :transitaire " +
-                     "AND (v.statut = 'DECHARGER' OR (v.declarer = true AND EXISTS (SELECT 1 FROM EtatVoyage e WHERE e.voyage = v AND e.etat = 'Décharger' AND e.valider = true))) " +
+                     "AND v.statut = 'DECHARGER' " +
                      "AND v.dateDepart IS NOT NULL AND v.dateDepart >= :startDate AND v.dateDepart <= :endDate " +
                      "ORDER BY v.dateDepart DESC, v.id DESC",
                      countQuery = "SELECT COUNT(v) FROM Voyage v WHERE v.transitaire = :transitaire " +
-                                   "AND (v.statut = 'DECHARGER' OR (v.declarer = true AND EXISTS (SELECT 1 FROM EtatVoyage e WHERE e.voyage = v AND e.etat = 'Décharger' AND e.valider = true))) " +
+                                   "AND v.statut = 'DECHARGER' " +
                                    "AND v.dateDepart IS NOT NULL AND v.dateDepart >= :startDate AND v.dateDepart <= :endDate")
        Page<Voyage> findVoyagesArchivesByTransitaireAndDateRange(
                      @Param("transitaire") Transitaire transitaire,
