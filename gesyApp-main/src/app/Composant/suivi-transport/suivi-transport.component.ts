@@ -1830,7 +1830,7 @@ export class SuiviTransportComponent implements OnInit {
           params.clients = clients;
         }
       } else if (this.voyageForStatutChange?.clientVoyages && this.voyageForStatutChange.clientVoyages.length > 0) {
-        // Si pas de nouveaux clients mais des clients existants, les utiliser
+        // Si pas de nouveaux clients mais des clients existants, les utiliser (NEW API → clients NON_LIVRE)
         const clients = this.voyageForStatutChange.clientVoyages
           .filter(cv => cv.clientId && cv.quantite && cv.quantite > 0)
           .map(cv => ({
@@ -1840,9 +1840,6 @@ export class SuiviTransportComponent implements OnInit {
         if (clients.length > 0) {
           params.clients = clients;
         }
-      } else if (this.voyageForStatutChange?.clientId) {
-        // Compatibilité avec l'ancien format
-        params.clientId = this.voyageForStatutChange.clientId;
       }
       // Si params est vide après tout ça, le mettre à undefined
       if (Object.keys(params).length === 0) {

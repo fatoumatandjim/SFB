@@ -933,30 +933,24 @@ public class VoyageServiceImpl implements VoyageService {
                 validerEtat(voyage, "DOUANE");
                 voyage.setStatut(Voyage.StatutVoyage.DOUANE);
             } else if (nouveauStatut == Voyage.StatutVoyage.LIVRE) {
-                // Assigner le client si fourni - créer un ClientVoyage et le marquer comme "Livrer"
+                // Assigner le client si fourni - marquer comme NON_LIVRE (Attribution, pas encore livré)
                 if (clientId != null && clientId > 0) {
                     Client client = clientRepository.findById(clientId)
                             .orElseThrow(() -> new RuntimeException("Client non trouvé avec l'id: " + clientId));
                     
-                    // Vérifier si un ClientVoyage existe déjà pour ce voyage et ce client
                     ClientVoyage clientVoyage = clientVoyageRepository
                             .findByVoyageIdAndClientId(voyage.getId(), clientId)
                             .orElse(null);
                     boolean clientVientDEtreAttribue = (clientVoyage == null);
                     if (clientVoyage == null) {
-                        // Créer un nouveau ClientVoyage
                         clientVoyage = new ClientVoyage();
                         clientVoyage.setVoyage(voyage);
                         clientVoyage.setClient(client);
-                        clientVoyage.setQuantite(voyage.getQuantite()); // Par défaut, toute la quantité
+                        clientVoyage.setQuantite(voyage.getQuantite());
                         clientVoyage.setDateCreation(now);
                     }
-                    
-                    // CORRECTION : Marquer comme "Livrer" et initialiser le manquant à 0 si non défini
-                    if (clientVoyage.getManquant() == null) {
-                        clientVoyage.setManquant(0.0); // Pas de manquant par défaut
-                    }
-                    clientVoyage.setStatut(ClientVoyage.StatutLivraison.LIVRER);
+                    // Attribution uniquement : client NON_LIVRE (le déchargement se fera à l'étape DECHARGER)
+                    clientVoyage.setStatut(ClientVoyage.StatutLivraison.NON_LIVRE);
                     clientVoyage.setDateModification(now);
                     clientVoyageRepository.save(clientVoyage);
                     if (clientVientDEtreAttribue) {
@@ -966,17 +960,12 @@ public class VoyageServiceImpl implements VoyageService {
                                 Alerte.PrioriteAlerte.MOYENNE,
                                 "ClientVoyage", clientVoyage.getId(), "/voyages/" + voyage.getId());
                     }
-                    alerteService.creerAlerte(
-                            Alerte.TypeAlerte.CLIENT_LIVRE,
-                            "Client livré : " + client.getNom() + " - Voyage " + voyage.getNumeroVoyage(),
-                            Alerte.PrioriteAlerte.MOYENNE,
-                            "ClientVoyage", clientVoyage.getId(), "/voyages/" + voyage.getId());
-
-                    // APRÈS chaque livraison, vérifier automatiquement si le voyage peut être déchargé
-                    Voyage.StatutVoyage statutAuto = determinerStatutDechargement(voyage);
-                    if (statutAuto != null) {
-                        nouveauStatut = statutAuto;
-                        voyage.setStatut(nouveauStatut);
+                    // Valider l'état Livré et maintenir le statut LIVRE (pas d'auto-avance vers DECHARGER)
+                    boolean etatLivrerValide = voyage.getEtats().stream()
+                            .anyMatch(e -> e.getEtat().equals("Livré") && e.getValider());
+                    if (!etatLivrerValide) {
+                        voyage.setStatut(Voyage.StatutVoyage.LIVRE);
+                        validerEtat(voyage, "LIVRE");
                     }
                 }
             } else if (nouveauStatut == Voyage.StatutVoyage.DECHARGER || nouveauStatut == Voyage.StatutVoyage.PARTIELLEMENT_DECHARGER) {
