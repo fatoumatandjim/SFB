@@ -283,8 +283,8 @@ export class SuiviTransportComponent implements OnInit {
   }
 
   selectClient(client: Client) {
-    // Si on est dans le modal de statut (LIVRE ou Partiellement déchargé), ajouter à livreClients
-    if (this.showStatutModal && (this.selectedStatut === 'LIVRE' || this.selectedStatut === 'PARTIELLEMENT_DECHARGER')) {
+    // Si on est dans le modal de statut LIVRE, ajouter à livreClients
+    if (this.showStatutModal && this.selectedStatut === 'LIVRE') {
       this.selectClientForLivre(client);
       return;
     }
@@ -1327,8 +1327,7 @@ export class SuiviTransportComponent implements OnInit {
             });
           }
 
-          // Pré-sélectionner le statut courant (cohérent avec le backend).
-          this.selectedStatut = (updatedVoyage.statut as string) || '';
+          this.selectedStatut = '';
           this.showStatutModal = true;
         },
         error: (error) => {
