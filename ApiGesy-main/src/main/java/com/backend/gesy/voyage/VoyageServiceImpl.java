@@ -1714,18 +1714,18 @@ public class VoyageServiceImpl implements VoyageService {
     @Override
     public void deleteDechargePourTests(Long id) {
         // --- Désactivé : décommenter le bloc ci-dessous pour réactiver la suppression « test » + restauration stock citerne ---
-        // throw new UnsupportedOperationException("La suppression voyage déchargé (mode test) est désactivée côté serveur. ");
+        throw new UnsupportedOperationException("La suppression voyage déchargé (mode test) est désactivée côté serveur. ");
 
-        Voyage voyage = voyageRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Voyage non trouvé avec l'id: " + id));
+        // Voyage voyage = voyageRepository.findById(id)
+        //         .orElseThrow(() -> new RuntimeException("Voyage non trouvé avec l'id: " + id));
 
-        if (!isVoyageStatutDecharge(voyage.getStatut())) {
-            throw new RuntimeException(
-                    "Cette suppression n'est possible que pour un voyage déchargé ou partiellement déchargé.");
-        }
+        // if (!isVoyageStatutDecharge(voyage.getStatut())) {
+        //     throw new RuntimeException(
+        //             "Cette suppression n'est possible que pour un voyage déchargé ou partiellement déchargé.");
+        // }
 
-        reverserRetraitsStockCiternePourSuppressionTestDechargement(voyage, LocalDateTime.now());
-        supprimerVoyageEtLiensMetier(voyage);
+        // reverserRetraitsStockCiternePourSuppressionTestDechargement(voyage, LocalDateTime.now());
+        // supprimerVoyageEtLiensMetier(voyage);
     }
 
     private static boolean isVoyageStatutDecharge(Voyage.StatutVoyage statut) {
