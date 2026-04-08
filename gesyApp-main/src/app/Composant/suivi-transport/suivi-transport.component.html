@@ -1355,7 +1355,7 @@
         </div>
         } @else {
         @for (client of filteredClients; track client.id) {
-        <div class="select-item" (click)="showStatutModal ? selectClientForLivre(client) : selectClient(client); $event.stopPropagation()">
+        <div class="select-item" (click)="onSelectClientFromModal(client); $event.stopPropagation()">
           <div class="select-item-icon" [class]="'avatar-' + getClientColor(client.nom)">
             {{ getClientInitiales(client.nom) }}
           </div>

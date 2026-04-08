@@ -293,6 +293,18 @@ export class SuiviTransportComponent implements OnInit {
     this.assignTransitaire();
   }
 
+  onSelectClientFromModal(client: Client) {
+    if (this.showStatutModal && this.selectClientContext === 'decharger-reste') {
+      this.selectClient(client);
+      return;
+    }
+    if (this.showStatutModal && this.selectedStatut === 'LIVRE') {
+      this.selectClientForLivre(client);
+      return;
+    }
+    this.selectClient(client);
+  }
+
   selectClient(client: Client) {
     if (this.showStatutModal && this.selectClientContext === 'decharger-reste') {
       const dejaSurVoyage = this.voyageForStatutChange?.clientVoyages?.some(cv => cv.clientId === client.id);
