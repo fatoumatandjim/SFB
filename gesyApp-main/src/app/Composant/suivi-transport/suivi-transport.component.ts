@@ -1710,22 +1710,12 @@ export class SuiviTransportComponent implements OnInit {
     }
 
     // Logisticien (sans Admin) : ne peut mettre à jour que jusqu'à Douane ; le transitaire fait le reste
-    // Exception : en PARTIELLEMENT_DECHARGER, le responsable logisticien peut finaliser le déchargement (DECHARGER)
     if (this.authService.isLogisticien() && !this.authService.isAdmin()) {
-      if (this.voyageForStatutChange?.statut !== 'PARTIELLEMENT_DECHARGER') {
-        result = result.filter(e => SuiviTransportComponent.ETATS_LOGISTICIEN.includes(e.etat));
-      } else {
-        // En PARTIELLEMENT_DECHARGER : garder uniquement Décharger pour permettre la finalisation
-        result = result.filter(e => e.etat === 'Décharger');
-      }
+      result = result.filter(e => SuiviTransportComponent.ETATS_LOGISTICIEN.includes(e.etat));
     }
 
     // Responsable = identifiant connecté === voyage.responsableIdentifiant (ou Admin/Contrôleur)
-    // En PARTIELLEMENT_DECHARGER, toujours montrer "Décharger" pour permettre de finaliser le déchargement
-    const peutVoirProchainEtat = this.voyageForStatutChange && (
-      this.canUpdateVoyageStatus(this.voyageForStatutChange) ||
-      this.voyageForStatutChange.statut === 'PARTIELLEMENT_DECHARGER'
-    );
+    const peutVoirProchainEtat = this.voyageForStatutChange && this.canUpdateVoyageStatus(this.voyageForStatutChange);
 
     if (peutVoirProchainEtat) {
       const premierNonValideIndex = result.findIndex(e => !e.valider);
@@ -1750,31 +1740,30 @@ export class SuiviTransportComponent implements OnInit {
       return;
     }
 
-    // Vérifier si le statut est "LIVRE" ou "PARTIELLEMENT_DECHARGER" (ajout de clients avec quantités)
-    if (this.selectedStatut === 'LIVRE' || this.selectedStatut === 'PARTIELLEMENT_DECHARGER') {
+    // Vérifier si le statut est "LIVRE" (ajout de clients avec quantités)
+    if (this.selectedStatut === 'LIVRE') {
+      // Vérifier qu'au moins un client est assigné
       const hasExistingClients = this.voyageForStatutChange?.clientVoyages && this.voyageForStatutChange.clientVoyages.length > 0;
-      const hasNewClients = this.livreClients && this.livreClients.length > 0;
-      if (!hasExistingClients && !hasNewClients) {
-        this.toastService.warning('Veuillez sélectionner au moins un client');
+      if (!hasExistingClients && (!this.livreClients || this.livreClients.length === 0)) {
+        this.toastService.warning('Veuillez sélectionner au moins un client pour livrer ce voyage');
         return;
       }
-      if (hasNewClients) {
-        if (this.livreClients.some(c => !c.clientId || !c.quantite || c.quantite <= 0)) {
-          this.toastService.warning('Veuillez saisir une quantité valide pour tous les clients ajoutés');
-          return;
-        }
-        const totalQuantite = this.getTotalQuantiteClients();
-        if (this.voyageForStatutChange && this.voyageForStatutChange.quantite && totalQuantite > this.voyageForStatutChange.quantite) {
-          this.toastService.warning(`La somme des quantités (${totalQuantite}) dépasse la quantité du voyage (${this.voyageForStatutChange.quantite})`);
-          return;
-        }
+      // Vérifier que tous les clients ont une quantité
+      if (this.livreClients.some(c => !c.clientId || !c.quantite || c.quantite <= 0)) {
+        this.toastService.warning('Veuillez saisir une quantité valide pour tous les clients');
+        return;
+      }
+      // Vérifier que la somme des quantités ne dépasse pas la quantité du voyage
+      const totalQuantite = this.getTotalQuantiteClients();
+      if (this.voyageForStatutChange && this.voyageForStatutChange.quantite && totalQuantite > this.voyageForStatutChange.quantite) {
+        this.toastService.warning(`La somme des quantités (${totalQuantite}) dépasse la quantité du voyage (${this.voyageForStatutChange.quantite})`);
+        return;
       }
     }
 
-    // Vérifier si l'état est déjà validé (sauf passage PARTIELLEMENT_DECHARGER -> DECHARGER)
+    // Vérifier si l'état est déjà validé
     const selectedEtat = this.etatsVoyage.find(e => this.getStatutFromEtat(e.etat) === this.selectedStatut);
-    const isPassageDechargementComplet = this.selectedStatut === 'DECHARGER' && this.voyageForStatutChange?.statut === 'PARTIELLEMENT_DECHARGER';
-    if (selectedEtat && selectedEtat.valider && !isPassageDechargementComplet) {
+    if (selectedEtat && selectedEtat.valider) {
       this.toastService.warning('Cet état est déjà validé. Vous ne pourrez plus le modifier.');
       return;
     }
@@ -1802,11 +1791,12 @@ export class SuiviTransportComponent implements OnInit {
       return;
     }
 
-    // Validation spéciale pour DECHARGER : au moins un client coché (sauf en PARTIELLEMENT_DECHARGER où on envoie tous les clients)
-    if (this.selectedStatut === 'DECHARGER' && this.voyageForStatutChange?.statut !== 'PARTIELLEMENT_DECHARGER') {
+    // Validation spéciale pour DECHARGER : au moins un client doit être coché
+    if (this.selectedStatut === 'DECHARGER') {
       const hasClientLivrer = this.voyageForStatutChange?.clientVoyages?.some(cv =>
         cv.id && this.dechargerClientLivres[cv.id]
       ) || false;
+
       if (!hasClientLivrer) {
         this.isLoading = false;
         this.toastService.error('Veuillez cocher au moins un client livré avant de décharger.');
@@ -1814,10 +1804,10 @@ export class SuiviTransportComponent implements OnInit {
       }
     }
 
-    // Préparer les paramètres pour le statut LIVRE, PARTIELLEMENT_DECHARGER ou DECHARGER
+    // Préparer les paramètres pour le statut LIVRE ou DECHARGER
     let params: any = undefined;
-    if (this.selectedStatut === 'LIVRE' || this.selectedStatut === 'PARTIELLEMENT_DECHARGER') {
-      // Pour LIVRE ou PARTIELLEMENT_DECHARGER, envoyer tous les clients avec leurs quantités
+    if (this.selectedStatut === 'LIVRE') {
+      // Pour LIVRE, envoyer tous les clients avec leurs quantités
       params = {};
       if (this.livreClients && this.livreClients.length > 0) {
         const clients = this.livreClients
@@ -1830,7 +1820,7 @@ export class SuiviTransportComponent implements OnInit {
           params.clients = clients;
         }
       } else if (this.voyageForStatutChange?.clientVoyages && this.voyageForStatutChange.clientVoyages.length > 0) {
-        // Si pas de nouveaux clients mais des clients existants, les utiliser (NEW API → clients NON_LIVRE)
+        // Si pas de nouveaux clients mais des clients existants, les utiliser
         const clients = this.voyageForStatutChange.clientVoyages
           .filter(cv => cv.clientId && cv.quantite && cv.quantite > 0)
           .map(cv => ({
@@ -1846,25 +1836,30 @@ export class SuiviTransportComponent implements OnInit {
         params = undefined;
       }
     } else if (this.selectedStatut === 'DECHARGER') {
-      // Pour DECHARGER, envoyer les manquants pour les ClientVoyage (cochés, ou tous si on est en PARTIELLEMENT_DECHARGER pour finaliser)
+      // Pour DECHARGER, envoyer uniquement les manquants pour les ClientVoyage marqués comme livrés
       params = {};
-      params.manquants = {} as Record<string, number>;
+      params.manquants = {};
 
+      // Ne traiter que les ClientVoyage marqués comme livrés
       if (this.voyageForStatutChange?.clientVoyages && this.voyageForStatutChange.clientVoyages.length > 0) {
-        const inclureTousLesClients = this.voyageForStatutChange.statut === 'PARTIELLEMENT_DECHARGER';
         this.voyageForStatutChange.clientVoyages.forEach(cv => {
-          if (!cv.id) return;
-          const estCoche = !!this.dechargerClientLivres[cv.id];
-          if (estCoche || inclureTousLesClients) {
+          if (cv.id && this.dechargerClientLivres[cv.id]) {
+            // Seulement si le client est marqué comme livré
             const manquant = this.dechargerManquants[cv.id];
-            const value = (manquant !== undefined && manquant !== null && manquant >= 0)
-              ? manquant
-              : (cv.manquant !== undefined && cv.manquant !== null && cv.manquant >= 0 ? cv.manquant : 0);
-            params.manquants[String(cv.id)] = value;
+            if (manquant !== undefined && manquant !== null && manquant >= 0) {
+              // Manquant saisi explicitement (y compris 0 saisi par l'utilisateur)
+              params.manquants[Number(cv.id)] = manquant;
+            } else if (cv.manquant !== undefined && cv.manquant !== null && cv.manquant >= 0) {
+              // Utiliser le manquant existant s'il existe déjà côté backend
+              params.manquants[Number(cv.id)] = cv.manquant;
+            }
+            // Sinon : aucun manquant n'est envoyé pour ce client (différent d'un 0 explicite)
           }
         });
       }
 
+      // Double vérification : si aucun ClientVoyage n'est marqué comme livré après traitement,
+      // cela ne devrait pas arriver grâce à la validation plus haut, mais on vérifie quand même
       if (Object.keys(params.manquants).length === 0) {
         this.isLoading = false;
         this.toastService.error('Aucun client livré sélectionné. Impossible de décharger.');

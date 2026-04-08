@@ -2649,6 +2649,26 @@
     border-radius: 8px;
     border: 1px solid var(--border-color);
 
+    .decharger-form-help {
+      margin-bottom: 1rem;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    .decharger-clients-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .decharger-no-clients {
+      padding: 16px;
+      background: var(--bg-tertiary);
+      border-radius: 8px;
+      border: 1px dashed var(--border-color);
+    }
+
     h3 {
       margin: 0 0 20px 0;
       font-size: 16px;

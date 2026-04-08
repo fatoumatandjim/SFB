@@ -599,6 +599,14 @@ public class VoyageServiceImpl implements VoyageService {
     }
 
 
+    private void ensureVoyageDeclareOuPasserNonDeclarer(Voyage voyage) {
+        boolean ok = Boolean.TRUE.equals(voyage.getDeclarer()) || "passer_non_declarer".equals(voyage.getPassager());
+        if (!ok) {
+            throw new RuntimeException(
+                    "Le voyage doit être déclaré ou passé sans déclarer avant d'être attribué ou déchargé.");
+        }
+    }
+
     /**
      * Détermine automatiquement si un voyage est complètement déchargé (DECHARGER)
      * ou partiellement déchargé (PARTIELLEMENT_DECHARGER) en fonction de l'état réel
@@ -658,9 +666,13 @@ public class VoyageServiceImpl implements VoyageService {
 
         ensureCurrentUserIsResponsable(voyage);
 
+        Voyage.StatutVoyage nouveauStatut = convertStatut(request.getStatut());
+        if (nouveauStatut == Voyage.StatutVoyage.LIVRE || nouveauStatut == Voyage.StatutVoyage.DECHARGER
+                || nouveauStatut == Voyage.StatutVoyage.PARTIELLEMENT_DECHARGER) {
+            ensureVoyageDeclareOuPasserNonDeclarer(voyage);
+        }
+
         try {
-            Voyage.StatutVoyage nouveauStatut = convertStatut(request.getStatut());
-            
             // Pour DECHARGER, on va d'abord traiter les manquants, puis vérifier les conditions
             // pour déterminer si c'est complètement déchargé ou partiellement
             boolean isDechargerRequest = (nouveauStatut == Voyage.StatutVoyage.DECHARGER ||
@@ -695,10 +707,8 @@ public class VoyageServiceImpl implements VoyageService {
                 voyage.setStatut(Voyage.StatutVoyage.DOUANE);
             }
 
-            // Ajouter ou mettre à jour les clients attribués au voyage (possible quel que soit le statut).
-            // Ne pas exécuter pour DECHARGER/PARTIELLEMENT_DECHARGER : éviter d'écraser les livraisons déjà enregistrées
-            // (sinon tous les clients de la liste seraient remis à NON_LIVRE avant le traitement des manquants).
-            if (!isDechargerRequest && request.getClients() != null && !request.getClients().isEmpty()) {
+            // Ajouter ou mettre à jour les clients attribués au voyage (possible quel que soit le statut)
+            if (request.getClients() != null && !request.getClients().isEmpty()) {
                 for (ClientQuantiteDTO clientQuantite : request.getClients()) {
                     if (clientQuantite.getClientId() == null || clientQuantite.getClientId() <= 0) {
                         continue; // Ignorer les clients invalides
@@ -856,17 +866,14 @@ public class VoyageServiceImpl implements VoyageService {
                             .sum();
                     Double quantiteVoyage = voyage.getQuantite() != null ? voyage.getQuantite() : 0.0;
                     
-                    // Complètement déchargé si : tous les clients sont livrés ET (quantités égales OU demande explicite DECHARGER)
-                    // Quand l'utilisateur demande explicitement "Décharger" depuis PARTIELLEMENT_DECHARGER et que tous les clients sont livrés, on accepte
-                    boolean quantitesEgales = Math.abs(quantiteTotaleLivree - quantiteVoyage) <= 0.01;
-                    boolean demandeExpliciteDecharger = (nouveauStatut == Voyage.StatutVoyage.DECHARGER);
-                    boolean completementDecharge = tousClientsLivres && (quantitesEgales || demandeExpliciteDecharger);
+                    // Complètement déchargé si tous les clients sont livrés ET la quantité totale livrée = quantité du voyage
+                    boolean completementDecharge = tousClientsLivres &&
+                            Math.abs(quantiteTotaleLivree - quantiteVoyage) <= 0.01;
                     
                     System.out.println("-----------------------------------------------------------------");
                     System.out.println("Vérification du déchargement: Tous clients livrés = " + tousClientsLivres +
                             ", Quantité totale livrée = " + quantiteTotaleLivree +
                             ", Quantité du voyage = " + quantiteVoyage +
-                            ", Demande explicite DECHARGER = " + demandeExpliciteDecharger +
                             ", Complètement déchargé = " + completementDecharge);
                     System.out.println("-----------------------------------------------------------------");
                     if (completementDecharge) {
