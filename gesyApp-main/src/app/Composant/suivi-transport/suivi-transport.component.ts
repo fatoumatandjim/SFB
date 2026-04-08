@@ -149,6 +149,9 @@ export class SuiviTransportComponent implements OnInit {
   dechargerClientLivres: { [key: number]: boolean } = {}; // clientVoyageId -> isLivrer
   // Mode modification pour chaque ClientVoyage
   dechargerModifierMode: { [key: number]: boolean } = {}; // clientVoyageId -> isModifierMode
+  /** Quantité attribuée éditée dans le modal Décharger (clientVoyageId -> L), snapshot initial pour l’envoi API */
+  dechargerQuantitesAttribuees: { [key: number]: number } = {};
+  dechargerQuantitesInitial: { [key: number]: number } = {};
   // Données pour le prix d'achat (séparé) - par ClientVoyage
   showPrixAchatModal: boolean = false;
   voyageForPrixAchat: VoyageDisplay | null = null;
@@ -309,7 +312,9 @@ export class SuiviTransportComponent implements OnInit {
     if (this.showStatutModal && this.selectClientContext === 'decharger-reste') {
       const dejaSurVoyage = this.voyageForStatutChange?.clientVoyages?.some(cv => cv.clientId === client.id);
       if (dejaSurVoyage) {
-        this.toastService.warning('Ce client est déjà attribué au voyage. Utilisez la liste ci-dessous pour son déchargement.');
+        this.toastService.warning(
+          'Ce client est déjà attribué au voyage. Ajustez sa quantité attribuée dans la liste ci-dessous, puis saisissez le manquant pour le déchargement.'
+        );
         this.retirerLigneDechargerResteVideSiBesoin();
         this.selectClientContext = null;
         this.dechargerResteEditIndex = null;
@@ -466,11 +471,69 @@ export class SuiviTransportComponent implements OnInit {
     this.showSelectModal = true;
   }
 
+  /**
+   * Quantité attribuée affichée / utilisée pour un client existant dans le modal Décharger
+   * (édition locale avant envoi).
+   */
+  getQuantiteAttribueePourClientVoyageDechargement(cv: { id?: number; quantite?: number }): number {
+    if (cv.id != null && this.dechargerQuantitesAttribuees[cv.id] !== undefined && this.dechargerQuantitesAttribuees[cv.id] !== null) {
+      const n = Number(this.dechargerQuantitesAttribuees[cv.id]);
+      if (!isNaN(n) && n >= 0) {
+        return n;
+      }
+    }
+    return cv.quantite || 0;
+  }
+
+  /** Total litres attribués aux clients existants (tient compte des quantités éditées dans le modal Décharger). */
+  getTotalQuantiteAttribueeListeDechargement(): number {
+    if (!this.voyageForStatutChange?.clientVoyages) {
+      return 0;
+    }
+    return this.voyageForStatutChange.clientVoyages.reduce(
+      (total, cv) => total + this.getQuantiteAttribueePourClientVoyageDechargement(cv),
+      0
+    );
+  }
+
   /** Quantité du voyage non encore attribuée à un ClientVoyage (pour section « reste » au déchargement). */
   getResteQuantiteNonAttribueeDechargement(): number {
     const q = this.voyageForStatutChange?.quantite || 0;
-    const attrib = this.getTotalQuantiteClientsExistants();
-    return Math.max(0, Math.round((q - attrib) * 100) / 100);
+    const attrib = this.getTotalQuantiteAttribueeListeDechargement();
+    const nouveauxReste = this.dechargerResteClients
+      .filter(r => r.clientId && r.quantite != null && r.quantite > 0)
+      .reduce((s, r) => s + (r.quantite || 0), 0);
+    return Math.max(0, Math.round((q - attrib - nouveauxReste) * 100) / 100);
+  }
+
+  /** Plafond pour la quantité attribuée sur une ligne (autres clients + lignes « reste » déjà saisies). */
+  getMaxQuantiteAttribuablePourClientDechargement(cv: { id?: number }): number {
+    const qV = this.voyageForStatutChange?.quantite ?? 0;
+    if (!this.voyageForStatutChange?.clientVoyages || !cv.id) {
+      return qV;
+    }
+    const autres = this.voyageForStatutChange.clientVoyages
+      .filter(x => x.id !== cv.id)
+      .reduce((s, x) => s + this.getQuantiteAttribueePourClientVoyageDechargement(x), 0);
+    const nouveauxReste = this.dechargerResteClients
+      .filter(r => r.clientId && r.quantite != null && r.quantite > 0)
+      .reduce((s, r) => s + (r.quantite || 0), 0);
+    return Math.max(0, Math.round((qV - autres - nouveauxReste) * 100) / 100);
+  }
+
+  onDechargerQuantiteAttribueeChange(clientVoyageId: number | undefined, value: any): void {
+    if (!clientVoyageId) {
+      return;
+    }
+    if (value === null || value === undefined || value === '') {
+      this.dechargerQuantitesAttribuees[clientVoyageId] = this.dechargerQuantitesInitial[clientVoyageId] ?? 0;
+      return;
+    }
+    const num = Number(value);
+    if (isNaN(num) || num < 0) {
+      return;
+    }
+    this.dechargerQuantitesAttribuees[clientVoyageId] = num;
   }
 
   addDechargerResteClient() {
@@ -1344,6 +1407,8 @@ export class SuiviTransportComponent implements OnInit {
     this.dechargerManquants = {};
     this.dechargerClientLivres = {};
     this.dechargerModifierMode = {};
+    this.dechargerQuantitesAttribuees = {};
+    this.dechargerQuantitesInitial = {};
 
     // Si le voyage a déjà des ClientVoyage, initialiser dechargerManquants et dechargerClientLivres
     // Chaque client a un champ manquant modifiable (valeur existante ou 0 par défaut)
@@ -1352,6 +1417,9 @@ export class SuiviTransportComponent implements OnInit {
         if (cv.id) {
           this.dechargerManquants[cv.id] = (cv.manquant !== undefined && cv.manquant !== null) ? cv.manquant : 0;
           this.dechargerClientLivres[cv.id] = cv.statut === 'LIVRER';
+          const qAttr = cv.quantite != null ? Number(cv.quantite) : 0;
+          this.dechargerQuantitesAttribuees[cv.id] = qAttr;
+          this.dechargerQuantitesInitial[cv.id] = qAttr;
         }
       });
     }
@@ -1396,10 +1464,15 @@ export class SuiviTransportComponent implements OnInit {
           if (this.voyageForStatutChange && updatedVoyage.clientVoyages) {
             this.dechargerManquants = {};
             this.dechargerClientLivres = {};
+            this.dechargerQuantitesAttribuees = {};
+            this.dechargerQuantitesInitial = {};
             updatedVoyage.clientVoyages.forEach(cv => {
               if (cv.id) {
                 this.dechargerManquants[cv.id] = (cv.manquant !== undefined && cv.manquant !== null) ? cv.manquant : 0;
                 this.dechargerClientLivres[cv.id] = cv.statut === 'LIVRER';
+                const qAttr = cv.quantite != null ? Number(cv.quantite) : 0;
+                this.dechargerQuantitesAttribuees[cv.id] = qAttr;
+                this.dechargerQuantitesInitial[cv.id] = qAttr;
               }
             });
           }
@@ -1444,6 +1517,8 @@ export class SuiviTransportComponent implements OnInit {
     this.dechargerManquants = {};
     this.dechargerClientLivres = {};
     this.dechargerModifierMode = {};
+    this.dechargerQuantitesAttribuees = {};
+    this.dechargerQuantitesInitial = {};
   }
 
   openPrixAchatModal(voyage: VoyageDisplay, clientVoyage?: ClientVoyage) {
@@ -1913,11 +1988,12 @@ export class SuiviTransportComponent implements OnInit {
       if (partiel) {
         const resteRows = this.dechargerResteClients.filter(r => r.clientId && r.quantite != null && r.quantite > 0);
         const sumReste = resteRows.reduce((s, r) => s + (r.quantite || 0), 0);
-        const resteDispo = this.getResteQuantiteNonAttribueeDechargement();
-        if (sumReste > resteDispo + 0.02) {
+        const qVoy = this.voyageForStatutChange?.quantite ?? 0;
+        const resteDispoHorsLignesReste = Math.max(0, qVoy - this.getTotalQuantiteAttribueeListeDechargement());
+        if (sumReste > resteDispoHorsLignesReste + 0.02) {
           this.isLoading = false;
           this.toastService.error(
-            `La somme des quantités pour le reste (${sumReste} L) dépasse le reste disponible (${resteDispo} L).`
+            `La somme des quantités pour le reste (${sumReste} L) dépasse le reste disponible (${resteDispoHorsLignesReste} L).`
           );
           return;
         }
@@ -1927,6 +2003,21 @@ export class SuiviTransportComponent implements OnInit {
             this.toastService.error('Les manquants doivent être positifs ou nuls.');
             return;
           }
+        }
+      }
+
+      const qTot = this.voyageForStatutChange?.quantite;
+      if (qTot != null && qTot > 0) {
+        const attribListe = this.getTotalQuantiteAttribueeListeDechargement();
+        const sumNouvReste = this.dechargerResteClients
+          .filter(r => r.clientId && r.quantite != null && r.quantite > 0)
+          .reduce((s, r) => s + (r.quantite || 0), 0);
+        if (attribListe + sumNouvReste > qTot + 0.02) {
+          this.isLoading = false;
+          this.toastService.error(
+            `La somme des quantités attribuées (${Math.round((attribListe + sumNouvReste) * 100) / 100} L) dépasse la quantité du voyage (${qTot} L).`
+          );
+          return;
         }
       }
     }
@@ -1980,18 +2071,35 @@ export class SuiviTransportComponent implements OnInit {
         });
       }
 
+      const clientsQuantiteMisesAJour: { clientId: number; quantite: number }[] = [];
+      if (this.voyageForStatutChange?.clientVoyages) {
+        this.voyageForStatutChange.clientVoyages.forEach(cv => {
+          if (!cv.clientId || !cv.id) {
+            return;
+          }
+          const courant = this.getQuantiteAttribueePourClientVoyageDechargement(cv);
+          const initial = this.dechargerQuantitesInitial[cv.id] ?? (cv.quantite ?? 0);
+          if (Math.abs(courant - initial) > 0.009) {
+            clientsQuantiteMisesAJour.push({ clientId: cv.clientId, quantite: courant });
+          }
+        });
+      }
+
       const partiel = this.voyageForStatutChange?.statut === 'PARTIELLEMENT_DECHARGER';
-      if (partiel) {
-        const nouveaux = this.dechargerResteClients
-          .filter(r => r.clientId && r.quantite != null && r.quantite > 0)
-          .map(r => ({
-            clientId: r.clientId!,
-            quantite: r.quantite!,
-            manquant: r.manquant !== undefined && r.manquant !== null ? r.manquant : 0
-          }));
-        if (nouveaux.length > 0) {
-          params.clients = nouveaux;
-        }
+      const nouveauxReste =
+        partiel
+          ? this.dechargerResteClients
+              .filter(r => r.clientId && r.quantite != null && r.quantite > 0)
+              .map(r => ({
+                clientId: r.clientId!,
+                quantite: r.quantite!,
+                manquant: r.manquant !== undefined && r.manquant !== null ? r.manquant : 0
+              }))
+          : [];
+
+      const clientsMerged = [...clientsQuantiteMisesAJour, ...nouveauxReste];
+      if (clientsMerged.length > 0) {
+        params.clients = clientsMerged;
       }
 
       const hasManquants = Object.keys(params.manquants).length > 0;

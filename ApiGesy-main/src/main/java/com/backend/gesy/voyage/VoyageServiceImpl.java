@@ -793,7 +793,11 @@ public class VoyageServiceImpl implements VoyageService {
                     } else if (clientVoyage.getQuantite() == null) {
                         clientVoyage.setQuantite(voyage.getQuantite());
                     }
-                    clientVoyage.setStatut(ClientVoyage.StatutLivraison.NON_LIVRE);
+                    // Déchargement : mise à jour de quantité pour un client déjà sur le voyage — ne pas repasser en NON_LIVRE
+                    // (sinon les clients non renvoyés dans manquants resteraient incohérents).
+                    if (!(isDechargerRequest && !clientVientDEtreAttribue)) {
+                        clientVoyage.setStatut(ClientVoyage.StatutLivraison.NON_LIVRE);
+                    }
                     clientVoyage.setDateModification(now);
                     clientVoyageRepository.save(clientVoyage);
                     if (clientVientDEtreAttribue) {

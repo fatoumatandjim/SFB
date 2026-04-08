@@ -1242,7 +1242,7 @@
                   (change)="toggleClientLivrer(clientVoyage.id)"
                   class="toggle-checkbox" />
                 <span class="toggle-text">
-                  {{ clientVoyage.clientNom }} - {{ clientVoyage.quantite }} L
+                  {{ clientVoyage.clientNom }} — {{ getQuantiteAttribueePourClientVoyageDechargement(clientVoyage) }} L attribué(s)
                   @if (isClientLivrer(clientVoyage.id)) {
                     <span class="livre-badge">✓ Livré</span>
                   }
@@ -1257,6 +1257,22 @@
                   }
                 </button>
               }
+            </div>
+
+            <div class="manquant-input-container">
+              <label for="decharger-qty-attrib-{{ clientVoyage.id }}">Quantité attribuée (litres)</label>
+              <input
+                type="number"
+                id="decharger-qty-attrib-{{ clientVoyage.id }}"
+                class="form-input"
+                [ngModel]="dechargerQuantitesAttribuees[clientVoyage.id || 0]"
+                (ngModelChange)="onDechargerQuantiteAttribueeChange(clientVoyage.id, $event)"
+                min="0"
+                [max]="getMaxQuantiteAttribuablePourClientDechargement(clientVoyage)"
+                step="0.01"
+                placeholder="0"
+              />
+              <small class="form-help">Montant prévu pour ce client ; ajustez ici si la répartition était incorrecte.</small>
             </div>
 
             <div class="manquant-input-container">
