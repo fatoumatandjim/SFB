@@ -1172,6 +1172,46 @@
           Cochez les clients qui ont été livrés. Seuls les clients cochés seront traités lors du déchargement.
         </p>
 
+        @if (voyageForStatutChange?.statut === 'PARTIELLEMENT_DECHARGER' && getResteQuantiteNonAttribueeDechargement() > 0) {
+        <div class="decharger-reste-section">
+          <h4>Reste du voyage non encore attribué</h4>
+          <p class="form-help">
+            Il reste <strong>{{ getResteQuantiteNonAttribueeDechargement() }} L</strong> à attribuer à des clients.
+            Vous pouvez les affecter à un <strong>nouveau client</strong> ci-dessous, ou ignorer cette section et continuer
+            uniquement avec les clients déjà listés (même client, autre livraison partielle).
+          </p>
+          @for (row of dechargerResteClients; track $index) {
+          <div class="client-item-form decharger-reste-row">
+            <div class="form-group">
+              <label>Client</label>
+              <div class="decharger-reste-client-pick">
+                @if (row.clientId) {
+                <span class="client-pick-name">{{ getClientName(row.clientId) }}</span>
+                } @else {
+                <span class="client-pick-placeholder">—</span>
+                }
+                <button type="button" class="btn-link" (click)="changerClientDechargerReste($index)">
+                  {{ row.clientId ? 'Changer' : 'Choisir' }}
+                </button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Quantité (L) *</label>
+              <input type="number" class="form-input" [(ngModel)]="row.quantite" min="0" [max]="getResteQuantiteNonAttribueeDechargement()" step="0.01" placeholder="0" />
+            </div>
+            <div class="form-group">
+              <label>Manquant (L)</label>
+              <input type="number" class="form-input" [(ngModel)]="row.manquant" min="0" step="0.01" placeholder="0" />
+            </div>
+            <button type="button" class="btn-remove-client" (click)="removeDechargerResteClient($index)" title="Retirer">×</button>
+          </div>
+          }
+          <button type="button" class="btn-add-client" (click)="addDechargerResteClient()">
+            + Ajouter un client pour le reste
+          </button>
+        </div>
+        }
+
         <!-- Liste des clients à cocher (toujours visible : liste ou message si vide) -->
         @if (voyageForStatutChange.clientVoyages && voyageForStatutChange.clientVoyages.length > 0) {
         <div class="decharger-clients-list">

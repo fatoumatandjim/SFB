@@ -10,4 +10,6 @@ import lombok.NoArgsConstructor;
 public class ClientQuantiteDTO {
     private Long clientId;
     private Double quantite;
+    /** Optionnel : lors d'un DECHARGER, pour un client nouvellement attribué dans la même requête, manquant à appliquer tout de suite (livraison). */
+    private Double manquant;
 }

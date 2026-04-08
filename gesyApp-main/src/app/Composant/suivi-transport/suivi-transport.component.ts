@@ -137,6 +137,12 @@ export class SuiviTransportComponent implements OnInit {
   etatsVoyage: EtatVoyage[] = [];
   // Données pour le statut LIVRE - plusieurs clients avec quantités
   livreClients: Array<{ clientId: number | undefined; quantite: number | undefined }> = [];
+  /** En DECHARGER + voyage PARTIELLEMENT_DECHARGER : nouveaux clients pour la quantité voyage non encore attribuée (même requête que le déchargement). */
+  dechargerResteClients: Array<{ clientId?: number; quantite?: number; manquant?: number }> = [];
+  /** Contexte du sélecteur de client dans le modal statut */
+  selectClientContext: 'livre' | 'decharger-reste' | null = null;
+  /** Index de la ligne « reste » en cours d’édition du client (sinon ajout en fin de liste) */
+  dechargerResteEditIndex: number | null = null;
   // Données pour le statut DECHARGER - manquant par client
   dechargerManquants: { [key: number]: number } = {}; // clientVoyageId -> manquant
   // État de livraison pour chaque ClientVoyage lors du DECHARGER
@@ -246,9 +252,14 @@ export class SuiviTransportComponent implements OnInit {
   }
 
   closeSelectModal() {
+    if (this.selectClientContext === 'decharger-reste') {
+      this.retirerLigneDechargerResteVideSiBesoin();
+    }
     this.showSelectModal = false;
     this.selectModalType = null;
     this.searchSelectTerm = '';
+    this.selectClientContext = null;
+    this.dechargerResteEditIndex = null;
   }
 
   onSearchSelectChange() {
@@ -283,6 +294,34 @@ export class SuiviTransportComponent implements OnInit {
   }
 
   selectClient(client: Client) {
+    if (this.showStatutModal && this.selectClientContext === 'decharger-reste') {
+      const dejaSurVoyage = this.voyageForStatutChange?.clientVoyages?.some(cv => cv.clientId === client.id);
+      if (dejaSurVoyage) {
+        this.toastService.warning('Ce client est déjà attribué au voyage. Utilisez la liste ci-dessous pour son déchargement.');
+        this.retirerLigneDechargerResteVideSiBesoin();
+        this.selectClientContext = null;
+        this.dechargerResteEditIndex = null;
+        this.closeSelectModal();
+        return;
+      }
+      const autreLigne = this.dechargerResteClients.some((r, idx) =>
+        r.clientId === client.id && idx !== this.dechargerResteEditIndex);
+      if (autreLigne) {
+        this.toastService.warning('Ce client est déjà dans la liste du reste.');
+        this.retirerLigneDechargerResteVideSiBesoin();
+        this.selectClientContext = null;
+        this.dechargerResteEditIndex = null;
+        this.closeSelectModal();
+        return;
+      }
+      if (this.dechargerResteEditIndex !== null && this.dechargerResteClients[this.dechargerResteEditIndex]) {
+        this.dechargerResteClients[this.dechargerResteEditIndex].clientId = client.id;
+      }
+      this.selectClientContext = null;
+      this.dechargerResteEditIndex = null;
+      this.closeSelectModal();
+      return;
+    }
     // Si on est dans le modal de statut LIVRE, ajouter à livreClients
     if (this.showStatutModal && this.selectedStatut === 'LIVRE') {
       this.selectClientForLivre(client);
@@ -415,6 +454,40 @@ export class SuiviTransportComponent implements OnInit {
     this.showSelectModal = true;
   }
 
+  /** Quantité du voyage non encore attribuée à un ClientVoyage (pour section « reste » au déchargement). */
+  getResteQuantiteNonAttribueeDechargement(): number {
+    const q = this.voyageForStatutChange?.quantite || 0;
+    const attrib = this.getTotalQuantiteClientsExistants();
+    return Math.max(0, Math.round((q - attrib) * 100) / 100);
+  }
+
+  addDechargerResteClient() {
+    this.dechargerResteClients.push({});
+    this.dechargerResteEditIndex = this.dechargerResteClients.length - 1;
+    this.selectClientContext = 'decharger-reste';
+    this.openSelectClientModal();
+  }
+
+  changerClientDechargerReste(index: number) {
+    this.dechargerResteEditIndex = index;
+    this.selectClientContext = 'decharger-reste';
+    this.openSelectClientModal();
+  }
+
+  removeDechargerResteClient(index: number) {
+    this.dechargerResteClients.splice(index, 1);
+  }
+
+  private retirerLigneDechargerResteVideSiBesoin() {
+    if (this.dechargerResteEditIndex === null) {
+      return;
+    }
+    const row = this.dechargerResteClients[this.dechargerResteEditIndex];
+    if (row && !row.clientId) {
+      this.dechargerResteClients.splice(this.dechargerResteEditIndex, 1);
+    }
+  }
+
   selectClientForLivre(client: Client) {
     // Vérifier si le client n'est pas déjà dans la liste
     if (!this.livreClients.find(c => c.clientId === client.id)) {
@@ -424,6 +497,7 @@ export class SuiviTransportComponent implements OnInit {
   }
 
   addClientForLivre() {
+    this.selectClientContext = null;
     this.selectModalType = 'client';
     this.searchSelectTerm = '';
     this.filteredClients = this.clients;
@@ -1250,8 +1324,11 @@ export class SuiviTransportComponent implements OnInit {
   openStatutModal(voyage: VoyageDisplay) {
     this.voyageForStatutChange = voyage;
     this.selectedStatut = '';
+    this.selectClientContext = null;
+    this.dechargerResteEditIndex = null;
     // Initialiser livreClients et dechargerManquants
     this.livreClients = [];
+    this.dechargerResteClients = [];
     this.dechargerManquants = {};
     this.dechargerClientLivres = {};
     this.dechargerModifierMode = {};
@@ -1349,6 +1426,9 @@ export class SuiviTransportComponent implements OnInit {
     this.selectedStatut = '';
     this.etatsVoyage = [];
     this.livreClients = [];
+    this.dechargerResteClients = [];
+    this.selectClientContext = null;
+    this.dechargerResteEditIndex = null;
     this.dechargerManquants = {};
     this.dechargerClientLivres = {};
     this.dechargerModifierMode = {};
@@ -1764,7 +1844,7 @@ export class SuiviTransportComponent implements OnInit {
       }
     }
 
-    // Vérifier si l'état est déjà validé
+    // Vérifier si l'état est déjà validé (aligné azenergy : pas de re-sélection de Livré)
     const selectedEtat = this.etatsVoyage.find(e => this.getStatutFromEtat(e.etat) === this.selectedStatut);
     if (selectedEtat && selectedEtat.valider) {
       this.toastService.warning('Cet état est déjà validé. Vous ne pourrez plus le modifier.');
@@ -1799,16 +1879,43 @@ export class SuiviTransportComponent implements OnInit {
       return;
     }
 
-    // Validation spéciale pour DECHARGER : au moins un client doit être coché
+    // Validation spéciale pour DECHARGER : au moins un client existant coché OU (partiel) au moins un nouveau client pour le reste
     if (this.selectedStatut === 'DECHARGER') {
+      const partiel = this.voyageForStatutChange?.statut === 'PARTIELLEMENT_DECHARGER';
+      const hasNouveauReste = !!(partiel && this.dechargerResteClients.some(r => r.clientId && r.quantite != null && r.quantite > 0));
       const hasClientLivrer = this.voyageForStatutChange?.clientVoyages?.some(cv =>
         cv.id && this.dechargerClientLivres[cv.id]
       ) || false;
-
-      if (!hasClientLivrer) {
+      if (!hasClientLivrer && !hasNouveauReste) {
         this.isLoading = false;
-        this.toastService.error('Veuillez cocher au moins un client livré avant de décharger.');
+        this.toastService.error(
+          'Veuillez cocher au moins un client à décharger, ou en partiellement déchargé ajouter un client pour le reste du voyage.'
+        );
         return;
+      }
+      if (partiel && this.dechargerResteClients.some(r => r.clientId && (!r.quantite || r.quantite <= 0))) {
+        this.isLoading = false;
+        this.toastService.warning('Pour chaque client ajouté pour le reste, indiquez une quantité valide.');
+        return;
+      }
+      if (partiel) {
+        const resteRows = this.dechargerResteClients.filter(r => r.clientId && r.quantite != null && r.quantite > 0);
+        const sumReste = resteRows.reduce((s, r) => s + (r.quantite || 0), 0);
+        const resteDispo = this.getResteQuantiteNonAttribueeDechargement();
+        if (sumReste > resteDispo + 0.02) {
+          this.isLoading = false;
+          this.toastService.error(
+            `La somme des quantités pour le reste (${sumReste} L) dépasse le reste disponible (${resteDispo} L).`
+          );
+          return;
+        }
+        for (const r of resteRows) {
+          if (r.manquant != null && r.manquant < 0) {
+            this.isLoading = false;
+            this.toastService.error('Les manquants doivent être positifs ou nuls.');
+            return;
+          }
+        }
       }
     }
 
@@ -1844,33 +1951,42 @@ export class SuiviTransportComponent implements OnInit {
         params = undefined;
       }
     } else if (this.selectedStatut === 'DECHARGER') {
-      // Pour DECHARGER, envoyer uniquement les manquants pour les ClientVoyage marqués comme livrés
+      // Pour DECHARGER : manquants (clients existants cochés) + éventuellement nouveaux clients (reste) en partiel
       params = {};
       params.manquants = {};
 
-      // Ne traiter que les ClientVoyage marqués comme livrés
       if (this.voyageForStatutChange?.clientVoyages && this.voyageForStatutChange.clientVoyages.length > 0) {
         this.voyageForStatutChange.clientVoyages.forEach(cv => {
           if (cv.id && this.dechargerClientLivres[cv.id]) {
-            // Seulement si le client est marqué comme livré
             const manquant = this.dechargerManquants[cv.id];
             if (manquant !== undefined && manquant !== null && manquant >= 0) {
-              // Manquant saisi explicitement (y compris 0 saisi par l'utilisateur)
               params.manquants[Number(cv.id)] = manquant;
             } else if (cv.manquant !== undefined && cv.manquant !== null && cv.manquant >= 0) {
-              // Utiliser le manquant existant s'il existe déjà côté backend
               params.manquants[Number(cv.id)] = cv.manquant;
             }
-            // Sinon : aucun manquant n'est envoyé pour ce client (différent d'un 0 explicite)
           }
         });
       }
 
-      // Double vérification : si aucun ClientVoyage n'est marqué comme livré après traitement,
-      // cela ne devrait pas arriver grâce à la validation plus haut, mais on vérifie quand même
-      if (Object.keys(params.manquants).length === 0) {
+      const partiel = this.voyageForStatutChange?.statut === 'PARTIELLEMENT_DECHARGER';
+      if (partiel) {
+        const nouveaux = this.dechargerResteClients
+          .filter(r => r.clientId && r.quantite != null && r.quantite > 0)
+          .map(r => ({
+            clientId: r.clientId!,
+            quantite: r.quantite!,
+            manquant: r.manquant !== undefined && r.manquant !== null ? r.manquant : 0
+          }));
+        if (nouveaux.length > 0) {
+          params.clients = nouveaux;
+        }
+      }
+
+      const hasManquants = Object.keys(params.manquants).length > 0;
+      const hasNouveauxClients = !!(params.clients && params.clients.length > 0);
+      if (!hasManquants && !hasNouveauxClients) {
         this.isLoading = false;
-        this.toastService.error('Aucun client livré sélectionné. Impossible de décharger.');
+        this.toastService.error('Aucune livraison à enregistrer (manquants ou nouveaux clients).');
         return;
       }
     }

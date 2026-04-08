@@ -2669,6 +2669,52 @@
       border: 1px dashed var(--border-color);
     }
 
+    .decharger-reste-section {
+      margin-bottom: 20px;
+      padding: 16px;
+      background: var(--bg-tertiary);
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+
+      h4 {
+        margin: 0 0 8px 0;
+        font-size: 15px;
+      }
+
+      .decharger-reste-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+
+      .decharger-reste-client-pick {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+
+        .client-pick-name {
+          font-weight: 600;
+        }
+
+        .client-pick-placeholder {
+          color: var(--text-secondary);
+        }
+
+        .btn-link {
+          background: none;
+          border: none;
+          color: var(--ion-color-primary, #3880ff);
+          cursor: pointer;
+          text-decoration: underline;
+          font-size: 13px;
+          padding: 0;
+        }
+      }
+    }
+
     h3 {
       margin: 0 0 20px 0;
       font-size: 16px;

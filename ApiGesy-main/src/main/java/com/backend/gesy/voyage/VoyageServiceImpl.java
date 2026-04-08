@@ -656,6 +656,68 @@ public class VoyageServiceImpl implements VoyageService {
         }
     }
 
+    /**
+     * Applique un manquant et marque le client comme livré (même logique que la boucle {@code manquants} du DTO).
+     * Utilisé pour un client nouvellement créé dans la même requête DECHARGER (pas d'id connu côté front).
+     */
+    private void traiterManquantDechargementPourClientVoyage(Voyage voyage, ClientVoyage clientVoyage, double manquant,
+            LocalDateTime now) {
+        clientVoyage.setManquant(manquant);
+        clientVoyage.setDateModification(now);
+        clientVoyage.setStatut(ClientVoyage.StatutLivraison.LIVRER);
+        clientVoyageRepository.save(clientVoyage);
+        alerteService.creerAlerte(
+                Alerte.TypeAlerte.CLIENT_LIVRE,
+                "Client livré : " + clientVoyage.getClient().getNom() + " - Voyage " + voyage.getNumeroVoyage(),
+                Alerte.PrioriteAlerte.MOYENNE,
+                "ClientVoyage", clientVoyage.getId(), "/voyages/" + voyage.getId());
+
+        Optional<Manquant> manquantExistantOpt = manquantRepository.findByVoyageIdAndClientId(voyage.getId(),
+                clientVoyage.getClient().getId());
+        Manquant manquantEntity;
+        boolean isUpdate = false;
+
+        if (manquantExistantOpt.isPresent()) {
+            manquantEntity = manquantExistantOpt.get();
+            manquantEntity.setQuantite(BigDecimal.valueOf(manquant));
+            manquantEntity.setDateModification(now);
+            manquantEntity.setDescription("Manquant lors du déchargement du voyage " + voyage.getNumeroVoyage()
+                    + " pour le client " + clientVoyage.getClient().getNom() + " (mis à jour)");
+            isUpdate = true;
+        } else {
+            manquantEntity = new Manquant();
+            manquantEntity.setVoyage(voyage);
+            manquantEntity.setClient(clientVoyage.getClient());
+            manquantEntity.setQuantite(BigDecimal.valueOf(manquant));
+            manquantEntity.setDateCreation(now);
+            manquantEntity.setDescription("Manquant lors du déchargement du voyage " + voyage.getNumeroVoyage()
+                    + " pour le client " + clientVoyage.getClient().getNom());
+        }
+
+        BigDecimal prixAchatClient = clientVoyage.getPrixAchat() != null
+                ? clientVoyage.getPrixAchat()
+                : BigDecimal.ZERO;
+        BigDecimal montantManquant = BigDecimal
+                .valueOf(manquant)
+                .multiply(prixAchatClient);
+        manquantEntity.setMontantManquant(montantManquant);
+
+        Authentication authentication = SecurityContextHolder
+                .getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated()) {
+            manquantEntity.setCreePar(authentication.getName());
+        } else {
+            manquantEntity.setCreePar("Système");
+        }
+
+        manquantRepository.save(manquantEntity);
+        mettreAJourCoutTransportApresManquant(voyage);
+
+        if (!isUpdate) {
+            retirerDuStockCiterne(voyage, clientVoyage.getClient().getId(), now);
+        }
+    }
+
     public VoyageDTO updateStatut(Long id, UpdateStatutRequestDTO request) {
         if (request == null || request.getStatut() == null) {
             throw new RuntimeException("Le statut est requis");
@@ -741,6 +803,12 @@ public class VoyageServiceImpl implements VoyageService {
                                 Alerte.PrioriteAlerte.MOYENNE,
                                 "ClientVoyage", clientVoyage.getId(), "/voyages/" + voyage.getId());
                     }
+                    // Nouveau client attribué dans la même requête DECHARGER : manquant connu tout de suite (pas d'id ClientVoyage côté front)
+                    if (isDechargerRequest && clientVientDEtreAttribue
+                            && clientQuantite.getManquant() != null
+                            && clientQuantite.getManquant() >= 0) {
+                        traiterManquantDechargementPourClientVoyage(voyage, clientVoyage, clientQuantite.getManquant(), now);
+                    }
                 }
             }
 
@@ -782,67 +850,8 @@ public class VoyageServiceImpl implements VoyageService {
                             throw new RuntimeException(
                                     "Le ClientVoyage " + clientVoyageId + " n'appartient pas au voyage " + voyage.getId());
                         }
-                        
-                        clientVoyage.setManquant(manquant);
-                        clientVoyage.setDateModification(now);
-                        clientVoyage.setStatut(ClientVoyage.StatutLivraison.LIVRER);
-                        clientVoyageRepository.save(clientVoyage);
-                        alerteService.creerAlerte(
-                                Alerte.TypeAlerte.CLIENT_LIVRE,
-                                "Client livré : " + clientVoyage.getClient().getNom() + " - Voyage " + voyage.getNumeroVoyage(),
-                                Alerte.PrioriteAlerte.MOYENNE,
-                                "ClientVoyage", clientVoyage.getId(), "/voyages/" + voyage.getId());
 
-                        // Vérifier si un enregistrement Manquant existe déjà pour ce voyage ET ce client
-                        Optional<Manquant> manquantExistantOpt = manquantRepository.findByVoyageIdAndClientId(voyage.getId(), clientVoyage.getClient().getId());
-                        Manquant manquantEntity;
-                        boolean isUpdate = false;
-                        
-                        if (manquantExistantOpt.isPresent()) {
-                            // Mettre à jour le manquant existant
-                            manquantEntity = manquantExistantOpt.get();
-                            manquantEntity.setQuantite(BigDecimal.valueOf(manquant));
-                            manquantEntity.setDateModification(now);
-                            manquantEntity.setDescription("Manquant lors du déchargement du voyage " + voyage.getNumeroVoyage() 
-                                    + " pour le client " + clientVoyage.getClient().getNom() + " (mis à jour)");
-                            isUpdate = true;
-                        } else {
-                            // Créer un nouvel enregistrement Manquant
-                            manquantEntity = new Manquant();
-                            manquantEntity.setVoyage(voyage);
-                            manquantEntity.setClient(clientVoyage.getClient());
-                            manquantEntity.setQuantite(BigDecimal.valueOf(manquant));
-                            manquantEntity.setDateCreation(now);
-                            manquantEntity.setDescription("Manquant lors du déchargement du voyage " + voyage.getNumeroVoyage() 
-                                    + " pour le client " + clientVoyage.getClient().getNom());
-                        }
-
-                        // Calculer le montant du manquant = quantite * prixAchat du client
-                        BigDecimal prixAchatClient = clientVoyage.getPrixAchat() != null
-                                ? clientVoyage.getPrixAchat()
-                                : BigDecimal.ZERO;
-                        BigDecimal montantManquant = BigDecimal
-                                .valueOf(manquant)
-                                .multiply(prixAchatClient);
-                        manquantEntity.setMontantManquant(montantManquant);
-
-                        // Récupérer l'utilisateur actuel
-                        Authentication authentication = SecurityContextHolder
-                                .getContext().getAuthentication();
-                        if (authentication != null && authentication.isAuthenticated()) {
-                            manquantEntity.setCreePar(authentication.getName());
-                        } else {
-                            manquantEntity.setCreePar("Système");
-                        }
-
-                        manquantRepository.save(manquantEntity);
-                        mettreAJourCoutTransportApresManquant(voyage);
-
-                        // Retirer du stock citerne UNIQUEMENT lors du premier déchargement (pas lors des mises à jour)
-                        // ET seulement si le stock n'a pas déjà été retiré pour ce ClientVoyage
-                        if (!isUpdate) {
-                            retirerDuStockCiterne(voyage, clientVoyage.getClient().getId(), now);
-                        }
+                        traiterManquantDechargementPourClientVoyage(voyage, clientVoyage, manquant, now);
                     }
                 }
                 
