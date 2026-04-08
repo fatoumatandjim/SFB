@@ -1714,9 +1714,7 @@ public class VoyageServiceImpl implements VoyageService {
     @Override
     public void deleteDechargePourTests(Long id) {
         // --- Désactivé : décommenter le bloc ci-dessous pour réactiver la suppression « test » + restauration stock citerne ---
-        throw new UnsupportedOperationException(
-                "La suppression voyage déchargé (mode test) est désactivée côté serveur. "
-                        + "Réactiver le corps commenté dans VoyageServiceImpl.deleteDechargePourTests.");
+        throw new UnsupportedOperationException("La suppression voyage déchargé (mode test) est désactivée côté serveur. ");
 
         /*
         Voyage voyage = voyageRepository.findById(id)
