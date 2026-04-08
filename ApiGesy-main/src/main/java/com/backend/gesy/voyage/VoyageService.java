@@ -121,6 +121,13 @@ public interface VoyageService {
          */
         void deleteDechargePourTests(Long id);
 
+        /**
+         * Cas des voyages déjà supprimés via l’ancienne logique (retour citerne sans remise dépôt) :
+         * retrouve la quantité via les mouvements et exécute la remise citerne → dépôt manquante (idempotent).
+         * Administration uniquement.
+         */
+        com.backend.gesy.voyage.dto.ReparationRemiseDepotDTO reparerRemiseDepotApresSuppressionsTestIncomplete();
+
         /** Synchronise statut DECHARGER pour les voyages déclarés avec état "Décharger" validé (exécuté au démarrage). */
         int syncStatutDechargerForDeclarerValides();
 

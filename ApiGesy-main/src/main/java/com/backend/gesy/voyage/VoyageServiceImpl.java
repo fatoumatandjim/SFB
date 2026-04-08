@@ -44,6 +44,7 @@ import com.backend.gesy.voyage.dto.*;
 import com.backend.gesy.alerte.AlerteService;
 import com.backend.gesy.manquant.Manquant;
 import com.backend.gesy.manquant.ManquantRepository;
+import com.backend.gesy.mouvement.Mouvement;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -64,6 +65,9 @@ import org.springframework.data.domain.Pageable;
 @Service
 @Transactional
 public class VoyageServiceImpl implements VoyageService {
+
+    /** Libellé des mouvements créés par {@link #reverserRetraitsStockCiternePourSuppressionTestDechargement} (numéro de voyage en suffixe). */
+    private static final String PREFIX_ANNULATION_TEST_DECHARGE = "Annulation test déchargement - retour stock citerne, voyage ";
     @Autowired
     private VoyageRepository voyageRepository;
     @Autowired
@@ -1713,19 +1717,120 @@ public class VoyageServiceImpl implements VoyageService {
 
     @Override
     public void deleteDechargePourTests(Long id) {
-        // --- Désactivé : décommenter le bloc ci-dessous pour réactiver la suppression « test » + restauration stock citerne ---
-        throw new UnsupportedOperationException("La suppression voyage déchargé (mode test) est désactivée côté serveur. ");
+        Voyage voyage = voyageRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Voyage non trouvé avec l'id: " + id));
 
-        // Voyage voyage = voyageRepository.findById(id)
-        //         .orElseThrow(() -> new RuntimeException("Voyage non trouvé avec l'id: " + id));
+        if (!isVoyageStatutDecharge(voyage.getStatut())) {
+            throw new RuntimeException(
+                    "Cette suppression n'est possible que pour un voyage déchargé ou partiellement déchargé.");
+        }
 
-        // if (!isVoyageStatutDecharge(voyage.getStatut())) {
-        //     throw new RuntimeException(
-        //             "Cette suppression n'est possible que pour un voyage déchargé ou partiellement déchargé.");
-        // }
+        LocalDateTime now = LocalDateTime.now();
+        // 1) Réinjecter en citerne les sorties liées aux livraisons (inverse de retirerDuStockCiterne)
+        reverserRetraitsStockCiternePourSuppressionTestDechargement(voyage, now);
+        // 2) Ramener au dépôt la quantité du voyage (inverse de retirerDuDepotEtAjouterAuStockCiterne) — sans ceci le dépôt reste à X-Q dans « Gestion Stocks »
+        if (voyage.getDepot() != null && voyage.getQuantite() != null && voyage.getQuantite() > 0) {
+            remettreStockCiterneVersDepot(voyage, voyage.getQuantite(), now);
+        }
+        supprimerVoyageEtLiensMetier(voyage);
+    }
 
-        // reverserRetraitsStockCiternePourSuppressionTestDechargement(voyage, LocalDateTime.now());
-        // supprimerVoyageEtLiensMetier(voyage);
+    @Override
+    public ReparationRemiseDepotDTO reparerRemiseDepotApresSuppressionsTestIncomplete() {
+        ReparationRemiseDepotDTO rapport = new ReparationRemiseDepotDTO();
+        List<Mouvement> annulations = mouvementRepository.findByDescriptionStartingWith(PREFIX_ANNULATION_TEST_DECHARGE);
+        Set<String> numeros = new LinkedHashSet<>();
+        for (Mouvement m : annulations) {
+            String n = extraireNumeroVoyageDepuisDescriptionAnnulationTest(m.getDescription());
+            if (n != null && !n.isEmpty()) {
+                numeros.add(n);
+            }
+        }
+        LocalDateTime now = LocalDateTime.now();
+        for (String numero : numeros) {
+            try {
+                if (voyageRepository.findByNumeroVoyage(numero).isPresent()) {
+                    rapport.getIgnoresVoyageEncoreExistant().add(numero);
+                    continue;
+                }
+                String descRemiseCiterne = "Annulation voyage " + numero + " - Remise au dépôt";
+                if (mouvementRepository.existsByDescription(descRemiseCiterne)) {
+                    rapport.getDejaConformes().add(numero);
+                    continue;
+                }
+                String descCharge = "Entrée dans le stock citerne pour le voyage " + numero;
+                Mouvement entreeCiterne = mouvementRepository.findFirstByDescriptionOrderByIdAsc(descCharge)
+                        .orElse(null);
+                if (entreeCiterne == null) {
+                    rapport.getErreurs().add(numero + " : aucun mouvement de chargement citerne trouvé (« " + descCharge + " »).");
+                    continue;
+                }
+                if (entreeCiterne.getTypeMouvement() != Mouvement.TypeMouvement.ENTREE) {
+                    rapport.getErreurs().add(numero + " : mouvement de charge inattendu (type " + entreeCiterne.getTypeMouvement() + ").");
+                    continue;
+                }
+                Stock stockCiterneCharge = stockRepository.findById(entreeCiterne.getStock().getId())
+                        .orElse(null);
+                if (stockCiterneCharge == null || !stockCiterneCharge.isCiterne()) {
+                    rapport.getErreurs().add(numero + " : stock du mouvement de charge invalide ou non citerne.");
+                    continue;
+                }
+                double q = entreeCiterne.getQuantite() != null ? entreeCiterne.getQuantite() : 0.0;
+                if (q <= 0) {
+                    rapport.getErreurs().add(numero + " : quantité de chargement nulle ou absente.");
+                    continue;
+                }
+                String suffixSortieDepot = " pour le voyage " + numero;
+                List<Mouvement> sortiesDepot = mouvementRepository.findByDescriptionEndingWithAndTypeMouvement(
+                        suffixSortieDepot, Mouvement.TypeMouvement.SORTIE);
+                Mouvement sortieDepot = null;
+                for (Mouvement md : sortiesDepot) {
+                    Stock sd = stockRepository.findById(md.getStock().getId()).orElse(null);
+                    if (sd != null && !sd.isCiterne() && sd.getDepot() != null) {
+                        sortieDepot = md;
+                        break;
+                    }
+                }
+                if (sortieDepot == null) {
+                    rapport.getErreurs().add(numero + " : aucune sortie dépôt trouvée pour la fin de libellé «" + suffixSortieDepot + "».");
+                    continue;
+                }
+                Stock stockDepot = stockRepository.findById(sortieDepot.getStock().getId()).orElse(null);
+                if (stockDepot == null || stockDepot.getDepot() == null) {
+                    rapport.getErreurs().add(numero + " : dépôt introuvable à partir du mouvement de sortie.");
+                    continue;
+                }
+                if (!Objects.equals(stockCiterneCharge.getProduit().getId(), stockDepot.getProduit().getId())) {
+                    rapport.getErreurs().add(numero + " : incohérence produit entre mouvement citerne et dépôt.");
+                    continue;
+                }
+                Stock stockCiterneActuel = stockRepository
+                        .findByProduitIdAndCiterne(stockCiterneCharge.getProduit().getId(), true)
+                        .orElse(stockCiterneCharge);
+                Stock stockDepotActuel = stockRepository
+                        .findByDepotIdAndProduitId(stockDepot.getDepot().getId(), stockDepot.getProduit().getId())
+                        .orElse(stockDepot);
+                Depot depotEntite = stockDepotActuel.getDepot();
+                if (depotEntite == null) {
+                    rapport.getErreurs().add(numero + " : ligne stock dépôt sans dépôt associé.");
+                    continue;
+                }
+                remettreQuantiteDuCiterneVersDepot(stockCiterneActuel, stockDepotActuel, q, numero, depotEntite, now);
+                rapport.getCorriges().add(numero + " (" + q + " L remis au dépôt " + depotEntite.getNom() + ")");
+            } catch (Exception e) {
+                rapport.getErreurs().add(numero + " : " + (e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName()));
+            }
+        }
+        return rapport;
+    }
+
+    private static String extraireNumeroVoyageDepuisDescriptionAnnulationTest(String description) {
+        if (description == null || !description.startsWith(PREFIX_ANNULATION_TEST_DECHARGE)) {
+            return null;
+        }
+        String rest = description.substring(PREFIX_ANNULATION_TEST_DECHARGE.length());
+        int idx = rest.indexOf(" – client ");
+        return idx >= 0 ? rest.substring(0, idx).trim() : rest.trim();
     }
 
     private static boolean isVoyageStatutDecharge(Voyage.StatutVoyage statut) {
@@ -1836,7 +1941,7 @@ public class VoyageServiceImpl implements VoyageService {
             }
             double q = cv.getQuantite();
             cumul += q;
-            String desc = "Annulation test déchargement – retour stock citerne, voyage " + voyage.getNumeroVoyage();
+            String desc = PREFIX_ANNULATION_TEST_DECHARGE + voyage.getNumeroVoyage();
             if (cv.getClient() != null) {
                 desc += " – client " + cv.getClient().getNom();
             }
@@ -1876,8 +1981,35 @@ public class VoyageServiceImpl implements VoyageService {
                 .orElseThrow(() -> new RuntimeException(
                         "Stock Citerne non trouvé pour le produit avec l'id: " + voyage.getProduit().getId()));
 
+        Optional<Stock> stockDepotOpt = stockRepository.findByDepotIdAndProduitId(
+                voyage.getDepot().getId(),
+                voyage.getProduit().getId());
+
+        if (stockDepotOpt.isEmpty()) {
+            throw new RuntimeException("Stock non trouvé pour le produit " + voyage.getProduit().getNom() +
+                    " dans le dépôt " + voyage.getDepot().getNom());
+        }
+
+        remettreQuantiteDuCiterneVersDepot(stockCiterne, stockDepotOpt.get(), quantiteARemettre,
+                voyage.getNumeroVoyage(), voyage.getDepot(), now);
+    }
+
+    /**
+     * Transfère une quantité du stock citerne vers le stock dépôt (mouvements + capacité dépôt).
+     */
+    private void remettreQuantiteDuCiterneVersDepot(
+            Stock stockCiterne,
+            Stock stockDepot,
+            double quantiteARemettre,
+            String numeroVoyage,
+            Depot depot,
+            LocalDateTime now) {
+        if (quantiteARemettre <= 0) {
+            return;
+        }
+
         Double quantiteCiterneActuelle = stockCiterne.getQuantite();
-        if (quantiteCiterneActuelle < quantiteARemettre) {
+        if (quantiteCiterneActuelle == null || quantiteCiterneActuelle < quantiteARemettre) {
             throw new RuntimeException(
                     "Quantité insuffisante dans le stock citerne pour annulation. Disponible: " + quantiteCiterneActuelle +
                             ", à remettre: " + quantiteARemettre);
@@ -1892,25 +2024,14 @@ public class VoyageServiceImpl implements VoyageService {
         mouvementSortieCiterneDTO.setTypeMouvement("SORTIE");
         mouvementSortieCiterneDTO.setQuantite(quantiteARemettre);
         mouvementSortieCiterneDTO.setUnite(stockCiterne.getUnite());
-        mouvementSortieCiterneDTO.setDescription("Annulation voyage " + voyage.getNumeroVoyage() + " - Remise au dépôt");
+        mouvementSortieCiterneDTO.setDescription("Annulation voyage " + numeroVoyage + " - Remise au dépôt");
         mouvementService.save(mouvementSortieCiterneDTO);
 
-        Optional<Stock> stockDepotOpt = stockRepository.findByDepotIdAndProduitId(
-                voyage.getDepot().getId(),
-                voyage.getProduit().getId());
-
-        if (stockDepotOpt.isEmpty()) {
-            throw new RuntimeException("Stock non trouvé pour le produit " + voyage.getProduit().getNom() +
-                    " dans le dépôt " + voyage.getDepot().getNom());
-        }
-
-        Stock stockDepot = stockDepotOpt.get();
         Double quantiteDepotActuelle = stockDepot.getQuantite();
-        stockDepot.setQuantite(quantiteDepotActuelle + quantiteARemettre);
+        stockDepot.setQuantite((quantiteDepotActuelle != null ? quantiteDepotActuelle : 0.0) + quantiteARemettre);
         stockDepot.setDateDerniereMiseAJour(now);
         stockRepository.save(stockDepot);
 
-        Depot depot = voyage.getDepot();
         Double capaciteUtilisee = depot.getCapaciteUtilisee() != null ? depot.getCapaciteUtilisee() : 0.0;
         depot.setCapaciteUtilisee(capaciteUtilisee + quantiteARemettre);
         depotRepository.save(depot);
@@ -1920,7 +2041,7 @@ public class VoyageServiceImpl implements VoyageService {
         mouvementEntreeDepotDTO.setTypeMouvement("ENTREE");
         mouvementEntreeDepotDTO.setQuantite(quantiteARemettre);
         mouvementEntreeDepotDTO.setUnite(stockDepot.getUnite());
-        mouvementEntreeDepotDTO.setDescription("Remise au dépôt " + depot.getNom() + " - Annulation voyage " + voyage.getNumeroVoyage());
+        mouvementEntreeDepotDTO.setDescription("Remise au dépôt " + depot.getNom() + " - Annulation voyage " + numeroVoyage);
         mouvementService.save(mouvementEntreeDepotDTO);
     }
 

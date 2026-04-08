@@ -113,7 +113,23 @@
   <div class="main-content">
     <div class="stock-levels-section">
       <div class="section-header">
-        <h2>Niveaux de Stock par Produit</h2>
+        <div class="section-header-left">
+          <h2>Niveaux de Stock par Produit</h2>
+          @if (isAdmin) {
+            <button
+              type="button"
+              class="btn-reparation-stock"
+              [disabled]="reparationStockEnCours"
+              (click)="confirmerReparationRemiseDepot()"
+              title="Corriger les remises dépôt manquantes après d’anciennes suppressions test (une fois ou plus, sans danger)">
+              @if (reparationStockEnCours) {
+                <span>Réparation…</span>
+              } @else {
+                <span>Réparer stocks (suppressions test)</span>
+              }
+            </button>
+          }
+        </div>
         <label for="depot-select" class="sr-only">Sélectionner un dépôt</label>
         <select id="depot-select" class="depot-select" [(ngModel)]="selectedDepot" aria-label="Sélectionner un dépôt">
           <option value="tous">Tous les dépôts</option>
@@ -122,6 +138,43 @@
           <option value="depot3">Dépôt Nord</option>
         </select>
       </div>
+
+      @if (isAdmin && dernierRapportReparation) {
+        <div class="reparation-rapport" role="status">
+          @if ((dernierRapportReparation.corriges?.length ?? 0) > 0) {
+            <p class="reparation-rapport-title">Corrigés</p>
+            <ul>
+              @for (ligne of dernierRapportReparation.corriges; track $index) {
+                <li>{{ ligne }}</li>
+              }
+            </ul>
+          }
+          @if ((dernierRapportReparation.dejaConformes?.length ?? 0) > 0) {
+            <p class="reparation-rapport-title muted">Déjà conformes</p>
+            <ul class="muted-list">
+              @for (ligne of dernierRapportReparation.dejaConformes; track $index) {
+                <li>{{ ligne }}</li>
+              }
+            </ul>
+          }
+          @if ((dernierRapportReparation.ignoresVoyageEncoreExistant?.length ?? 0) > 0) {
+            <p class="reparation-rapport-title warn">Ignorés (voyage encore en base)</p>
+            <ul>
+              @for (ligne of dernierRapportReparation.ignoresVoyageEncoreExistant; track $index) {
+                <li>{{ ligne }}</li>
+              }
+            </ul>
+          }
+          @if ((dernierRapportReparation.erreurs?.length ?? 0) > 0) {
+            <p class="reparation-rapport-title error">Erreurs</p>
+            <ul class="error-list">
+              @for (ligne of dernierRapportReparation.erreurs; track $index) {
+                <li>{{ ligne }}</li>
+              }
+            </ul>
+          }
+        </div>
+      }
 
       <div class="produits-list">
         @if (isLoading) {

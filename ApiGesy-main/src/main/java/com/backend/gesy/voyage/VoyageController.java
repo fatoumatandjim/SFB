@@ -1,5 +1,6 @@
 package com.backend.gesy.voyage;
 
+import com.backend.gesy.voyage.dto.ReparationRemiseDepotDTO;
 import com.backend.gesy.voyage.dto.VoyageDTO;
 import com.backend.gesy.voyage.dto.VoyagePageDto;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -402,6 +403,16 @@ public class VoyageController {
         } catch (Exception e) {
             return badRequestSuppressionVoyage(e);
         }
+    }
+
+    /**
+     * Réparation one-shot : voyages supprimés par l’ancienne logique (sans remise dépôt).
+     * S’appuie sur les libellés de mouvements (annulation test + entrée citerne au chargement).
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/admin/reparation-remise-depot-apres-suppression-test")
+    public ResponseEntity<ReparationRemiseDepotDTO> reparerRemiseDepotApresSuppressionsTest() {
+        return ResponseEntity.ok(voyageService.reparerRemiseDepotApresSuppressionsTestIncomplete());
     }
 
     /**

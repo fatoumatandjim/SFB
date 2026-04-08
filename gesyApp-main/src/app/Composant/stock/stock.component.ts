@@ -7,6 +7,8 @@ import { StocksService, Stock, StockStats } from '../../services/stocks.service'
 import { ProduitsService, Produit as ProduitAPI, ProduitAvecStocks } from '../../services/produits.service';
 import { MouvementsService, Mouvement as MouvementAPI, MouvementPage } from '../../services/mouvements.service';
 import { ManquantsService, Manquant, ManquantPage } from '../../services/manquants.service';
+import { VoyagesService, ReparationRemiseDepot } from '../../services/voyages.service';
+import { AuthService } from '../../services/auth.service';
 import { AlertService } from '../../nativeComp/alert/alert.service';
 import { ToastService } from '../../nativeComp/toast/toast.service';
 
@@ -99,6 +101,11 @@ export class StockComponent implements OnInit {
 
   stats: StockStats | null = null;
 
+  /** Admin : réparation remise dépôt après anciennes suppressions « test déchargement » */
+  isAdmin: boolean = false;
+  reparationStockEnCours = false;
+  dernierRapportReparation: ReparationRemiseDepot | null = null;
+
   produits: Produit[] = [
     {
       id: '1',
@@ -161,11 +168,14 @@ export class StockComponent implements OnInit {
     private produitsService: ProduitsService,
     private mouvementsService: MouvementsService,
     private manquantsService: ManquantsService,
+    private voyagesService: VoyagesService,
+    private authService: AuthService,
     private alertService: AlertService,
     private toastService: ToastService
   ) { }
 
   ngOnInit() {
+    this.isAdmin = this.authService.isAdmin();
     this.loadDepots();
     this.loadProduits();
     this.loadProduitsAvecStocks();
@@ -229,6 +239,83 @@ export class StockComponent implements OnInit {
         console.error('Erreur lors du chargement des mouvements récents:', error);
       }
     });
+  }
+
+  /** Complète la remise dépôt manquante (voyages déjà supprimés, trace dans les mouvements). Idempotent. */
+  confirmerReparationRemiseDepot(): void {
+    if (!this.isAdmin || this.reparationStockEnCours) {
+      return;
+    }
+    const msg =
+      'Cette opération corrige les stocks après d’anciennes suppressions « test déchargement » qui n’avaient pas ' +
+      'remis la quantité du voyage au dépôt.\n\n' +
+      'Elle s’appuie sur l’historique des mouvements. Vous pouvez la relancer sans risque : les voyages déjà ' +
+      'corrigés sont ignorés.\n\n' +
+      'Lancer la réparation maintenant ?';
+    this.alertService.confirm(msg, 'Réparation des stocks (admin)').subscribe((ok) => {
+      if (!ok) {
+        return;
+      }
+      this.reparationStockEnCours = true;
+      this.voyagesService.reparerRemiseDepotApresSuppressionsTestIncomplete().subscribe({
+        next: (rapport) => {
+          this.reparationStockEnCours = false;
+          this.dernierRapportReparation = rapport;
+          const c = rapport.corriges?.length ?? 0;
+          const okCount = rapport.dejaConformes?.length ?? 0;
+          const err = rapport.erreurs?.length ?? 0;
+          const ign = rapport.ignoresVoyageEncoreExistant?.length ?? 0;
+          if (err > 0) {
+            this.toastService.warning(
+              `Réparation terminée : ${c} corrigé(s), ${okCount} déjà OK. ${err} erreur(s) — voir le détail ci-dessous.`
+            );
+            const firstErr = rapport.erreurs![0];
+            if (firstErr) {
+              this.toastService.error(firstErr);
+            }
+          } else if (c === 0 && okCount === 0 && ign === 0) {
+            this.toastService.info('Aucune suppression test incomplète détectée dans l’historique des mouvements.');
+          } else {
+            this.toastService.success(
+              `Réparation terminée : ${c} corrigé(s), ${okCount} déjà conforme(s)` +
+                            (ign ? `, ${ign} ignoré(s) (voyage encore en base)` : '') +
+                            '.'
+            );
+          }
+          this.loadProduitsAvecStocks();
+          this.loadStats();
+          this.loadMouvementsRecents();
+        },
+        error: (error) => {
+          this.reparationStockEnCours = false;
+          this.toastService.error(this.getErrorMessageFromHttp(error, 'Réparation impossible'));
+        }
+      });
+    });
+  }
+
+  private getErrorMessageFromHttp(error: any, defaultMessage: string): string {
+    if (!error) {
+      return defaultMessage;
+    }
+    if (error.headers && typeof error.headers.get === 'function') {
+      const headerMsg = error.headers.get('X-Error-Message');
+      if (headerMsg) {
+        return headerMsg;
+      }
+    }
+    if (error.error) {
+      if (typeof error.error.message === 'string') {
+        return error.error.message;
+      }
+      if (typeof error.error === 'string') {
+        return error.error;
+      }
+    }
+    if (error.message && typeof error.message === 'string' && !error.message.includes('Http failure')) {
+      return error.message;
+    }
+    return defaultMessage;
   }
 
   voirTousMouvements() {

@@ -9,10 +9,19 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface MouvementRepository extends JpaRepository<Mouvement, Long> {
     List<Mouvement> findByStockId(Long stockId);
+
+    List<Mouvement> findByDescriptionStartingWith(String prefix);
+
+    boolean existsByDescription(String description);
+
+    Optional<Mouvement> findFirstByDescriptionOrderByIdAsc(String description);
+
+    List<Mouvement> findByDescriptionEndingWithAndTypeMouvement(String suffix, Mouvement.TypeMouvement typeMouvement);
     
     @Query("SELECT m FROM Mouvement m ORDER BY m.dateMouvement DESC")
     List<Mouvement> findRecentMouvements(Pageable pageable);

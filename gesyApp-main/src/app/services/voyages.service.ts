@@ -105,6 +105,14 @@ export interface VoyagePage {
   size: number;
 }
 
+/** Réponse de la réparation stock après anciennes suppressions « test déchargement » (admin). */
+export interface ReparationRemiseDepot {
+  corriges: string[];
+  dejaConformes: string[];
+  ignoresVoyageEncoreExistant: string[];
+  erreurs: string[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -297,6 +305,17 @@ export class VoyagesService {
    */
   deleteDechargePourTests(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}/suppression-test-decharge`);
+  }
+
+  /**
+   * Une fois : complète la remise dépôt manquante pour les voyages déjà supprimés (trace dans les mouvements).
+   * Réservé admin ; idempotent (les numéros déjà corrigés apparaissent dans dejaConformes).
+   */
+  reparerRemiseDepotApresSuppressionsTestIncomplete(): Observable<ReparationRemiseDepot> {
+    return this.http.post<ReparationRemiseDepot>(
+      `${this.apiUrl}/admin/reparation-remise-depot-apres-suppression-test`,
+      {}
+    );
   }
 
   declarerVoyagesMultiple(voyageIds: number[], compteId?: number, caisseId?: number): Observable<Voyage[]> {
