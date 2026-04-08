@@ -28,37 +28,41 @@ public final class VoyagePaiementMenuRules {
     }
 
     /**
-     * Prédicat JPQL pour l’alias {@code t} (entité {@code Transaction}) : exclut toute ligne liée à un voyage
-     * encore en attente de chargement, que le lien soit direct ({@code t.voyage}) ou via la facture ({@code t.facture.voyage}).
-     * Sinon une transaction VALIDE sans {@code voyage_id} mais avec une facture liée au voyage passait encore le filtre.
-     * Aligné sur {@link #isVisibleForPaiementMenu(Voyage)} : voyage ou statut null ⇒ visible (évite UNKNOWN en SQL sur statut null).
+     * Prédicat JPQL pour l’alias {@code t} (entité {@code Transaction}).
+     * <p><strong>Priorité :</strong> si {@code t.voyage} est renseigné, seul son statut compte pour le masquage
+     * (camion chargé sur cette ligne → visible), afin d’éviter qu’un {@code t.facture.voyage} désynchronisé ou
+     * obsolète masque encore la transaction. Si {@code t.voyage} est null, on applique la règle sur
+     * {@code t.facture.voyage}. Statut voyage null ⇒ visible ({@link #isVisibleForPaiementMenu(Voyage)}).
      * <p>
-     * Littéral volontaire (exigence des {@code @Query} Spring qui concatènent une constante de compilation).
+     * Littéraux concaténés = constantes de compilation pour les {@code @Query}.
      */
-    /** Fragments littéraux uniquement : {@code @Query} exige des constantes de compilation (pas d’appels de méthodes). */
-    private static final String JPQL_T_VOYAGE_OK =
-        "(t.voyage IS NULL OR t.voyage.statut IS NULL OR t.voyage.statut <> 'EN_ATTENTE_CHARGEMENT')";
-    private static final String JPQL_T_FACTURE_VOYAGE_OK =
-        "(t.facture IS NULL OR t.facture.voyage IS NULL OR t.facture.voyage.statut IS NULL OR t.facture.voyage.statut <> 'EN_ATTENTE_CHARGEMENT')";
+    private static final String JPQL_T_IF_VOYAGE_SET =
+        "(t.voyage IS NOT NULL AND (t.voyage.statut IS NULL OR t.voyage.statut <> 'EN_ATTENTE_CHARGEMENT'))";
+    private static final String JPQL_T_IF_VOYAGE_NULL_USE_FACTURE =
+        "(t.voyage IS NULL AND (t.facture IS NULL OR t.facture.voyage IS NULL OR t.facture.voyage.statut IS NULL OR t.facture.voyage.statut <> 'EN_ATTENTE_CHARGEMENT'))";
 
     public static final String JPQL_TRANSACTION_VISIBLE =
-        "(" + JPQL_T_VOYAGE_OK + " AND " + JPQL_T_FACTURE_VOYAGE_OK + ")";
+        "(" + JPQL_T_IF_VOYAGE_SET + " OR " + JPQL_T_IF_VOYAGE_NULL_USE_FACTURE + ")";
 
-    private static final String JPQL_P_VOYAGE_OK =
-        "(p.voyage IS NULL OR p.voyage.statut IS NULL OR p.voyage.statut <> 'EN_ATTENTE_CHARGEMENT')";
-    private static final String JPQL_P_FACTURE_VOYAGE_OK =
-        "(p.facture IS NULL OR p.facture.voyage IS NULL OR p.facture.voyage.statut IS NULL OR p.facture.voyage.statut <> 'EN_ATTENTE_CHARGEMENT')";
-    /** Sous-requête en JOIN (plus fiable que {@code MEMBER OF} selon versions Hibernate). */
-    private static final String JPQL_P_NOTEX_TX_EN_ATTENTE =
-        " AND NOT EXISTS (SELECT t FROM Paiement px INNER JOIN px.transactions t WHERE px.id = p.id "
-            + "AND t.voyage IS NOT NULL AND t.voyage.statut = 'EN_ATTENTE_CHARGEMENT')";
+    private static final String JPQL_P_IF_VOYAGE_SET =
+        "(p.voyage IS NOT NULL AND (p.voyage.statut IS NULL OR p.voyage.statut <> 'EN_ATTENTE_CHARGEMENT'))";
+    private static final String JPQL_P_IF_VOYAGE_NULL_USE_FACTURE =
+        "(p.voyage IS NULL AND (p.facture IS NULL OR p.facture.voyage IS NULL OR p.facture.voyage.statut IS NULL OR p.facture.voyage.statut <> 'EN_ATTENTE_CHARGEMENT'))";
 
     /**
-     * Prédicat JPQL pour l’alias {@code p} (entité {@link Paiement}) : aligné sur
-     * {@link #collectVoyagesLinkedToPaiement(Paiement)} — voyage direct, facture, et transactions liées.
+     * Aucune transaction liée ne doit être « bloquée » par la même règle que {@link #JPQL_TRANSACTION_VISIBLE}
+     * ({@code NOT (visible)} dans la sous-requête).
+     */
+    private static final String JPQL_P_NOTEX_LINKED_TX_BLOCKED =
+        " AND NOT EXISTS (SELECT t FROM Paiement px INNER JOIN px.transactions t WHERE px.id = p.id AND NOT ("
+            + "(" + JPQL_T_IF_VOYAGE_SET + ") OR (" + JPQL_T_IF_VOYAGE_NULL_USE_FACTURE + ")))";
+
+    /**
+     * Prédicat JPQL pour l’alias {@code p} (entité {@link Paiement}) : même priorité voyage / facture que pour
+     * les transactions, plus l’absence de transaction liée « bloquée ».
      */
     public static final String JPQL_PAIEMENT_VISIBLE =
-        "((" + JPQL_P_VOYAGE_OK + " AND " + JPQL_P_FACTURE_VOYAGE_OK + ")" + JPQL_P_NOTEX_TX_EN_ATTENTE + ")";
+        "((" + JPQL_P_IF_VOYAGE_SET + " OR " + JPQL_P_IF_VOYAGE_NULL_USE_FACTURE + ")" + JPQL_P_NOTEX_LINKED_TX_BLOCKED + ")";
 
     static {
         String fragmentAttendu = "'" + STATUT_VOYAGE_MASQUE_MENU.name() + "'";
@@ -99,10 +103,25 @@ public final class VoyagePaiementMenuRules {
     }
 
     /**
-     * Une ligne « Paiement » est affichée dans le menu seulement si aucun voyage lié n’est encore en attente de chargement.
+     * Même logique que {@link #JPQL_PAIEMENT_VISIBLE} pour une entité chargée (tests, debug).
      */
     public static boolean isPaiementRowVisibleInMenu(Paiement p) {
-        return collectVoyagesLinkedToPaiement(p).stream().allMatch(VoyagePaiementMenuRules::isVisibleForPaiementMenu);
+        if (p == null) {
+            return false;
+        }
+        boolean direct;
+        if (p.getVoyage() != null) {
+            direct = isVisibleForPaiementMenu(p.getVoyage());
+        } else {
+            direct = p.getFacture() == null || isVisibleForPaiementMenu(p.getFacture().getVoyage());
+        }
+        if (!direct) {
+            return false;
+        }
+        if (p.getTransactions() == null) {
+            return true;
+        }
+        return p.getTransactions().stream().allMatch(VoyagePaiementMenuRules::isTransactionRowVisibleInPaiementMenu);
     }
 
     /** Même logique que {@link #JPQL_TRANSACTION_VISIBLE} pour une entité chargée (stats, tests). */
@@ -110,10 +129,13 @@ public final class VoyagePaiementMenuRules {
         if (t == null) {
             return false;
         }
-        if (!isVisibleForPaiementMenu(t.getVoyage())) {
-            return false;
+        if (t.getVoyage() != null) {
+            return isVisibleForPaiementMenu(t.getVoyage());
         }
         Facture facture = t.getFacture();
-        return facture == null || isVisibleForPaiementMenu(facture.getVoyage());
+        if (facture == null) {
+            return true;
+        }
+        return isVisibleForPaiementMenu(facture.getVoyage());
     }
 }
