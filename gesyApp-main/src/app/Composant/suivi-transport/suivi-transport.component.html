@@ -1172,7 +1172,7 @@
           Cochez les clients qui ont été livrés. Seuls les clients cochés seront traités lors du déchargement.
         </p>
 
-        @if (voyageForStatutChange?.statut === 'PARTIELLEMENT_DECHARGER' && getResteQuantiteNonAttribueeDechargement() > 0) {
+        @if (shouldShowDechargerResteSection()) {
         <div class="new-clients-section">
           <p class="form-help decharger-reste-intro">
             Quantité voyage non encore attribuée : vous pouvez l’affecter à de <strong>nouveaux clients</strong> ci-dessous, ou laisser vide et utiliser uniquement la liste des clients déjà attribués.
@@ -1199,7 +1199,7 @@
                   class="form-input"
                   [(ngModel)]="row.quantite"
                   min="0"
-                  [max]="getResteQuantiteNonAttribueeDechargement()"
+                  [max]="getMaxQuantitePourLigneResteDechargement($index)"
                   step="0.01"
                   placeholder="0"
                 />

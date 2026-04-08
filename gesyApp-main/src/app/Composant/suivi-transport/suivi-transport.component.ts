@@ -506,6 +506,31 @@ export class SuiviTransportComponent implements OnInit {
     return Math.max(0, Math.round((q - attrib - nouveauxReste) * 100) / 100);
   }
 
+  /**
+   * Affiche la section « Attribuer le reste » : dès qu’il reste du volume à allouer,
+   * ou tant qu’il existe au moins une ligne en cours (évite que la section disparaisse
+   * quand le reste calculé tombe à 0 pendant la saisie).
+   */
+  shouldShowDechargerResteSection(): boolean {
+    if (this.voyageForStatutChange?.statut !== 'PARTIELLEMENT_DECHARGER') {
+      return false;
+    }
+    if (this.dechargerResteClients.length > 0) {
+      return true;
+    }
+    return this.getResteQuantiteNonAttribueeDechargement() > 0;
+  }
+
+  /** Plafond litres pour la quantité sur une ligne « reste » (hors autres lignes du même bloc). */
+  getMaxQuantitePourLigneResteDechargement(rowIndex: number): number {
+    const q = this.voyageForStatutChange?.quantite ?? 0;
+    const attrib = this.getTotalQuantiteAttribueeListeDechargement();
+    const autresLignes = this.dechargerResteClients
+      .filter((_, i) => i !== rowIndex)
+      .reduce((s, r) => s + (r.quantite != null && r.quantite > 0 ? r.quantite : 0), 0);
+    return Math.max(0, Math.round((q - attrib - autresLignes) * 100) / 100);
+  }
+
   /** Plafond pour la quantité attribuée sur une ligne (autres clients + lignes « reste » déjà saisies). */
   getMaxQuantiteAttribuablePourClientDechargement(cv: { id?: number }): number {
     const qV = this.voyageForStatutChange?.quantite ?? 0;
