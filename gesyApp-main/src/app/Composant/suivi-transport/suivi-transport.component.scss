@@ -2669,206 +2669,184 @@
       border: 1px dashed var(--border-color);
     }
 
-    .decharger-reste-section {
-      margin-bottom: 22px;
-      padding: 0;
-      background: linear-gradient(180deg, var(--bg-tertiary) 0%, var(--bg-primary) 100%);
-      border-radius: 10px;
-      border: 1px solid var(--border-color);
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-      overflow: hidden;
+    // Même patron visuel qu’azenergy (livre-form > new-clients-section)
+    .new-clients-section {
+      margin-bottom: 24px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border-color);
 
-      .decharger-reste-head {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 10px 14px;
-        padding: 14px 16px;
-        border-bottom: 1px solid var(--border-color);
-        background: var(--bg-primary);
+      .decharger-reste-intro {
+        margin: 0 0 12px 0;
       }
 
-      .decharger-reste-kicker {
-        font-size: 11px;
-        font-weight: 600;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-        color: var(--text-secondary);
-        padding: 4px 8px;
-        border-radius: 4px;
-        background: var(--bg-tertiary);
-      }
-
-      .decharger-reste-title {
-        margin: 0;
-        flex: 1;
-        min-width: 160px;
-        font-size: 15px;
+      h4 {
+        margin: 0 0 16px 0;
+        font-size: 14px;
         font-weight: 600;
         color: var(--text-primary);
       }
 
-      .decharger-reste-qty-badge {
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--accent-primary, #2563eb);
-        padding: 6px 12px;
-        border-radius: 999px;
-        background: rgba(37, 99, 235, 0.1);
-        border: 1px solid rgba(37, 99, 235, 0.28);
-      }
-
-      .decharger-reste-desc {
-        margin: 0;
-        padding: 12px 16px 14px;
-        font-size: 13px;
-        line-height: 1.45;
-        color: var(--text-secondary);
-        border-bottom: 1px solid var(--border-color);
-      }
-
-      .decharger-reste-card {
+      .clients-list {
         display: flex;
-        align-items: stretch;
-        gap: 8px;
-        margin: 12px 16px;
-        padding: 14px;
-        background: var(--bg-primary);
+        flex-direction: column;
+        gap: 16px;
+        margin-bottom: 16px;
+      }
+
+      .client-item-form {
+        position: relative;
+        display: flex;
+        gap: 12px;
+        padding: 16px;
+        background: var(--bg-card);
         border: 1px solid var(--border-color);
         border-radius: 8px;
+        transition: all 0.2s;
 
-        &:last-of-type {
-          margin-bottom: 8px;
-        }
-
-        .decharger-reste-card__fields {
-          flex: 1;
-          display: grid;
-          grid-template-columns: minmax(160px, 1.4fr) minmax(96px, 1fr) minmax(96px, 1fr);
-          gap: 12px 14px;
-          align-items: end;
-
-          @media (max-width: 640px) {
-            grid-template-columns: 1fr;
-          }
+        &:hover {
+          border-color: var(--accent-primary);
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         }
 
         .form-group {
+          flex: 1;
           margin-bottom: 0;
+
+          &:first-child {
+            flex: 1.5;
+          }
+
+          .btn-select-client {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 12px 16px;
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+
+            &::after {
+              content: "▼";
+              font-size: 10px;
+              color: var(--text-muted);
+              transition: transform 0.2s;
+            }
+
+            &:hover {
+              background: var(--bg-primary);
+              border-color: var(--accent-primary);
+              color: var(--accent-primary);
+
+              &::after {
+                color: var(--accent-primary);
+              }
+            }
+
+            &:active {
+              transform: scale(0.98);
+            }
+          }
         }
 
-        .form-group label {
-          font-size: 12px;
-          margin-bottom: 6px;
-        }
-      }
-
-      .btn-remove-decharger-reste {
-        flex-shrink: 0;
-        align-self: flex-start;
-        width: 36px;
-        height: 36px;
-        margin-top: 22px;
-        padding: 0;
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        background: var(--bg-tertiary);
-        color: var(--text-secondary);
-        font-size: 20px;
-        line-height: 1;
-        cursor: pointer;
-        transition: background 0.2s, color 0.2s, border-color 0.2s;
-
-        @media (max-width: 640px) {
-          margin-top: 0;
-          align-self: flex-end;
-        }
-
-        &:hover {
-          background: var(--danger-bg, #fef2f2);
-          color: var(--danger, #dc2626);
-          border-color: rgba(220, 38, 38, 0.35);
-        }
-      }
-
-      .decharger-reste-client-pick {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex-wrap: wrap;
-        min-height: 40px;
-        padding: 8px 12px;
-        border-radius: 6px;
-        border: 1px solid var(--border-color);
-        background: var(--bg-tertiary);
-
-        .client-pick-name {
-          font-weight: 600;
-          color: var(--text-primary);
-        }
-
-        .client-pick-placeholder {
-          font-size: 13px;
-          color: var(--text-secondary);
-          font-style: italic;
-        }
-
-        .btn-text-action {
-          margin-left: auto;
-          background: none;
+        .btn-remove-client {
+          position: absolute;
+          top: 8px;
+          right: 8px;
+          width: 28px;
+          height: 28px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: var(--danger);
+          color: white;
           border: none;
-          color: var(--accent-primary);
-          font-size: 13px;
-          font-weight: 600;
+          border-radius: 50%;
+          font-size: 18px;
+          font-weight: bold;
           cursor: pointer;
-          padding: 4px 8px;
-          border-radius: 4px;
-          transition: background 0.2s;
+          transition: all 0.2s;
 
           &:hover {
-            background: rgba(37, 99, 235, 0.08);
+            background: var(--danger-hover, #dc2626);
+            transform: scale(1.1);
+          }
+
+          &:active {
+            transform: scale(0.95);
+          }
+        }
+
+        &.client-item-form--decharger-reste {
+          flex-wrap: wrap;
+
+          .form-group:nth-child(1) {
+            flex: 1 1 100%;
+            max-width: 100%;
+          }
+
+          .form-group:nth-child(2),
+          .form-group:nth-child(3) {
+            flex: 1 1 calc(50% - 6px);
+            min-width: 100px;
           }
         }
       }
 
-      .btn-add-decharger-reste {
+      .btn-add-client {
+        width: 100%;
+        padding: 12px 16px;
+        background: var(--bg-card);
+        color: var(--accent-primary);
+        border: 2px dashed var(--accent-primary);
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 12px;
-        width: calc(100% - 32px);
-        margin: 8px 16px 16px;
-        padding: 14px 18px;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: 600;
-        color: #fff;
-        background: linear-gradient(135deg, var(--accent-primary, #2563eb) 0%, #1d4ed8 100%);
-        box-shadow: 0 2px 10px rgba(37, 99, 235, 0.35);
-        transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease;
+        gap: 8px;
 
         &:hover {
-          filter: brightness(1.06);
-          box-shadow: 0 4px 16px rgba(37, 99, 235, 0.45);
+          background: var(--accent-primary);
+          color: white;
+          border-color: var(--accent-primary);
         }
 
         &:active {
-          transform: scale(0.99);
+          transform: scale(0.98);
         }
+      }
 
-        .btn-add-decharger-reste__icon {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
-          opacity: 0.95;
-        }
+      .quantity-info {
+        margin-top: 16px;
+        padding: 12px;
+        background: var(--bg-primary);
+        border-radius: 6px;
+        border: 1px solid var(--border-color);
 
-        .btn-add-decharger-reste__label {
-          text-align: left;
-          line-height: 1.35;
+        small {
+          display: block;
+          font-size: 12px;
+          color: var(--text-secondary);
+          margin-bottom: 4px;
+
+          &:last-child {
+            margin-bottom: 0;
+          }
+
+          &:first-child {
+            font-weight: 600;
+            color: var(--text-primary);
+          }
         }
       }
     }
