@@ -107,6 +107,8 @@ export interface VoyagePage {
 
 /** Réponse de la réparation stock après anciennes suppressions « test déchargement » (admin). */
 export interface ReparationRemiseDepot {
+  /** Nombre de mouvements repérés comme annulation test (diagnostic). */
+  mouvementsAnnulationDetectes?: number;
   corriges: string[];
   dejaConformes: string[];
   ignoresVoyageEncoreExistant: string[];

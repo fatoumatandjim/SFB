@@ -22,7 +22,19 @@ public interface MouvementRepository extends JpaRepository<Mouvement, Long> {
     Optional<Mouvement> findFirstByDescriptionOrderByIdAsc(String description);
 
     List<Mouvement> findByDescriptionEndingWithAndTypeMouvement(String suffix, Mouvement.TypeMouvement typeMouvement);
-    
+
+    /**
+     * Repère les annulations test « déchargement » sans dépendre du tiret (– vs -) ni de la casse.
+     */
+    @Query("SELECT m FROM Mouvement m WHERE " +
+            "LOWER(COALESCE(m.description, '')) LIKE LOWER(CONCAT(CONCAT('%', :f1), '%')) AND " +
+            "LOWER(COALESCE(m.description, '')) LIKE LOWER(CONCAT(CONCAT('%', :f2), '%')) AND " +
+            "LOWER(COALESCE(m.description, '')) LIKE LOWER(CONCAT(CONCAT('%', :f3), '%'))")
+    List<Mouvement> findMouvementsAnnulationTestRetourCiterne(
+            @Param("f1") String fragmentAnnulation,
+            @Param("f2") String fragmentRetourCiterne,
+            @Param("f3") String fragmentVoyage);
+
     @Query("SELECT m FROM Mouvement m ORDER BY m.dateMouvement DESC")
     List<Mouvement> findRecentMouvements(Pageable pageable);
     

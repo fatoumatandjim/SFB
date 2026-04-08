@@ -14,6 +14,9 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ReparationRemiseDepotDTO {
+    /** Nombre de mouvements correspondant au libellé d’annulation test (diagnostic). */
+    private int mouvementsAnnulationDetectes;
+
     private List<String> corriges = new ArrayList<>();
     private List<String> dejaConformes = new ArrayList<>();
     private List<String> ignoresVoyageEncoreExistant = new ArrayList<>();

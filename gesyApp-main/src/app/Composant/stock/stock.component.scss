@@ -363,6 +363,13 @@
   background: var(--bg-secondary);
   font-size: 13px;
 
+  .reparation-rapport-meta {
+    margin: 0 0 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-secondary);
+  }
+
   .reparation-rapport-title {
     margin: 12px 0 6px;
     font-weight: 600;

@@ -1738,13 +1738,23 @@ public class VoyageServiceImpl implements VoyageService {
     @Override
     public ReparationRemiseDepotDTO reparerRemiseDepotApresSuppressionsTestIncomplete() {
         ReparationRemiseDepotDTO rapport = new ReparationRemiseDepotDTO();
-        List<Mouvement> annulations = mouvementRepository.findByDescriptionStartingWith(PREFIX_ANNULATION_TEST_DECHARGE);
+        // LIKE multi-fragments : tolère « – » vs « - », espaces et casse (StartingWith sur un seul préfixe ratte souvent les vieilles lignes)
+        List<Mouvement> annulations = mouvementRepository.findMouvementsAnnulationTestRetourCiterne(
+                "annulation test déchargement",
+                "retour stock citerne",
+                "voyage");
+        rapport.setMouvementsAnnulationDetectes(annulations.size());
         Set<String> numeros = new LinkedHashSet<>();
         for (Mouvement m : annulations) {
             String n = extraireNumeroVoyageDepuisDescriptionAnnulationTest(m.getDescription());
             if (n != null && !n.isEmpty()) {
                 numeros.add(n);
             }
+        }
+        if (!annulations.isEmpty() && numeros.isEmpty()) {
+            rapport.getErreurs().add(
+                    "Mouvements d’annulation test détectés (" + annulations.size()
+                            + ") mais numéro de voyage illisible. Attendu après « retour stock citerne, voyage » (tiret court ou long avant « client »).");
         }
         LocalDateTime now = LocalDateTime.now();
         for (String numero : numeros) {
@@ -1824,13 +1834,39 @@ public class VoyageServiceImpl implements VoyageService {
         return rapport;
     }
 
+    /**
+     * Extrait le numéro de voyage après « retour stock citerne, voyage » ; gère « – client » ou « - client ».
+     */
     private static String extraireNumeroVoyageDepuisDescriptionAnnulationTest(String description) {
-        if (description == null || !description.startsWith(PREFIX_ANNULATION_TEST_DECHARGE)) {
+        if (description == null) {
             return null;
         }
-        String rest = description.substring(PREFIX_ANNULATION_TEST_DECHARGE.length());
-        int idx = rest.indexOf(" – client ");
-        return idx >= 0 ? rest.substring(0, idx).trim() : rest.trim();
+        String dLower = description.toLowerCase(Locale.ROOT);
+        if (!dLower.contains("annulation test déchargement") || !dLower.contains("retour stock citerne")) {
+            return null;
+        }
+        String[] keys = { "retour stock citerne, voyage ", "retour stock citerne,voyage " };
+        for (String key : keys) {
+            int idx = dLower.indexOf(key);
+            if (idx < 0) {
+                continue;
+            }
+            int start = idx + key.length();
+            String rest = description.substring(start).trim();
+            if (rest.isEmpty()) {
+                return null;
+            }
+            int end = rest.length();
+            for (String sep : new String[] { " – client ", " - client ", "\n", "\r" }) {
+                int j = rest.indexOf(sep);
+                if (j >= 0) {
+                    end = Math.min(end, j);
+                }
+            }
+            String num = rest.substring(0, end).trim();
+            return num.isEmpty() ? null : num;
+        }
+        return null;
     }
 
     private static boolean isVoyageStatutDecharge(Voyage.StatutVoyage statut) {

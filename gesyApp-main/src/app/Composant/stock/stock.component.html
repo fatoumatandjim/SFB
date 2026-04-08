@@ -141,6 +141,11 @@
 
       @if (isAdmin && dernierRapportReparation) {
         <div class="reparation-rapport" role="status">
+          @if (dernierRapportReparation.mouvementsAnnulationDetectes != null) {
+            <p class="reparation-rapport-meta">
+              Mouvements d'annulation test repérés en base : <strong>{{ dernierRapportReparation.mouvementsAnnulationDetectes }}</strong>
+            </p>
+          }
           @if ((dernierRapportReparation.corriges?.length ?? 0) > 0) {
             <p class="reparation-rapport-title">Corrigés</p>
             <ul>

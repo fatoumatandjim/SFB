@@ -265,6 +265,7 @@ export class StockComponent implements OnInit {
           const okCount = rapport.dejaConformes?.length ?? 0;
           const err = rapport.erreurs?.length ?? 0;
           const ign = rapport.ignoresVoyageEncoreExistant?.length ?? 0;
+          const nMvt = rapport.mouvementsAnnulationDetectes ?? 0;
           if (err > 0) {
             this.toastService.warning(
               `Réparation terminée : ${c} corrigé(s), ${okCount} déjà OK. ${err} erreur(s) — voir le détail ci-dessous.`
@@ -274,7 +275,15 @@ export class StockComponent implements OnInit {
               this.toastService.error(firstErr);
             }
           } else if (c === 0 && okCount === 0 && ign === 0) {
-            this.toastService.info('Aucune suppression test incomplète détectée dans l’historique des mouvements.');
+            if (nMvt === 0) {
+              this.toastService.info(
+                'Aucun mouvement d’« annulation test déchargement » trouvé en base. Les stocks ne sont corrigés par cet outil que si ce libellé existe dans l’historique (sinon autre cause ou données déjà réparées).'
+              );
+            } else {
+              this.toastService.info(
+                `${nMvt} mouvement(s) d’annulation repéré(s), mais rien à appliquer ou numéros déjà traités — voir le détail ci-dessous.`
+              );
+            }
           } else {
             this.toastService.success(
               `Réparation terminée : ${c} corrigé(s), ${okCount} déjà conforme(s)` +
