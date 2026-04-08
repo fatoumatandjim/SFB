@@ -1174,40 +1174,47 @@
 
         @if (voyageForStatutChange?.statut === 'PARTIELLEMENT_DECHARGER' && getResteQuantiteNonAttribueeDechargement() > 0) {
         <div class="decharger-reste-section">
-          <h4>Reste du voyage non encore attribué</h4>
-          <p class="form-help">
-            Il reste <strong>{{ getResteQuantiteNonAttribueeDechargement() }} L</strong> à attribuer à des clients.
-            Vous pouvez les affecter à un <strong>nouveau client</strong> ci-dessous, ou ignorer cette section et continuer
-            uniquement avec les clients déjà listés (même client, autre livraison partielle).
+          <div class="decharger-reste-head">
+            <span class="decharger-reste-kicker">Optionnel</span>
+            <h4 class="decharger-reste-title">Quantité voyage non encore attribuée</h4>
+            <span class="decharger-reste-qty-badge">{{ getResteQuantiteNonAttribueeDechargement() }} L restants</span>
+          </div>
+          <p class="decharger-reste-desc">
+            Affectez cette quantité à un <strong>nouveau client</strong> ci-dessous, ou laissez vide et utilisez uniquement la liste des clients déjà attribués.
           </p>
           @for (row of dechargerResteClients; track $index) {
-          <div class="client-item-form decharger-reste-row">
-            <div class="form-group">
-              <label>Client</label>
-              <div class="decharger-reste-client-pick">
-                @if (row.clientId) {
-                <span class="client-pick-name">{{ getClientName(row.clientId) }}</span>
-                } @else {
-                <span class="client-pick-placeholder">—</span>
-                }
-                <button type="button" class="btn-link" (click)="changerClientDechargerReste($index)">
-                  {{ row.clientId ? 'Changer' : 'Choisir' }}
-                </button>
+          <div class="decharger-reste-card">
+            <div class="decharger-reste-card__fields">
+              <div class="form-group">
+                <label>Client</label>
+                <div class="decharger-reste-client-pick">
+                  @if (row.clientId) {
+                  <span class="client-pick-name">{{ getClientName(row.clientId) }}</span>
+                  } @else {
+                  <span class="client-pick-placeholder">Non choisi</span>
+                  }
+                  <button type="button" class="btn-text-action" (click)="changerClientDechargerReste($index)">
+                    {{ row.clientId ? 'Changer' : 'Choisir' }}
+                  </button>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Quantité (L) *</label>
+                <input type="number" class="form-input" [(ngModel)]="row.quantite" min="0" [max]="getResteQuantiteNonAttribueeDechargement()" step="0.01" placeholder="0" />
+              </div>
+              <div class="form-group">
+                <label>Manquant (L)</label>
+                <input type="number" class="form-input" [(ngModel)]="row.manquant" min="0" step="0.01" placeholder="0" />
               </div>
             </div>
-            <div class="form-group">
-              <label>Quantité (L) *</label>
-              <input type="number" class="form-input" [(ngModel)]="row.quantite" min="0" [max]="getResteQuantiteNonAttribueeDechargement()" step="0.01" placeholder="0" />
-            </div>
-            <div class="form-group">
-              <label>Manquant (L)</label>
-              <input type="number" class="form-input" [(ngModel)]="row.manquant" min="0" step="0.01" placeholder="0" />
-            </div>
-            <button type="button" class="btn-remove-client" (click)="removeDechargerResteClient($index)" title="Retirer">×</button>
+            <button type="button" class="btn-remove-decharger-reste" (click)="removeDechargerResteClient($index)" title="Retirer cette ligne" aria-label="Retirer">×</button>
           </div>
           }
-          <button type="button" class="btn-add-client" (click)="addDechargerResteClient()">
-            + Ajouter un client pour le reste
+          <button type="button" class="btn-add-decharger-reste" (click)="addDechargerResteClient()">
+            <span class="btn-add-decharger-reste__icon" aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+            </span>
+            <span class="btn-add-decharger-reste__label">Attribuer le reste à un autre client</span>
           </button>
         </div>
         }
