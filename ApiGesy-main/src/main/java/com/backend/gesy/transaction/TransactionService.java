@@ -11,7 +11,10 @@ import java.util.List;
 import java.util.Optional;
 
 public interface TransactionService {
-    List<TransactionDTO> findAll();
+    /**
+     * @param exclureVoyageEnAttenteChargement si true, exclut les transactions liées à un voyage encore en EN_ATTENTE_CHARGEMENT (menu Paiements).
+     */
+    List<TransactionDTO> findAll(boolean exclureVoyageEnAttenteChargement);
     Optional<TransactionDTO> findById(Long id);
     List<TransactionDTO> findByCompteId(Long compteId);
     List<TransactionDTO> findByCamionId(Long camionId);
@@ -28,13 +31,13 @@ public interface TransactionService {
     
     // Méthodes de pagination
     List<TransactionDTO> findRecentTransactions(int limit);
-    TransactionPageDTO findAllPaginated(int page, int size);
-    TransactionPageDTO findByDate(LocalDate date, int page, int size);
-    TransactionPageDTO findByDateRange(LocalDate startDate, LocalDate endDate, int page, int size);
+    TransactionPageDTO findAllPaginated(int page, int size, boolean exclureVoyageEnAttenteChargement);
+    TransactionPageDTO findByDate(LocalDate date, int page, int size, boolean exclureVoyageEnAttenteChargement);
+    TransactionPageDTO findByDateRange(LocalDate startDate, LocalDate endDate, int page, int size, boolean exclureVoyageEnAttenteChargement);
     
     // Méthodes pour récupérer toutes les transactions (sans pagination) pour l'export
-    List<TransactionDTO> findByDateAll(LocalDate date);
-    List<TransactionDTO> findByDateRangeAll(LocalDate startDate, LocalDate endDate);
+    List<TransactionDTO> findByDateAll(LocalDate date, boolean exclureVoyageEnAttenteChargement);
+    List<TransactionDTO> findByDateRangeAll(LocalDate startDate, LocalDate endDate, boolean exclureVoyageEnAttenteChargement);
     
     // Méthodes de pagination filtrées par compte bancaire ou caisse
     TransactionPageDTO findByCompteIdPaginated(Long compteId, int page, int size);
@@ -47,13 +50,13 @@ public interface TransactionService {
     TransactionPageDTO findByCaisseIdAndDateRange(Long caisseId, LocalDate startDate, LocalDate endDate, int page, int size);
     
     // Méthode pour obtenir les statistiques des transactions
-    TransactionStatsDTO getStats();
+    TransactionStatsDTO getStats(boolean exclureVoyageEnAttenteChargement);
 
     /**
      * Filtre personnalisé: par type de transaction, optionnellement par date ou intervalle de dates.
      * Retourne les transactions paginées avec le nombre total et le montant total des éléments filtrés.
      */
-    TransactionFilterResultDTO filterByCustom(Transaction.TypeTransaction type, LocalDate date, LocalDate startDate, LocalDate endDate, int page, int size);
+    TransactionFilterResultDTO filterByCustom(Transaction.TypeTransaction type, LocalDate date, LocalDate startDate, LocalDate endDate, int page, int size, boolean exclureVoyageEnAttenteChargement);
 
     /**
      * Recalcule les soldes de tous les comptes bancaires et caisses à partir des transactions validées.

@@ -11,6 +11,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import com.backend.gesy.voyage.VoyagePaiementMenuRules;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -121,5 +123,52 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     @Query("SELECT COALESCE(SUM(t.montant), 0) FROM Transaction t WHERE t.type = :type AND t.date >= :startDate AND t.date <= :endDate")
     java.math.BigDecimal sumMontantByTypeAndDateRange(@Param("type") Transaction.TypeTransaction type, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    /** Filtre « menu Paiements » : {@link VoyagePaiementMenuRules#JPQL_TRANSACTION_VISIBLE} */
+
+    @Query("SELECT t FROM Transaction t WHERE " + VoyagePaiementMenuRules.JPQL_TRANSACTION_VISIBLE + " ORDER BY t.date DESC")
+    List<Transaction> findAllExclureVoyageEnAttenteChargement();
+
+    @Query("SELECT t FROM Transaction t WHERE " + VoyagePaiementMenuRules.JPQL_TRANSACTION_VISIBLE + " ORDER BY t.date DESC")
+    Page<Transaction> findAllOrderedByDateExclureVoyageEnAttenteChargement(Pageable pageable);
+
+    @Query("SELECT t FROM Transaction t WHERE DATE(t.date) = DATE(:date) AND " + VoyagePaiementMenuRules.JPQL_TRANSACTION_VISIBLE + " ORDER BY t.date DESC")
+    Page<Transaction> findByDateExclureVoyageEnAttenteChargement(@Param("date") LocalDateTime date, Pageable pageable);
+
+    @Query("SELECT t FROM Transaction t WHERE t.date >= :startDate AND t.date <= :endDate AND " + VoyagePaiementMenuRules.JPQL_TRANSACTION_VISIBLE + " ORDER BY t.date DESC")
+    Page<Transaction> findByDateRangeExclureVoyageEnAttenteChargement(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate, Pageable pageable);
+
+    @Query("SELECT t FROM Transaction t WHERE DATE(t.date) = DATE(:date) AND " + VoyagePaiementMenuRules.JPQL_TRANSACTION_VISIBLE + " ORDER BY t.date DESC")
+    List<Transaction> findByDateAllExclureVoyageEnAttenteChargement(@Param("date") LocalDateTime date);
+
+    @Query("SELECT t FROM Transaction t WHERE t.date >= :startDate AND t.date <= :endDate AND " + VoyagePaiementMenuRules.JPQL_TRANSACTION_VISIBLE + " ORDER BY t.date DESC")
+    List<Transaction> findByDateRangeAllExclureVoyageEnAttenteChargement(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    @Query("SELECT t FROM Transaction t WHERE t.type = :type AND " + VoyagePaiementMenuRules.JPQL_TRANSACTION_VISIBLE + " ORDER BY t.date DESC")
+    Page<Transaction> findByTypeExclureVoyageEnAttenteChargement(@Param("type") Transaction.TypeTransaction type, Pageable pageable);
+
+    @Query("SELECT t FROM Transaction t WHERE t.type = :type AND DATE(t.date) = DATE(:date) AND " + VoyagePaiementMenuRules.JPQL_TRANSACTION_VISIBLE + " ORDER BY t.date DESC")
+    Page<Transaction> findByTypeAndDateExclureVoyageEnAttenteChargement(@Param("type") Transaction.TypeTransaction type, @Param("date") LocalDateTime date, Pageable pageable);
+
+    @Query("SELECT t FROM Transaction t WHERE t.type = :type AND t.date >= :startDate AND t.date <= :endDate AND " + VoyagePaiementMenuRules.JPQL_TRANSACTION_VISIBLE + " ORDER BY t.date DESC")
+    Page<Transaction> findByTypeAndDateRangeExclureVoyageEnAttenteChargement(@Param("type") Transaction.TypeTransaction type, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate, Pageable pageable);
+
+    @Query("SELECT COALESCE(SUM(t.montant), 0) FROM Transaction t WHERE " + VoyagePaiementMenuRules.JPQL_TRANSACTION_VISIBLE)
+    java.math.BigDecimal sumMontantAllExclureVoyageEnAttenteChargement();
+
+    @Query("SELECT COALESCE(SUM(t.montant), 0) FROM Transaction t WHERE DATE(t.date) = DATE(:date) AND " + VoyagePaiementMenuRules.JPQL_TRANSACTION_VISIBLE)
+    java.math.BigDecimal sumMontantByDateExclureVoyageEnAttenteChargement(@Param("date") LocalDateTime date);
+
+    @Query("SELECT COALESCE(SUM(t.montant), 0) FROM Transaction t WHERE t.date >= :startDate AND t.date <= :endDate AND " + VoyagePaiementMenuRules.JPQL_TRANSACTION_VISIBLE)
+    java.math.BigDecimal sumMontantByDateRangeExclureVoyageEnAttenteChargement(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    @Query("SELECT COALESCE(SUM(t.montant), 0) FROM Transaction t WHERE t.type = :type AND " + VoyagePaiementMenuRules.JPQL_TRANSACTION_VISIBLE)
+    java.math.BigDecimal sumMontantByTypeExclureVoyageEnAttenteChargement(@Param("type") Transaction.TypeTransaction type);
+
+    @Query("SELECT COALESCE(SUM(t.montant), 0) FROM Transaction t WHERE t.type = :type AND DATE(t.date) = DATE(:date) AND " + VoyagePaiementMenuRules.JPQL_TRANSACTION_VISIBLE)
+    java.math.BigDecimal sumMontantByTypeAndDateExclureVoyageEnAttenteChargement(@Param("type") Transaction.TypeTransaction type, @Param("date") LocalDateTime date);
+
+    @Query("SELECT COALESCE(SUM(t.montant), 0) FROM Transaction t WHERE t.type = :type AND t.date >= :startDate AND t.date <= :endDate AND " + VoyagePaiementMenuRules.JPQL_TRANSACTION_VISIBLE)
+    java.math.BigDecimal sumMontantByTypeAndDateRangeExclureVoyageEnAttenteChargement(@Param("type") Transaction.TypeTransaction type, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 }
 

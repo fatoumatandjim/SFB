@@ -65,6 +65,9 @@ export class PaiementComponent implements OnInit {
 
   private readonly PAIEMENT_TRANSACTION_TYPE: string = 'VIREMENT_ENTRANT';
 
+  /** Même règle que l’API (`exclureVoyageEnAttenteChargement`) : pas de transaction pour voyage non chargé. */
+  private readonly exclureVoyageNonChargePourMenu = true;
+
   /** Type fixé à Virement entrant pour le paiement de facture (pas de sélection). */
   newPaiement: Partial<Transaction> = {
     type: this.PAIEMENT_TRANSACTION_TYPE,
@@ -402,7 +405,7 @@ export class PaiementComponent implements OnInit {
   }
 
   loadStats() {
-    this.transactionsService.getStats().subscribe({
+    this.transactionsService.getStats(this.exclureVoyageNonChargePourMenu).subscribe({
       next: (data) => {
         this.stats = data;
       },
@@ -423,11 +426,11 @@ export class PaiementComponent implements OnInit {
     let request: Observable<TransactionPage>;
 
     if (this.filterType === 'date' && this.filterDate) {
-      request = this.transactionsService.getTransactionsByDate(this.filterDate, this.currentPage, this.pageSize);
+      request = this.transactionsService.getTransactionsByDate(this.filterDate, this.currentPage, this.pageSize, this.exclureVoyageNonChargePourMenu);
     } else if (this.filterType === 'range' && this.filterStartDate && this.filterEndDate) {
-      request = this.transactionsService.getTransactionsByDateRange(this.filterStartDate, this.filterEndDate, this.currentPage, this.pageSize);
+      request = this.transactionsService.getTransactionsByDateRange(this.filterStartDate, this.filterEndDate, this.currentPage, this.pageSize, this.exclureVoyageNonChargePourMenu);
     } else {
-      request = this.transactionsService.getTransactionsPaginated(this.currentPage, this.pageSize);
+      request = this.transactionsService.getTransactionsPaginated(this.currentPage, this.pageSize, this.exclureVoyageNonChargePourMenu);
     }
 
     request.subscribe({
@@ -462,9 +465,10 @@ export class PaiementComponent implements OnInit {
     if (!this.customFilterActive) return;
     this.isLoadingTransactions = true;
 
-    const params: { type?: string; date?: string; startDate?: string; endDate?: string; page: number; size: number } = {
+    const params: { type?: string; date?: string; startDate?: string; endDate?: string; page: number; size: number; exclureVoyageEnAttenteChargement?: boolean } = {
       page: this.currentPage,
-      size: this.pageSize
+      size: this.pageSize,
+      exclureVoyageEnAttenteChargement: this.exclureVoyageNonChargePourMenu
     };
     if (this.customFilterType) params.type = this.customFilterType;
     if (this.customFilterDateMode === 'date' && this.customFilterDate) params.date = this.customFilterDate;
@@ -935,11 +939,11 @@ export class PaiementComponent implements OnInit {
     let request: Observable<Transaction[]>;
 
     if (this.filterType === 'date' && this.filterDate) {
-      request = this.transactionsService.getTransactionsByDateAll(this.filterDate);
+      request = this.transactionsService.getTransactionsByDateAll(this.filterDate, this.exclureVoyageNonChargePourMenu);
     } else if (this.filterType === 'range' && this.filterStartDate && this.filterEndDate) {
-      request = this.transactionsService.getTransactionsByDateRangeAll(this.filterStartDate, this.filterEndDate);
+      request = this.transactionsService.getTransactionsByDateRangeAll(this.filterStartDate, this.filterEndDate, this.exclureVoyageNonChargePourMenu);
     } else {
-      request = this.transactionsService.getAllTransactions();
+      request = this.transactionsService.getAllTransactions(this.exclureVoyageNonChargePourMenu);
     }
 
     request.subscribe({

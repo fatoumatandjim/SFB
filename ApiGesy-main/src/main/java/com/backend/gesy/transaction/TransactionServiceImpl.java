@@ -30,6 +30,8 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 @Service
@@ -45,8 +47,11 @@ public class TransactionServiceImpl implements TransactionService {
     private final TransactionMapper transactionMapper;
 
     @Override
-    public List<TransactionDTO> findAll() {
-        return transactionRepository.findAll().stream()
+    public List<TransactionDTO> findAll(boolean exclureVoyageEnAttenteChargement) {
+        List<Transaction> list = exclureVoyageEnAttenteChargement
+            ? transactionRepository.findAllExclureVoyageEnAttenteChargement()
+            : transactionRepository.findAll();
+        return list.stream()
             .map(transactionMapper::toDTO)
             .collect(Collectors.toList());
     }
@@ -506,75 +511,55 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     @Override
-    public TransactionPageDTO findAllPaginated(int page, int size) {
+    public TransactionPageDTO findAllPaginated(int page, int size, boolean exclureVoyageEnAttenteChargement) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<Transaction> transactionPage = transactionRepository.findAllOrderedByDate(pageable);
-        List<TransactionDTO> transactions = transactionPage.getContent().stream()
-            .map(transactionMapper::toDTO)
-            .collect(Collectors.toList());
-        
-        TransactionPageDTO dto = new TransactionPageDTO();
-        dto.setTransactions(transactions);
-        dto.setCurrentPage(transactionPage.getNumber());
-        dto.setTotalPages(transactionPage.getTotalPages());
-        dto.setTotalElements(transactionPage.getTotalElements());
-        dto.setSize(transactionPage.getSize());
-        return dto;
+        Page<Transaction> transactionPage = exclureVoyageEnAttenteChargement
+            ? transactionRepository.findAllOrderedByDateExclureVoyageEnAttenteChargement(pageable)
+            : transactionRepository.findAllOrderedByDate(pageable);
+        return mapToPageDto(transactionPage);
     }
 
     @Override
-    public TransactionPageDTO findByDate(LocalDate date, int page, int size) {
+    public TransactionPageDTO findByDate(LocalDate date, int page, int size, boolean exclureVoyageEnAttenteChargement) {
         LocalDateTime startOfDay = date.atStartOfDay();
         Pageable pageable = PageRequest.of(page, size);
         
-        Page<Transaction> transactionPage = transactionRepository.findByDate(startOfDay, pageable);
-        List<TransactionDTO> transactions = transactionPage.getContent().stream()
-            .map(transactionMapper::toDTO)
-            .collect(Collectors.toList());
-        
-        TransactionPageDTO dto = new TransactionPageDTO();
-        dto.setTransactions(transactions);
-        dto.setCurrentPage(transactionPage.getNumber());
-        dto.setTotalPages(transactionPage.getTotalPages());
-        dto.setTotalElements(transactionPage.getTotalElements());
-        dto.setSize(transactionPage.getSize());
-        return dto;
+        Page<Transaction> transactionPage = exclureVoyageEnAttenteChargement
+            ? transactionRepository.findByDateExclureVoyageEnAttenteChargement(startOfDay, pageable)
+            : transactionRepository.findByDate(startOfDay, pageable);
+        return mapToPageDto(transactionPage);
     }
 
     @Override
-    public TransactionPageDTO findByDateRange(LocalDate startDate, LocalDate endDate, int page, int size) {
+    public TransactionPageDTO findByDateRange(LocalDate startDate, LocalDate endDate, int page, int size, boolean exclureVoyageEnAttenteChargement) {
         LocalDateTime startDateTime = startDate.atStartOfDay();
         LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
         Pageable pageable = PageRequest.of(page, size);
         
-        Page<Transaction> transactionPage = transactionRepository.findByDateRange(startDateTime, endDateTime, pageable);
-        List<TransactionDTO> transactions = transactionPage.getContent().stream()
-            .map(transactionMapper::toDTO)
-            .collect(Collectors.toList());
-        
-        TransactionPageDTO dto = new TransactionPageDTO();
-        dto.setTransactions(transactions);
-        dto.setCurrentPage(transactionPage.getNumber());
-        dto.setTotalPages(transactionPage.getTotalPages());
-        dto.setTotalElements(transactionPage.getTotalElements());
-        dto.setSize(transactionPage.getSize());
-        return dto;
+        Page<Transaction> transactionPage = exclureVoyageEnAttenteChargement
+            ? transactionRepository.findByDateRangeExclureVoyageEnAttenteChargement(startDateTime, endDateTime, pageable)
+            : transactionRepository.findByDateRange(startDateTime, endDateTime, pageable);
+        return mapToPageDto(transactionPage);
     }
 
     @Override
-    public List<TransactionDTO> findByDateAll(LocalDate date) {
+    public List<TransactionDTO> findByDateAll(LocalDate date, boolean exclureVoyageEnAttenteChargement) {
         LocalDateTime startOfDay = date.atStartOfDay();
-        List<Transaction> transactions = transactionRepository.findByDateAll(startOfDay);
+        List<Transaction> transactions = exclureVoyageEnAttenteChargement
+            ? transactionRepository.findByDateAllExclureVoyageEnAttenteChargement(startOfDay)
+            : transactionRepository.findByDateAll(startOfDay);
         return transactions.stream()
             .map(transactionMapper::toDTO)
             .collect(Collectors.toList());
     }
 
     @Override
-    public List<TransactionDTO> findByDateRangeAll(LocalDate startDate, LocalDate endDate) {
+    public List<TransactionDTO> findByDateRangeAll(LocalDate startDate, LocalDate endDate, boolean exclureVoyageEnAttenteChargement) {
         LocalDateTime startDateTime = startDate.atStartOfDay();
         LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
-        List<Transaction> transactions = transactionRepository.findByDateRangeAll(startDateTime, endDateTime);
+        List<Transaction> transactions = exclureVoyageEnAttenteChargement
+            ? transactionRepository.findByDateRangeAllExclureVoyageEnAttenteChargement(startDateTime, endDateTime)
+            : transactionRepository.findByDateRangeAll(startDateTime, endDateTime);
         return transactions.stream()
             .map(transactionMapper::toDTO)
             .collect(Collectors.toList());
@@ -584,68 +569,28 @@ public class TransactionServiceImpl implements TransactionService {
     public TransactionPageDTO findByCompteIdPaginated(Long compteId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         Page<Transaction> transactionPage = transactionRepository.findByCompteId(compteId, pageable);
-        List<TransactionDTO> transactions = transactionPage.getContent().stream()
-            .map(transactionMapper::toDTO)
-            .collect(Collectors.toList());
-        
-        TransactionPageDTO dto = new TransactionPageDTO();
-        dto.setTransactions(transactions);
-        dto.setCurrentPage(transactionPage.getNumber());
-        dto.setTotalPages(transactionPage.getTotalPages());
-        dto.setTotalElements(transactionPage.getTotalElements());
-        dto.setSize(transactionPage.getSize());
-        return dto;
+        return mapToPageDto(transactionPage);
     }
 
     @Override
     public TransactionPageDTO findByCaisseIdPaginated(Long caisseId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         Page<Transaction> transactionPage = transactionRepository.findByCaisseId(caisseId, pageable);
-        List<TransactionDTO> transactions = transactionPage.getContent().stream()
-            .map(transactionMapper::toDTO)
-            .collect(Collectors.toList());
-        
-        TransactionPageDTO dto = new TransactionPageDTO();
-        dto.setTransactions(transactions);
-        dto.setCurrentPage(transactionPage.getNumber());
-        dto.setTotalPages(transactionPage.getTotalPages());
-        dto.setTotalElements(transactionPage.getTotalElements());
-        dto.setSize(transactionPage.getSize());
-        return dto;
+        return mapToPageDto(transactionPage);
     }
 
     @Override
     public TransactionPageDTO findByComptesBancairesOnlyPaginated(int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         Page<Transaction> transactionPage = transactionRepository.findByComptesBancairesOnly(pageable);
-        List<TransactionDTO> transactions = transactionPage.getContent().stream()
-            .map(transactionMapper::toDTO)
-            .collect(Collectors.toList());
-        
-        TransactionPageDTO dto = new TransactionPageDTO();
-        dto.setTransactions(transactions);
-        dto.setCurrentPage(transactionPage.getNumber());
-        dto.setTotalPages(transactionPage.getTotalPages());
-        dto.setTotalElements(transactionPage.getTotalElements());
-        dto.setSize(transactionPage.getSize());
-        return dto;
+        return mapToPageDto(transactionPage);
     }
 
     @Override
     public TransactionPageDTO findByCaissesOnlyPaginated(int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         Page<Transaction> transactionPage = transactionRepository.findByCaissesOnly(pageable);
-        List<TransactionDTO> transactions = transactionPage.getContent().stream()
-            .map(transactionMapper::toDTO)
-            .collect(Collectors.toList());
-        
-        TransactionPageDTO dto = new TransactionPageDTO();
-        dto.setTransactions(transactions);
-        dto.setCurrentPage(transactionPage.getNumber());
-        dto.setTotalPages(transactionPage.getTotalPages());
-        dto.setTotalElements(transactionPage.getTotalElements());
-        dto.setSize(transactionPage.getSize());
-        return dto;
+        return mapToPageDto(transactionPage);
     }
 
     @Override
@@ -654,17 +599,7 @@ public class TransactionServiceImpl implements TransactionService {
         Pageable pageable = PageRequest.of(page, size);
         
         Page<Transaction> transactionPage = transactionRepository.findByCompteIdAndDate(compteId, startOfDay, pageable);
-        List<TransactionDTO> transactions = transactionPage.getContent().stream()
-            .map(transactionMapper::toDTO)
-            .collect(Collectors.toList());
-        
-        TransactionPageDTO dto = new TransactionPageDTO();
-        dto.setTransactions(transactions);
-        dto.setCurrentPage(transactionPage.getNumber());
-        dto.setTotalPages(transactionPage.getTotalPages());
-        dto.setTotalElements(transactionPage.getTotalElements());
-        dto.setSize(transactionPage.getSize());
-        return dto;
+        return mapToPageDto(transactionPage);
     }
 
     @Override
@@ -673,17 +608,7 @@ public class TransactionServiceImpl implements TransactionService {
         Pageable pageable = PageRequest.of(page, size);
         
         Page<Transaction> transactionPage = transactionRepository.findByCaisseIdAndDate(caisseId, startOfDay, pageable);
-        List<TransactionDTO> transactions = transactionPage.getContent().stream()
-            .map(transactionMapper::toDTO)
-            .collect(Collectors.toList());
-        
-        TransactionPageDTO dto = new TransactionPageDTO();
-        dto.setTransactions(transactions);
-        dto.setCurrentPage(transactionPage.getNumber());
-        dto.setTotalPages(transactionPage.getTotalPages());
-        dto.setTotalElements(transactionPage.getTotalElements());
-        dto.setSize(transactionPage.getSize());
-        return dto;
+        return mapToPageDto(transactionPage);
     }
 
     @Override
@@ -693,17 +618,7 @@ public class TransactionServiceImpl implements TransactionService {
         Pageable pageable = PageRequest.of(page, size);
         
         Page<Transaction> transactionPage = transactionRepository.findByCompteIdAndDateRange(compteId, startDateTime, endDateTime, pageable);
-        List<TransactionDTO> transactions = transactionPage.getContent().stream()
-            .map(transactionMapper::toDTO)
-            .collect(Collectors.toList());
-        
-        TransactionPageDTO dto = new TransactionPageDTO();
-        dto.setTransactions(transactions);
-        dto.setCurrentPage(transactionPage.getNumber());
-        dto.setTotalPages(transactionPage.getTotalPages());
-        dto.setTotalElements(transactionPage.getTotalElements());
-        dto.setSize(transactionPage.getSize());
-        return dto;
+        return mapToPageDto(transactionPage);
     }
 
     @Override
@@ -713,17 +628,7 @@ public class TransactionServiceImpl implements TransactionService {
         Pageable pageable = PageRequest.of(page, size);
         
         Page<Transaction> transactionPage = transactionRepository.findByCaisseIdAndDateRange(caisseId, startDateTime, endDateTime, pageable);
-        List<TransactionDTO> transactions = transactionPage.getContent().stream()
-            .map(transactionMapper::toDTO)
-            .collect(Collectors.toList());
-        
-        TransactionPageDTO dto = new TransactionPageDTO();
-        dto.setTransactions(transactions);
-        dto.setCurrentPage(transactionPage.getNumber());
-        dto.setTotalPages(transactionPage.getTotalPages());
-        dto.setTotalElements(transactionPage.getTotalElements());
-        dto.setSize(transactionPage.getSize());
-        return dto;
+        return mapToPageDto(transactionPage);
     }
 
     @Override
@@ -818,47 +723,11 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     @Override
-    public TransactionFilterResultDTO filterByCustom(Transaction.TypeTransaction type, LocalDate date, LocalDate startDate, LocalDate endDate, int page, int size) {
+    public TransactionFilterResultDTO filterByCustom(Transaction.TypeTransaction type, LocalDate date, LocalDate startDate, LocalDate endDate, int page, int size, boolean exclureVoyageEnAttenteChargement) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<Transaction> transactionPage;
-        BigDecimal totalMontant;
-
-        boolean useDateRange = startDate != null && endDate != null;
-        boolean useDate = !useDateRange && date != null;
-
-        if (type != null) {
-            if (useDateRange) {
-                LocalDateTime startDateTime = startDate.atStartOfDay();
-                LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
-                transactionPage = transactionRepository.findByTypeAndDateRange(type, startDateTime, endDateTime, pageable);
-                totalMontant = transactionRepository.sumMontantByTypeAndDateRange(type, startDateTime, endDateTime);
-            } else if (useDate) {
-                LocalDateTime startOfDay = date.atStartOfDay();
-                transactionPage = transactionRepository.findByTypeAndDate(type, startOfDay, pageable);
-                totalMontant = transactionRepository.sumMontantByTypeAndDate(type, startOfDay);
-            } else {
-                transactionPage = transactionRepository.findByType(type, pageable);
-                totalMontant = transactionRepository.sumMontantByType(type);
-            }
-        } else {
-            if (useDateRange) {
-                LocalDateTime startDateTime = startDate.atStartOfDay();
-                LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
-                transactionPage = transactionRepository.findByDateRange(startDateTime, endDateTime, pageable);
-                totalMontant = transactionRepository.sumMontantByDateRange(startDateTime, endDateTime);
-            } else if (useDate) {
-                LocalDateTime startOfDay = date.atStartOfDay();
-                transactionPage = transactionRepository.findByDate(startOfDay, pageable);
-                totalMontant = transactionRepository.sumMontantByDate(startOfDay);
-            } else {
-                transactionPage = transactionRepository.findAllOrderedByDate(pageable);
-                totalMontant = transactionRepository.sumMontantAll();
-            }
-        }
-
-        if (totalMontant == null) {
-            totalMontant = BigDecimal.ZERO;
-        }
+        CustomFilterQueries queries = resolveCustomFilterQueries(type, date, startDate, endDate, exclureVoyageEnAttenteChargement);
+        Page<Transaction> transactionPage = queries.pageLoader().apply(pageable);
+        BigDecimal totalMontant = Optional.ofNullable(queries.sumMontant().get()).orElse(BigDecimal.ZERO);
 
         List<TransactionDTO> transactions = transactionPage.getContent().stream()
             .map(transactionMapper::toDTO)
@@ -874,9 +743,104 @@ public class TransactionServiceImpl implements TransactionService {
         return dto;
     }
 
+    private record CustomFilterQueries(
+        Function<Pageable, Page<Transaction>> pageLoader,
+        Supplier<BigDecimal> sumMontant
+    ) {
+    }
+
+    /**
+     * Associe pagination et agrégation SUM pour le filtre personnalisé (avec ou sans exclusion voyage non chargé).
+     */
+    private CustomFilterQueries resolveCustomFilterQueries(
+        Transaction.TypeTransaction type,
+        LocalDate date,
+        LocalDate startDate,
+        LocalDate endDate,
+        boolean exclureVoyageEnAttenteChargement
+    ) {
+        boolean useDateRange = startDate != null && endDate != null;
+        boolean useDate = !useDateRange && date != null;
+
+        if (type != null) {
+            if (useDateRange) {
+                LocalDateTime startDateTime = startDate.atStartOfDay();
+                LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
+                return exclureVoyageEnAttenteChargement
+                    ? new CustomFilterQueries(
+                        p -> transactionRepository.findByTypeAndDateRangeExclureVoyageEnAttenteChargement(type, startDateTime, endDateTime, p),
+                        () -> transactionRepository.sumMontantByTypeAndDateRangeExclureVoyageEnAttenteChargement(type, startDateTime, endDateTime))
+                    : new CustomFilterQueries(
+                        p -> transactionRepository.findByTypeAndDateRange(type, startDateTime, endDateTime, p),
+                        () -> transactionRepository.sumMontantByTypeAndDateRange(type, startDateTime, endDateTime));
+            }
+            if (useDate) {
+                LocalDateTime startOfDay = date.atStartOfDay();
+                return exclureVoyageEnAttenteChargement
+                    ? new CustomFilterQueries(
+                        p -> transactionRepository.findByTypeAndDateExclureVoyageEnAttenteChargement(type, startOfDay, p),
+                        () -> transactionRepository.sumMontantByTypeAndDateExclureVoyageEnAttenteChargement(type, startOfDay))
+                    : new CustomFilterQueries(
+                        p -> transactionRepository.findByTypeAndDate(type, startOfDay, p),
+                        () -> transactionRepository.sumMontantByTypeAndDate(type, startOfDay));
+            }
+            return exclureVoyageEnAttenteChargement
+                ? new CustomFilterQueries(
+                    p -> transactionRepository.findByTypeExclureVoyageEnAttenteChargement(type, p),
+                    () -> transactionRepository.sumMontantByTypeExclureVoyageEnAttenteChargement(type))
+                : new CustomFilterQueries(
+                    p -> transactionRepository.findByType(type, p),
+                    () -> transactionRepository.sumMontantByType(type));
+        }
+
+        if (useDateRange) {
+            LocalDateTime startDateTime = startDate.atStartOfDay();
+            LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
+            return exclureVoyageEnAttenteChargement
+                ? new CustomFilterQueries(
+                    p -> transactionRepository.findByDateRangeExclureVoyageEnAttenteChargement(startDateTime, endDateTime, p),
+                    () -> transactionRepository.sumMontantByDateRangeExclureVoyageEnAttenteChargement(startDateTime, endDateTime))
+                : new CustomFilterQueries(
+                    p -> transactionRepository.findByDateRange(startDateTime, endDateTime, p),
+                    () -> transactionRepository.sumMontantByDateRange(startDateTime, endDateTime));
+        }
+        if (useDate) {
+            LocalDateTime startOfDay = date.atStartOfDay();
+            return exclureVoyageEnAttenteChargement
+                ? new CustomFilterQueries(
+                    p -> transactionRepository.findByDateExclureVoyageEnAttenteChargement(startOfDay, p),
+                    () -> transactionRepository.sumMontantByDateExclureVoyageEnAttenteChargement(startOfDay))
+                : new CustomFilterQueries(
+                    p -> transactionRepository.findByDate(startOfDay, p),
+                    () -> transactionRepository.sumMontantByDate(startOfDay));
+        }
+        return exclureVoyageEnAttenteChargement
+            ? new CustomFilterQueries(
+                transactionRepository::findAllOrderedByDateExclureVoyageEnAttenteChargement,
+                transactionRepository::sumMontantAllExclureVoyageEnAttenteChargement)
+            : new CustomFilterQueries(
+                transactionRepository::findAllOrderedByDate,
+                transactionRepository::sumMontantAll);
+    }
+
+    private TransactionPageDTO mapToPageDto(Page<Transaction> transactionPage) {
+        List<TransactionDTO> transactions = transactionPage.getContent().stream()
+            .map(transactionMapper::toDTO)
+            .collect(Collectors.toList());
+        TransactionPageDTO dto = new TransactionPageDTO();
+        dto.setTransactions(transactions);
+        dto.setCurrentPage(transactionPage.getNumber());
+        dto.setTotalPages(transactionPage.getTotalPages());
+        dto.setTotalElements(transactionPage.getTotalElements());
+        dto.setSize(transactionPage.getSize());
+        return dto;
+    }
+
     @Override
-    public TransactionStatsDTO getStats() {
-        List<Transaction> allTransactions = transactionRepository.findAll();
+    public TransactionStatsDTO getStats(boolean exclureVoyageEnAttenteChargement) {
+        List<Transaction> allTransactions = exclureVoyageEnAttenteChargement
+            ? transactionRepository.findAllExclureVoyageEnAttenteChargement()
+            : transactionRepository.findAll();
         LocalDate now = LocalDate.now();
         LocalDate startOfMonth = now.withDayOfMonth(1);
         LocalDate startOfLastMonth = startOfMonth.minusMonths(1);

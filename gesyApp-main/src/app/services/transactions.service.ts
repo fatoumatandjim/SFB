@@ -42,8 +42,22 @@ export class TransactionsService {
 
   constructor(private http: HttpClient) {}
 
-  getAllTransactions(): Observable<Transaction[]> {
-    return this.http.get<Transaction[]>(this.apiUrl);
+  /** Doit rester identique à {@code TransactionApiQueryParams.EXCLURE_VOYAGE_EN_ATTENTE_CHARGEMENT} (API Java). */
+  private static readonly PARAM_EXCLURE_VOYAGE_EN_ATTENTE = 'exclureVoyageEnAttenteChargement';
+
+  /** Ajoute le filtre voyage si besoin (`?` ou `&` selon l’URL déjà construite). */
+  private static withExclureVoyageSiBesoin(url: string, exclureVoyageEnAttenteChargement: boolean): string {
+    if (!exclureVoyageEnAttenteChargement) {
+      return url;
+    }
+    const sep = url.includes('?') ? '&' : '?';
+    return `${url}${sep}${TransactionsService.PARAM_EXCLURE_VOYAGE_EN_ATTENTE}=true`;
+  }
+
+  getAllTransactions(exclureVoyageEnAttenteChargement = false): Observable<Transaction[]> {
+    return this.http.get<Transaction[]>(
+      TransactionsService.withExclureVoyageSiBesoin(this.apiUrl, exclureVoyageEnAttenteChargement)
+    );
   }
 
   getTransactionById(id: number): Observable<Transaction> {
@@ -82,25 +96,50 @@ export class TransactionsService {
     return this.http.get<Transaction[]>(`${this.apiUrl}/recent?limit=${limit}`);
   }
 
-  getTransactionsPaginated(page: number = 0, size: number = 10): Observable<TransactionPage> {
-    return this.http.get<TransactionPage>(`${this.apiUrl}/paginated?page=${page}&size=${size}`);
+  getTransactionsPaginated(page: number = 0, size: number = 10, exclureVoyageEnAttenteChargement = false): Observable<TransactionPage> {
+    return this.http.get<TransactionPage>(
+      TransactionsService.withExclureVoyageSiBesoin(
+        `${this.apiUrl}/paginated?page=${page}&size=${size}`,
+        exclureVoyageEnAttenteChargement
+      )
+    );
   }
 
-  getTransactionsByDate(date: string, page: number = 0, size: number = 10): Observable<TransactionPage> {
-    return this.http.get<TransactionPage>(`${this.apiUrl}/paginated/date?date=${date}&page=${page}&size=${size}`);
+  getTransactionsByDate(date: string, page: number = 0, size: number = 10, exclureVoyageEnAttenteChargement = false): Observable<TransactionPage> {
+    return this.http.get<TransactionPage>(
+      TransactionsService.withExclureVoyageSiBesoin(
+        `${this.apiUrl}/paginated/date?date=${date}&page=${page}&size=${size}`,
+        exclureVoyageEnAttenteChargement
+      )
+    );
   }
 
-  getTransactionsByDateRange(startDate: string, endDate: string, page: number = 0, size: number = 10): Observable<TransactionPage> {
-    return this.http.get<TransactionPage>(`${this.apiUrl}/paginated/range?startDate=${startDate}&endDate=${endDate}&page=${page}&size=${size}`);
+  getTransactionsByDateRange(startDate: string, endDate: string, page: number = 0, size: number = 10, exclureVoyageEnAttenteChargement = false): Observable<TransactionPage> {
+    return this.http.get<TransactionPage>(
+      TransactionsService.withExclureVoyageSiBesoin(
+        `${this.apiUrl}/paginated/range?startDate=${startDate}&endDate=${endDate}&page=${page}&size=${size}`,
+        exclureVoyageEnAttenteChargement
+      )
+    );
   }
 
   // Méthodes pour récupérer toutes les transactions (sans pagination) pour l'export
-  getTransactionsByDateAll(date: string): Observable<Transaction[]> {
-    return this.http.get<Transaction[]>(`${this.apiUrl}/date?date=${date}`);
+  getTransactionsByDateAll(date: string, exclureVoyageEnAttenteChargement = false): Observable<Transaction[]> {
+    return this.http.get<Transaction[]>(
+      TransactionsService.withExclureVoyageSiBesoin(
+        `${this.apiUrl}/date?date=${date}`,
+        exclureVoyageEnAttenteChargement
+      )
+    );
   }
 
-  getTransactionsByDateRangeAll(startDate: string, endDate: string): Observable<Transaction[]> {
-    return this.http.get<Transaction[]>(`${this.apiUrl}/range?startDate=${startDate}&endDate=${endDate}`);
+  getTransactionsByDateRangeAll(startDate: string, endDate: string, exclureVoyageEnAttenteChargement = false): Observable<Transaction[]> {
+    return this.http.get<Transaction[]>(
+      TransactionsService.withExclureVoyageSiBesoin(
+        `${this.apiUrl}/range?startDate=${startDate}&endDate=${endDate}`,
+        exclureVoyageEnAttenteChargement
+      )
+    );
   }
 
   // Méthodes pour filtrer par compte bancaire avec pagination
@@ -138,8 +177,10 @@ export class TransactionsService {
     return this.http.get<TransactionPage>(`${this.apiUrl}/caisses/paginated?page=${page}&size=${size}`);
   }
 
-  getStats(): Observable<TransactionStats> {
-    return this.http.get<TransactionStats>(`${this.apiUrl}/stats`);
+  getStats(exclureVoyageEnAttenteChargement = false): Observable<TransactionStats> {
+    return this.http.get<TransactionStats>(
+      TransactionsService.withExclureVoyageSiBesoin(`${this.apiUrl}/stats`, exclureVoyageEnAttenteChargement)
+    );
   }
 
   /**
@@ -153,13 +194,16 @@ export class TransactionsService {
     endDate?: string;
     page?: number;
     size?: number;
+    exclureVoyageEnAttenteChargement?: boolean;
   }): Observable<TransactionFilterResult> {
     let url = `${this.apiUrl}/filter?page=${params.page ?? 0}&size=${params.size ?? 10}`;
     if (params.type) url += `&type=${encodeURIComponent(params.type)}`;
     if (params.date) url += `&date=${params.date}`;
     if (params.startDate) url += `&startDate=${params.startDate}`;
     if (params.endDate) url += `&endDate=${params.endDate}`;
-    return this.http.get<TransactionFilterResult>(url);
+    return this.http.get<TransactionFilterResult>(
+      TransactionsService.withExclureVoyageSiBesoin(url, !!params.exclureVoyageEnAttenteChargement)
+    );
   }
 }
 

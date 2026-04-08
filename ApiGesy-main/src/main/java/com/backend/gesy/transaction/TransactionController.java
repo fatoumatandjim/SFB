@@ -21,8 +21,9 @@ public class TransactionController {
     private final TransactionService transactionService;
 
     @GetMapping
-    public ResponseEntity<List<TransactionDTO>> getAllTransactions() {
-        return ResponseEntity.ok(transactionService.findAll());
+    public ResponseEntity<List<TransactionDTO>> getAllTransactions(
+            @RequestParam(name = TransactionApiQueryParams.EXCLURE_VOYAGE_EN_ATTENTE_CHARGEMENT, defaultValue = "false") boolean exclureVoyageEnAttenteChargement) {
+        return ResponseEntity.ok(transactionService.findAll(exclureVoyageEnAttenteChargement));
     }
 
     @GetMapping("/{id}")
@@ -86,17 +87,19 @@ public class TransactionController {
     @GetMapping("/paginated")
     public ResponseEntity<TransactionPageDTO> getTransactionsPaginated(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(transactionService.findAllPaginated(page, size));
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(name = TransactionApiQueryParams.EXCLURE_VOYAGE_EN_ATTENTE_CHARGEMENT, defaultValue = "false") boolean exclureVoyageEnAttenteChargement) {
+        return ResponseEntity.ok(transactionService.findAllPaginated(page, size, exclureVoyageEnAttenteChargement));
     }
 
     @GetMapping("/paginated/date")
     public ResponseEntity<TransactionPageDTO> getTransactionsByDate(
             @RequestParam String date,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(name = TransactionApiQueryParams.EXCLURE_VOYAGE_EN_ATTENTE_CHARGEMENT, defaultValue = "false") boolean exclureVoyageEnAttenteChargement) {
         LocalDate localDate = LocalDate.parse(date);
-        return ResponseEntity.ok(transactionService.findByDate(localDate, page, size));
+        return ResponseEntity.ok(transactionService.findByDate(localDate, page, size, exclureVoyageEnAttenteChargement));
     }
 
     @GetMapping("/paginated/range")
@@ -104,15 +107,17 @@ public class TransactionController {
             @RequestParam String startDate,
             @RequestParam String endDate,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(name = TransactionApiQueryParams.EXCLURE_VOYAGE_EN_ATTENTE_CHARGEMENT, defaultValue = "false") boolean exclureVoyageEnAttenteChargement) {
         LocalDate start = LocalDate.parse(startDate);
         LocalDate end = LocalDate.parse(endDate);
-        return ResponseEntity.ok(transactionService.findByDateRange(start, end, page, size));
+        return ResponseEntity.ok(transactionService.findByDateRange(start, end, page, size, exclureVoyageEnAttenteChargement));
     }
 
     @GetMapping("/stats")
-    public ResponseEntity<TransactionStatsDTO> getStats() {
-        return ResponseEntity.ok(transactionService.getStats());
+    public ResponseEntity<TransactionStatsDTO> getStats(
+            @RequestParam(name = TransactionApiQueryParams.EXCLURE_VOYAGE_EN_ATTENTE_CHARGEMENT, defaultValue = "false") boolean exclureVoyageEnAttenteChargement) {
+        return ResponseEntity.ok(transactionService.getStats(exclureVoyageEnAttenteChargement));
     }
 
     /**
@@ -126,11 +131,12 @@ public class TransactionController {
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(name = TransactionApiQueryParams.EXCLURE_VOYAGE_EN_ATTENTE_CHARGEMENT, defaultValue = "false") boolean exclureVoyageEnAttenteChargement) {
         LocalDate dateParsed = date != null && !date.isEmpty() ? LocalDate.parse(date) : null;
         LocalDate startParsed = startDate != null && !startDate.isEmpty() ? LocalDate.parse(startDate) : null;
         LocalDate endParsed = endDate != null && !endDate.isEmpty() ? LocalDate.parse(endDate) : null;
-        return ResponseEntity.ok(transactionService.filterByCustom(type, dateParsed, startParsed, endParsed, page, size));
+        return ResponseEntity.ok(transactionService.filterByCustom(type, dateParsed, startParsed, endParsed, page, size, exclureVoyageEnAttenteChargement));
     }
 
     // Endpoints pour filtrer par compte bancaire avec pagination
@@ -212,18 +218,21 @@ public class TransactionController {
 
     // Endpoints pour récupérer toutes les transactions (sans pagination) pour l'export
     @GetMapping("/date")
-    public ResponseEntity<List<TransactionDTO>> getTransactionsByDateAll(@RequestParam String date) {
+    public ResponseEntity<List<TransactionDTO>> getTransactionsByDateAll(
+            @RequestParam String date,
+            @RequestParam(name = TransactionApiQueryParams.EXCLURE_VOYAGE_EN_ATTENTE_CHARGEMENT, defaultValue = "false") boolean exclureVoyageEnAttenteChargement) {
         LocalDate localDate = LocalDate.parse(date);
-        return ResponseEntity.ok(transactionService.findByDateAll(localDate));
+        return ResponseEntity.ok(transactionService.findByDateAll(localDate, exclureVoyageEnAttenteChargement));
     }
 
     @GetMapping("/range")
     public ResponseEntity<List<TransactionDTO>> getTransactionsByDateRangeAll(
             @RequestParam String startDate,
-            @RequestParam String endDate) {
+            @RequestParam String endDate,
+            @RequestParam(name = TransactionApiQueryParams.EXCLURE_VOYAGE_EN_ATTENTE_CHARGEMENT, defaultValue = "false") boolean exclureVoyageEnAttenteChargement) {
         LocalDate start = LocalDate.parse(startDate);
         LocalDate end = LocalDate.parse(endDate);
-        return ResponseEntity.ok(transactionService.findByDateRangeAll(start, end));
+        return ResponseEntity.ok(transactionService.findByDateRangeAll(start, end, exclureVoyageEnAttenteChargement));
     }
 
     /**
