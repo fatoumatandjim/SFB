@@ -1098,8 +1098,8 @@
           }
         }
       </div>
-      <!-- Formulaire Livré / Partiellement déchargé : affiché si statut sélectionné OU si le voyage est déjà Livré/Partiellement déchargé (détails) -->
-      @if (selectedStatut === 'LIVRE' || selectedStatut === 'PARTIELLEMENT_DECHARGER' || voyageForStatutChange?.statut === 'LIVRE' || voyageForStatutChange?.statut === 'PARTIELLEMENT_DECHARGER') {
+      <!-- Formulaire pour le statut LIVRE (Attribution) -->
+      @if (selectedStatut === 'LIVRE') {
       <div class="livre-form">
         <h3>Informations d'attribution</h3>
 

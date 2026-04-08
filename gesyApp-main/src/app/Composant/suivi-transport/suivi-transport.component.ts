@@ -1728,8 +1728,12 @@ export class SuiviTransportComponent implements OnInit {
   }
 
   confirmStatutChange() {
-    if (!this.voyageForStatutChange || !this.voyageForStatutChange.id || !this.selectedStatut) {
-      this.toastService.warning('Veuillez sélectionner un état');
+    if (!this.voyageForStatutChange || !this.voyageForStatutChange.id) {
+      this.toastService.warning('Voyage invalide.');
+      return;
+    }
+    if (!this.selectedStatut) {
+      this.toastService.warning('Veuillez d\'abord cliquer sur un état dans la liste (ex: "Décharger") avant de valider.');
       return;
     }
 
@@ -1787,6 +1791,11 @@ export class SuiviTransportComponent implements OnInit {
     if (voyageId === undefined) {
       this.isLoading = false;
       this.toastService.error('ID de voyage invalide.');
+      return;
+    }
+    if (!this.selectedStatut) {
+      this.isLoading = false;
+      this.toastService.error('Aucun état sélectionné. Veuillez cliquer sur un état dans la liste avant de valider.');
       return;
     }
 
