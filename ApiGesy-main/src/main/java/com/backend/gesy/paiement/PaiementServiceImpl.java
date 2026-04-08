@@ -13,11 +13,13 @@ import com.backend.gesy.comptebancaire.CompteBancaire;
 import com.backend.gesy.comptebancaire.CompteBancaireRepository;
 import com.backend.gesy.caisse.Caisse;
 import com.backend.gesy.caisse.CaisseRepository;
+import com.backend.gesy.voyage.Voyage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -38,6 +40,8 @@ public class PaiementServiceImpl implements PaiementService {
     @Override
     public List<PaiementDTO> findAll() {
         return paiementRepository.findAll().stream()
+            .filter(PaiementServiceImpl::visiblePourMenuPaiementCamionCharge)
+            .sorted(PAIEMENT_MENU_ORDER)
             .map(paiementMapper::toDTO)
             .collect(Collectors.toList());
     }
@@ -100,9 +104,26 @@ public class PaiementServiceImpl implements PaiementService {
     public List<PaiementDTO> findByStatut(Paiement.StatutPaiement statut) {
         return paiementRepository.findAll().stream()
             .filter(p -> p.getStatut() == statut)
+            .filter(PaiementServiceImpl::visiblePourMenuPaiementCamionCharge)
+            .sorted(PAIEMENT_MENU_ORDER)
             .map(paiementMapper::toDTO)
             .collect(Collectors.toList());
     }
+
+    /**
+     * Menu Paiements : masquer les lignes liées à un voyage dont le camion n’est pas encore chargé.
+     */
+    private static boolean visiblePourMenuPaiementCamionCharge(Paiement p) {
+        Voyage v = p.getVoyage();
+        if (v == null || v.getStatut() == null) {
+            return true;
+        }
+        return v.getStatut() != Voyage.StatutVoyage.EN_ATTENTE_CHARGEMENT;
+    }
+
+    private static final Comparator<Paiement> PAIEMENT_MENU_ORDER = Comparator
+            .comparing(Paiement::getDate, Comparator.nullsLast(Comparator.reverseOrder()))
+            .thenComparing(Paiement::getId, Comparator.nullsLast(Comparator.reverseOrder()));
 
     @Override
     public List<PaiementDTO> findByCategorieId(Long categorieId) {

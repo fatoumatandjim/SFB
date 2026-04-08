@@ -1570,6 +1570,10 @@ public class VoyageServiceImpl implements VoyageService {
                 })
                 .collect(Collectors.toList());
 
+        coutsDTO.sort(Comparator
+                .comparing(CoutTransportDTO::getDateDepart, Comparator.nullsLast(Comparator.reverseOrder()))
+                .thenComparing(CoutTransportDTO::getId, Comparator.nullsLast(Comparator.reverseOrder())));
+
         // Calculer les statistiques
         BigDecimal totalCout = coutsDTO.stream()
                 .map(c -> c.getCoutTotal() != null ? c.getCoutTotal() : BigDecimal.ZERO)

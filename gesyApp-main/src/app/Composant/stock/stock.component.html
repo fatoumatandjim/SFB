@@ -115,7 +115,7 @@
       <div class="section-header">
         <div class="section-header-left">
           <h2>Niveaux de Stock par Produit</h2>
-          @if (isAdmin) {
+          @if (canUseStockAdminRepair) {
             <button
               type="button"
               class="btn-reparation-stock"
@@ -139,7 +139,7 @@
         </select>
       </div>
 
-      @if (isAdmin && dernierRapportReparation) {
+      @if (canUseStockAdminRepair && dernierRapportReparation) {
         <div class="reparation-rapport" role="status">
           @if (dernierRapportReparation.mouvementsAnnulationDetectes != null) {
             <p class="reparation-rapport-meta">

@@ -35,6 +35,8 @@ import {
   getClientInitiales,
   getClientColor
 } from '../../services/voyage-display.utils';
+import { guardAdmin } from '../../utils/admin-action.util';
+import { getHttpErrorMessage } from '../../utils/http-error.util';
 
 /** Valeur du champ passager pour les voyages à la douane (non déclarés) */
 const PASSAGER_NON_DECLARER = 'passer_non_declarer';
@@ -459,7 +461,7 @@ export class SuiviTransportComponent implements OnInit {
       },
       error: (error: any) => {
         this.isLoading = false;
-        const errorMessage = this.getErrorMessage(error, 'Erreur lors de l\'ajout du client');
+        const errorMessage = getHttpErrorMessage(error, 'Erreur lors de l\'ajout du client');
         this.toastService.error(errorMessage);
       }
     });
@@ -726,7 +728,7 @@ export class SuiviTransportComponent implements OnInit {
           }
         },
         error: (error) => {
-          const errorMessage = this.getErrorMessage(error, 'Erreur lors de la mise à jour de la facture');
+          const errorMessage = getHttpErrorMessage(error, 'Erreur lors de la mise à jour de la facture');
           this.toastService.error(errorMessage);
         }
       });
@@ -1057,7 +1059,7 @@ export class SuiviTransportComponent implements OnInit {
       },
       error: (error) => {
         this.isLoading = false;
-        const errorMessage = this.getErrorMessage(error, 'Erreur lors du chargement des voyages partiellement déchargés');
+        const errorMessage = getHttpErrorMessage(error, 'Erreur lors du chargement des voyages partiellement déchargés');
         this.toastService.error(errorMessage);
       }
     });
@@ -1153,7 +1155,7 @@ export class SuiviTransportComponent implements OnInit {
       },
       error: (error) => {
         this.isLoading = false;
-        const errorMessage = this.getErrorMessage(error, 'Erreur lors du chargement des voyages en cours');
+        const errorMessage = getHttpErrorMessage(error, 'Erreur lors du chargement des voyages en cours');
         this.toastService.error(errorMessage);
       }
     });
@@ -1236,7 +1238,7 @@ export class SuiviTransportComponent implements OnInit {
         this.isLoading = false;
         this._allArchivesFiltered = [];
         this.voyagesArchivesPage = null;
-        const errorMessage = this.getErrorMessage(error, 'Erreur lors du chargement des archives');
+        const errorMessage = getHttpErrorMessage(error, 'Erreur lors du chargement des archives');
         this.toastService.error(errorMessage);
       }
     });
@@ -1623,7 +1625,7 @@ export class SuiviTransportComponent implements OnInit {
       },
       error: (error) => {
         this.isLoading = false;
-        const errorMessage = this.getErrorMessage(error, 'Erreur lors de l\'enregistrement du prix d\'achat');
+        const errorMessage = getHttpErrorMessage(error, 'Erreur lors de l\'enregistrement du prix d\'achat');
         this.toastService.error(errorMessage);
       }
     });
@@ -1719,7 +1721,7 @@ export class SuiviTransportComponent implements OnInit {
           },
           error: (error) => {
             this.isLoading = false;
-            const errorMessage = this.getErrorMessage(error, 'Erreur lors de la mise à jour de la quantité du client');
+            const errorMessage = getHttpErrorMessage(error, 'Erreur lors de la mise à jour de la quantité du client');
             this.toastService.error(errorMessage);
           }
         });
@@ -2223,7 +2225,7 @@ export class SuiviTransportComponent implements OnInit {
       error: (error) => {
         console.error('Erreur lors de la mise à jour du statut:', error);
         this.isLoading = false;
-        const errorMessage = this.getErrorMessage(error, 'Erreur lors de la mise à jour du statut du voyage');
+        const errorMessage = getHttpErrorMessage(error, 'Erreur lors de la mise à jour du statut du voyage');
         this.toastService.error(errorMessage);
       }
     });
@@ -2344,87 +2346,6 @@ export class SuiviTransportComponent implements OnInit {
   getClientInitiales = getClientInitiales;
   getClientColor = getClientColor;
 
-  /**
-   * Extrait le message d'erreur du backend depuis l'objet d'erreur HTTP
-   * Essaie plusieurs propriétés pour trouver le message le plus pertinent
-   * Spring Boot retourne généralement les messages dans error.error.message
-   */
-  getErrorMessage(error: any, defaultMessage: string = 'Une erreur est survenue'): string {
-    if (!error) {
-      return defaultMessage;
-    }
-
-    // Message dans l'en-tête X-Error-Message (réponses 400 du backend, ex. suppression refusée)
-    if (error.headers && typeof error.headers.get === 'function') {
-      const headerMsg = error.headers.get('X-Error-Message');
-      if (headerMsg) {
-        return headerMsg;
-      }
-    }
-
-    // Essayer d'extraire le message depuis différentes propriétés
-    // Spring Boot peut retourner les erreurs dans différentes structures
-
-    // 1. Message personnalisé du backend (le plus courant avec RuntimeException)
-    if (error.error) {
-      // Message dans error.error.message (cas le plus fréquent)
-      if (error.error.message) {
-        if (typeof error.error.message === 'string') {
-          // Message direct
-          return error.error.message;
-        } else if (Array.isArray(error.error.message)) {
-          // Message dans un tableau (validation errors)
-          return error.error.message.join(', ');
-        }
-      }
-
-      // Message dans error.error (si c'est une string directe)
-      if (typeof error.error === 'string') {
-        return error.error;
-      }
-
-      // Message dans error.error.error (type d'erreur, mais on l'évite si c'est générique)
-      if (error.error.error && typeof error.error.error === 'string') {
-        const errorType = error.error.error;
-        // Éviter les messages génériques comme "Bad Request", "Internal Server Error"
-        if (errorType !== 'Bad Request' &&
-          errorType !== 'Internal Server Error' &&
-          errorType !== 'Not Found' &&
-          errorType !== 'Forbidden') {
-          return errorType;
-        }
-      }
-
-      // Message dans error.error.detail (parfois utilisé par Spring)
-      if (error.error.detail && typeof error.error.detail === 'string') {
-        return error.error.detail;
-      }
-    }
-
-    // 2. Message HTTP standard (à éviter si possible car trop technique)
-    if (error.message && typeof error.message === 'string') {
-      // Éviter les messages techniques comme "Http failure response"
-      if (!error.message.includes('Http failure') &&
-        !error.message.includes('HttpErrorResponse') &&
-        !error.message.includes('status code')) {
-        return error.message;
-      }
-    }
-
-    // 3. Status text (dernier recours avant le message par défaut)
-    if (error.statusText && typeof error.statusText === 'string') {
-      // Éviter les messages génériques
-      if (error.statusText !== 'Bad Request' &&
-        error.statusText !== 'Internal Server Error' &&
-        error.statusText !== 'OK') {
-        return error.statusText;
-      }
-    }
-
-    // Dernier recours : message par défaut
-    return defaultMessage;
-  }
-
   viewVoyage(voyage: VoyageDisplay) {
     this.selectedVoyage = voyage;
     this.activeDetailTab = 'details';
@@ -2481,7 +2402,7 @@ export class SuiviTransportComponent implements OnInit {
           else if (this.activeTab === 'archives') this.loadVoyagesArchives();
         },
         error: (error) => {
-          this.toastService.error(this.getErrorMessage(error, 'Erreur lors de la suppression du voyage'));
+          this.toastService.error(getHttpErrorMessage(error, 'Erreur lors de la suppression du voyage'));
         }
       });
     });
@@ -2545,7 +2466,7 @@ export class SuiviTransportComponent implements OnInit {
       },
       error: (error) => {
         console.error('Erreur lors de l\'assignation du client:', error);
-        const errorMessage = this.getErrorMessage(error, 'Impossible d\'assigner le client. Vérifiez les informations.');
+        const errorMessage = getHttpErrorMessage(error, 'Impossible d\'assigner le client. Vérifiez les informations.');
         this.toastService.error(errorMessage);
         this.isAssigningClient = false;
       }
@@ -2656,7 +2577,7 @@ export class SuiviTransportComponent implements OnInit {
       error: (error) => {
         console.error('Erreur lors de l\'assignation du transitaire:', error);
         this.isLoading = false;
-        const errorMessage = this.getErrorMessage(error, 'Erreur lors de l\'assignation du transitaire');
+        const errorMessage = getHttpErrorMessage(error, 'Erreur lors de l\'assignation du transitaire');
         this.toastService.error(errorMessage);
       }
     });
@@ -2764,7 +2685,7 @@ export class SuiviTransportComponent implements OnInit {
       error: (error) => {
         console.error('Erreur lors de l\'ajout du frais:', error);
         this.isLoading = false;
-        const errorMessage = this.getErrorMessage(error, 'Erreur lors de l\'ajout du frais');
+        const errorMessage = getHttpErrorMessage(error, 'Erreur lors de l\'ajout du frais');
         this.toastService.error(errorMessage);
       }
     });
@@ -2802,6 +2723,18 @@ export class SuiviTransportComponent implements OnInit {
     if (!voyage.id) {
       return;
     }
+    if (
+      !guardAdmin(
+        this.authService,
+        this.toastService,
+        'Cette suppression est réservée aux administrateurs.'
+      )
+    ) {
+      return;
+    }
+    if (!isVoyageStatutDecharge(voyage.statut)) {
+      return;
+    }
     const msg =
       `Supprimer le voyage ${voyage.numeroVoyage || voyage.id} (déchargé) ?\n\n` +
       `Les quantités livrées seront replacées dans le stock citerne, le camion redeviendra disponible, ` +
@@ -2820,7 +2753,7 @@ export class SuiviTransportComponent implements OnInit {
           }
         },
         error: (error) => {
-          this.toastService.error(this.getErrorMessage(error, 'Erreur lors de la suppression'));
+          this.toastService.error(getHttpErrorMessage(error, 'Erreur lors de la suppression'));
         }
       });
     });
@@ -2892,7 +2825,7 @@ export class SuiviTransportComponent implements OnInit {
       },
       error: (err) => {
         this.isLoading = false;
-        this.toastService.error(this.getErrorMessage(err, 'Erreur lors de la déclaration'));
+        this.toastService.error(getHttpErrorMessage(err, 'Erreur lors de la déclaration'));
       }
     });
   }
@@ -2910,7 +2843,7 @@ export class SuiviTransportComponent implements OnInit {
       },
       error: (err) => {
         this.isLoading = false;
-        this.toastService.error(this.getErrorMessage(err, 'Erreur lors de la libération'));
+        this.toastService.error(getHttpErrorMessage(err, 'Erreur lors de la libération'));
       }
     });
   }
@@ -2928,7 +2861,7 @@ export class SuiviTransportComponent implements OnInit {
       },
       error: (err) => {
         this.isLoading = false;
-        this.toastService.error(this.getErrorMessage(err, 'Erreur lors du passage en non déclaré'));
+        this.toastService.error(getHttpErrorMessage(err, 'Erreur lors du passage en non déclaré'));
       }
     });
   }
@@ -3053,7 +2986,7 @@ export class SuiviTransportComponent implements OnInit {
       this.isLoading = false;
     } catch (error: any) {
       console.error('Erreur lors de la génération du bon d\'enlèvement:', error);
-      const errorMessage = this.getErrorMessage(error, 'Erreur lors de la génération du bon d\'enlèvement');
+      const errorMessage = getHttpErrorMessage(error, 'Erreur lors de la génération du bon d\'enlèvement');
       this.toastService.error(errorMessage);
       this.isLoading = false;
     }

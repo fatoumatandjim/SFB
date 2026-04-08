@@ -11,6 +11,8 @@ import { VoyagesService, ReparationRemiseDepot } from '../../services/voyages.se
 import { AuthService } from '../../services/auth.service';
 import { AlertService } from '../../nativeComp/alert/alert.service';
 import { ToastService } from '../../nativeComp/toast/toast.service';
+import { guardAdmin } from '../../utils/admin-action.util';
+import { getHttpErrorMessage } from '../../utils/http-error.util';
 
 interface Produit {
   id: string;
@@ -101,8 +103,6 @@ export class StockComponent implements OnInit {
 
   stats: StockStats | null = null;
 
-  /** Admin : réparation remise dépôt après anciennes suppressions « test déchargement » */
-  isAdmin: boolean = false;
   reparationStockEnCours = false;
   dernierRapportReparation: ReparationRemiseDepot | null = null;
 
@@ -174,8 +174,12 @@ export class StockComponent implements OnInit {
     private toastService: ToastService
   ) { }
 
+  /** Bouton / rapport réparation : réservé admin (vérifie le rôle à la volée). */
+  get canUseStockAdminRepair(): boolean {
+    return this.authService.isAdmin();
+  }
+
   ngOnInit() {
-    this.isAdmin = this.authService.isAdmin();
     this.loadDepots();
     this.loadProduits();
     this.loadProduitsAvecStocks();
@@ -243,7 +247,10 @@ export class StockComponent implements OnInit {
 
   /** Complète la remise dépôt manquante (voyages déjà supprimés, trace dans les mouvements). Idempotent. */
   confirmerReparationRemiseDepot(): void {
-    if (!this.isAdmin || this.reparationStockEnCours) {
+    if (this.reparationStockEnCours) {
+      return;
+    }
+    if (!guardAdmin(this.authService, this.toastService)) {
       return;
     }
     const msg =
@@ -297,34 +304,10 @@ export class StockComponent implements OnInit {
         },
         error: (error) => {
           this.reparationStockEnCours = false;
-          this.toastService.error(this.getErrorMessageFromHttp(error, 'Réparation impossible'));
+          this.toastService.error(getHttpErrorMessage(error, 'Réparation impossible'));
         }
       });
     });
-  }
-
-  private getErrorMessageFromHttp(error: any, defaultMessage: string): string {
-    if (!error) {
-      return defaultMessage;
-    }
-    if (error.headers && typeof error.headers.get === 'function') {
-      const headerMsg = error.headers.get('X-Error-Message');
-      if (headerMsg) {
-        return headerMsg;
-      }
-    }
-    if (error.error) {
-      if (typeof error.error.message === 'string') {
-        return error.error.message;
-      }
-      if (typeof error.error === 'string') {
-        return error.error;
-      }
-    }
-    if (error.message && typeof error.message === 'string' && !error.message.includes('Http failure')) {
-      return error.message;
-    }
-    return defaultMessage;
   }
 
   voirTousMouvements() {

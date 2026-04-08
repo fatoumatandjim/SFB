@@ -1,5 +1,6 @@
 package com.backend.gesy.voyage;
 
+import com.backend.gesy.security.SecurityExpressions;
 import com.backend.gesy.voyage.dto.ReparationRemiseDepotDTO;
 import com.backend.gesy.voyage.dto.VoyageDTO;
 import com.backend.gesy.voyage.dto.VoyagePageDto;
@@ -394,7 +395,7 @@ public class VoyageController {
      * Suppression d'un voyage déjà déchargé (tests) : restaure les quantités dans le stock citerne puis supprime le voyage.
      * Réservé aux administrateurs.
      */
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize(SecurityExpressions.HAS_ROLE_ADMIN)
     @DeleteMapping("/{id}/suppression-test-decharge")
     public ResponseEntity<?> deleteDechargePourTests(@PathVariable Long id) {
         try {
@@ -409,7 +410,7 @@ public class VoyageController {
      * Réparation one-shot : voyages supprimés par l’ancienne logique (sans remise dépôt).
      * S’appuie sur les libellés de mouvements (annulation test + entrée citerne au chargement).
      */
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize(SecurityExpressions.HAS_ROLE_ADMIN)
     @PostMapping("/admin/reparation-remise-depot-apres-suppression-test")
     public ResponseEntity<ReparationRemiseDepotDTO> reparerRemiseDepotApresSuppressionsTest() {
         return ResponseEntity.ok(voyageService.reparerRemiseDepotApresSuppressionsTestIncomplete());
