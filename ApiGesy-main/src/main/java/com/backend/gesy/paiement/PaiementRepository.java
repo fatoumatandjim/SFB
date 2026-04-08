@@ -3,6 +3,7 @@ package com.backend.gesy.paiement;
 import com.backend.gesy.categoriedepense.CategorieDepense;
 import com.backend.gesy.facture.Facture;
 import com.backend.gesy.voyage.Voyage;
+import com.backend.gesy.voyage.VoyagePaiementMenuRules;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,6 +14,14 @@ import java.util.List;
 
 @Repository
 public interface PaiementRepository extends JpaRepository<Paiement, Long> {
+
+    /** Menu Paiements : exclut les lignes liées à un voyage encore en attente de chargement ({@link VoyagePaiementMenuRules#JPQL_PAIEMENT_VISIBLE}). */
+    @Query("SELECT p FROM Paiement p WHERE " + VoyagePaiementMenuRules.JPQL_PAIEMENT_VISIBLE + " ORDER BY p.date DESC, p.id DESC")
+    List<Paiement> findAllPourMenuPaiements();
+
+    @Query("SELECT p FROM Paiement p WHERE p.statut = :statut AND " + VoyagePaiementMenuRules.JPQL_PAIEMENT_VISIBLE + " ORDER BY p.date DESC, p.id DESC")
+    List<Paiement> findByStatutPourMenuPaiements(@Param("statut") Paiement.StatutPaiement statut);
+
     List<Paiement> findByFacture(Facture facture);
     /**
      * Attention: un voyage peut avoir plusieurs paiements.

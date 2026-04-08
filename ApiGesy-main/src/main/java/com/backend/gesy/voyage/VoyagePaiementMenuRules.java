@@ -28,18 +28,35 @@ public final class VoyagePaiementMenuRules {
     }
 
     /**
-     * Prédicat JPQL pour l’alias {@code t} (entité {@code Transaction}) : transaction sans voyage
-     * ou voyage déjà au-delà de l’attente de chargement.
+     * Prédicat JPQL pour l’alias {@code t} (entité {@code Transaction}) : exclut toute ligne liée à un voyage
+     * encore en attente de chargement, que le lien soit direct ({@code t.voyage}) ou via la facture ({@code t.facture.voyage}).
+     * Sinon une transaction VALIDE sans {@code voyage_id} mais avec une facture liée au voyage passait encore le filtre.
+     * <p>
      * Littéral volontaire (exigence des {@code @Query} Spring qui concatènent une constante de compilation).
      */
     public static final String JPQL_TRANSACTION_VISIBLE =
-        "(t.voyage IS NULL OR t.voyage.statut <> 'EN_ATTENTE_CHARGEMENT')";
+        "((t.voyage IS NULL OR t.voyage.statut <> 'EN_ATTENTE_CHARGEMENT') "
+            + "AND (t.facture IS NULL OR t.facture.voyage IS NULL OR t.facture.voyage.statut <> 'EN_ATTENTE_CHARGEMENT'))";
+
+    /**
+     * Prédicat JPQL pour l’alias {@code p} (entité {@link Paiement}) : aligné sur
+     * {@link #collectVoyagesLinkedToPaiement(Paiement)} — voyage direct, facture, et transactions liées.
+     */
+    public static final String JPQL_PAIEMENT_VISIBLE =
+        "((p.voyage IS NULL OR p.voyage.statut <> 'EN_ATTENTE_CHARGEMENT') "
+            + "AND (p.facture IS NULL OR p.facture.voyage IS NULL OR p.facture.voyage.statut <> 'EN_ATTENTE_CHARGEMENT') "
+            + "AND NOT EXISTS (SELECT t FROM Transaction t WHERE t MEMBER OF p.transactions "
+            + "AND t.voyage IS NOT NULL AND t.voyage.statut = 'EN_ATTENTE_CHARGEMENT'))";
 
     static {
         String fragmentAttendu = "'" + STATUT_VOYAGE_MASQUE_MENU.name() + "'";
-        if (!JPQL_TRANSACTION_VISIBLE.contains(fragmentAttendu)) {
+        if (!JPQL_TRANSACTION_VISIBLE.contains(fragmentAttendu) || !JPQL_TRANSACTION_VISIBLE.contains("t.facture")) {
             throw new IllegalStateException(
-                "JPQL_TRANSACTION_VISIBLE doit contenir le statut " + fragmentAttendu);
+                "JPQL_TRANSACTION_VISIBLE doit couvrir t.voyage et t.facture.voyage avec le statut " + fragmentAttendu);
+        }
+        if (!JPQL_PAIEMENT_VISIBLE.contains(fragmentAttendu) || !JPQL_PAIEMENT_VISIBLE.contains("p.facture")) {
+            throw new IllegalStateException(
+                "JPQL_PAIEMENT_VISIBLE doit couvrir p.voyage, p.facture.voyage et les transactions liées (" + fragmentAttendu + ")");
         }
     }
 
@@ -74,5 +91,17 @@ public final class VoyagePaiementMenuRules {
      */
     public static boolean isPaiementRowVisibleInMenu(Paiement p) {
         return collectVoyagesLinkedToPaiement(p).stream().allMatch(VoyagePaiementMenuRules::isVisibleForPaiementMenu);
+    }
+
+    /** Même logique que {@link #JPQL_TRANSACTION_VISIBLE} pour une entité chargée (stats, tests). */
+    public static boolean isTransactionRowVisibleInPaiementMenu(Transaction t) {
+        if (t == null) {
+            return false;
+        }
+        if (!isVisibleForPaiementMenu(t.getVoyage())) {
+            return false;
+        }
+        Facture facture = t.getFacture();
+        return facture == null || isVisibleForPaiementMenu(facture.getVoyage());
     }
 }

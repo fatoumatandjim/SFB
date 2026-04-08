@@ -13,16 +13,13 @@ import com.backend.gesy.comptebancaire.CompteBancaire;
 import com.backend.gesy.comptebancaire.CompteBancaireRepository;
 import com.backend.gesy.caisse.Caisse;
 import com.backend.gesy.caisse.CaisseRepository;
-import com.backend.gesy.voyage.VoyagePaiementMenuRules;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 @Service
@@ -40,7 +37,9 @@ public class PaiementServiceImpl implements PaiementService {
 
     @Override
     public List<PaiementDTO> findAll() {
-        return listePaiementsPourMenu(p -> true);
+        return paiementRepository.findAllPourMenuPaiements().stream()
+            .map(paiementMapper::toDTO)
+            .collect(Collectors.toList());
     }
 
     @Override
@@ -99,22 +98,10 @@ public class PaiementServiceImpl implements PaiementService {
 
     @Override
     public List<PaiementDTO> findByStatut(Paiement.StatutPaiement statut) {
-        return listePaiementsPourMenu(p -> p.getStatut() == statut);
-    }
-
-    /** Liste dédupliquée pour le menu Paiements : filtre métier voyage + prédicat optionnel (statut, etc.). */
-    private List<PaiementDTO> listePaiementsPourMenu(Predicate<Paiement> predicate) {
-        return paiementRepository.findAll().stream()
-            .filter(predicate)
-            .filter(VoyagePaiementMenuRules::isPaiementRowVisibleInMenu)
-            .sorted(PAIEMENT_MENU_ORDER)
+        return paiementRepository.findByStatutPourMenuPaiements(statut).stream()
             .map(paiementMapper::toDTO)
             .collect(Collectors.toList());
     }
-
-    private static final Comparator<Paiement> PAIEMENT_MENU_ORDER = Comparator
-            .comparing(Paiement::getDate, Comparator.nullsLast(Comparator.reverseOrder()))
-            .thenComparing(Paiement::getId, Comparator.nullsLast(Comparator.reverseOrder()));
 
     @Override
     public List<PaiementDTO> findByCategorieId(Long categorieId) {
