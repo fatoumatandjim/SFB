@@ -81,7 +81,8 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(List.of("*"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("*"));
-        configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Type"));
+        // X-Error-Message : lu par le front (getErrorMessage) pour les erreurs métier (ex. suppression refusée)
+        configuration.setExposedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Error-Message"));
         configuration.setAllowCredentials(false);
         configuration.setMaxAge(3600L);
 

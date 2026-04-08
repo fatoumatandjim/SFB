@@ -9,6 +9,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/voyages")
@@ -384,9 +385,7 @@ public class VoyageController {
             voyageService.deleteById(id);
             return ResponseEntity.noContent().build();
         } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .header("X-Error-Message", e.getMessage() != null ? e.getMessage() : "Erreur lors de la suppression")
-                    .body(null);
+            return badRequestSuppressionVoyage(e);
         }
     }
 
@@ -401,10 +400,19 @@ public class VoyageController {
             voyageService.deleteDechargePourTests(id);
             return ResponseEntity.noContent().build();
         } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .header("X-Error-Message", e.getMessage() != null ? e.getMessage() : "Erreur lors de la suppression")
-                    .body(null);
+            return badRequestSuppressionVoyage(e);
         }
+    }
+
+    /**
+     * 400 avec message lisible côté Angular : en-tête X-Error-Message (exposé CORS) + corps JSON {@code message}
+     * pour les clients qui ne voient pas les en-têtes personnalisés.
+     */
+    private static ResponseEntity<Map<String, String>> badRequestSuppressionVoyage(Throwable e) {
+        String msg = e.getMessage() != null ? e.getMessage() : "Erreur lors de la suppression";
+        return ResponseEntity.badRequest()
+                .header("X-Error-Message", msg)
+                .body(Map.of("message", msg));
     }
 
     @GetMapping("/{id}/marge")
