@@ -115,6 +115,12 @@ public interface VoyageService {
 
         void deleteById(Long id);
 
+        /**
+         * Suppression réservée aux tests / données de démo : voyage déjà déchargé (ou partiellement),
+         * avec remise des quantités retirées du stock citerne lors des livraisons, puis suppression du voyage.
+         */
+        void deleteDechargePourTests(Long id);
+
         /** Synchronise statut DECHARGER pour les voyages déclarés avec état "Décharger" validé (exécuté au démarrage). */
         int syncStatutDechargerForDeclarerValides();
 

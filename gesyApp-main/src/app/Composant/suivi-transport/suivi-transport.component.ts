@@ -24,6 +24,7 @@ import {
   isVoyageInArchives,
   isVoyageInEnCours,
   isVoyageEnChargement,
+  isVoyageStatutDecharge,
   STATUTS_VOYAGE_ORDER,
   STATUTS_EN_COURS
 } from '../../services/voyage-statut.utils';
@@ -1565,7 +1566,7 @@ export class SuiviTransportComponent implements OnInit {
     }
 
     // Vérifier que le voyage est déchargé
-    if (voyage.statut !== 'DECHARGER' && voyage.statut !== 'PARTIELLEMENT_DECHARGER') {
+    if (!isVoyageStatutDecharge(voyage.statut)) {
       this.toastService.warning('Le voyage doit être déchargé avant de pouvoir donner le prix d\'achat');
       return;
     }
@@ -2496,7 +2497,7 @@ export class SuiviTransportComponent implements OnInit {
    */
   canAssignClient(voyage: VoyageDisplay | null): boolean {
     if (!voyage) return false;
-    if (voyage.statut === 'DECHARGER' || voyage.statut === 'PARTIELLEMENT_DECHARGER') return false;
+    if (isVoyageStatutDecharge(voyage.statut)) return false;
     return this.getQuantiteTotaleAttribuee() < (voyage.quantite ?? 0);
   }
 
@@ -2789,8 +2790,40 @@ export class SuiviTransportComponent implements OnInit {
 
   canDeleteVoyage(voyage: VoyageDisplay): boolean {
     if (!this.canModifyOrDeleteVoyage()) return false;
-    const statut = voyage.statut;
-    return statut !== 'DECHARGER' && statut !== 'PARTIELLEMENT_DECHARGER';
+    return !isVoyageStatutDecharge(voyage.statut);
+  }
+
+  /** Admin : supprimer un voyage déchargé en restaurant le stock citerne (tests). */
+  canDeleteDechargePourTests(voyage: VoyageDisplay): boolean {
+    return this.authService.isAdmin() && isVoyageStatutDecharge(voyage.statut);
+  }
+
+  confirmDeleteDechargePourTests(voyage: VoyageDisplay) {
+    if (!voyage.id) {
+      return;
+    }
+    const msg =
+      `Supprimer le voyage ${voyage.numeroVoyage || voyage.id} (déchargé) ?\n\n` +
+      `Les quantités livrées seront replacées dans le stock citerne, le camion redeviendra disponible, ` +
+      `et le voyage sera définitivement supprimé. Réservé aux tests / annulation de démo.`;
+    this.alertService.confirm(msg, 'Suppression voyage déchargé (test)').subscribe(confirmed => {
+      if (!confirmed) {
+        return;
+      }
+      this.voyagesService.deleteDechargePourTests(voyage.id!).subscribe({
+        next: () => {
+          this.toastService.success('Voyage supprimé — stock citerne restauré');
+          if (this.activeTab === 'en-cours') {
+            this.loadVoyagesEnCours();
+          } else if (this.activeTab === 'archives') {
+            this.loadVoyagesArchives();
+          }
+        },
+        error: (error) => {
+          this.toastService.error(this.getErrorMessage(error, 'Erreur lors de la suppression'));
+        }
+      });
+    });
   }
 
   canDeclareOrLiberate(): boolean {

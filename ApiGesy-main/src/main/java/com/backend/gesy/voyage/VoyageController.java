@@ -390,6 +390,23 @@ public class VoyageController {
         }
     }
 
+    /**
+     * Suppression d'un voyage déjà déchargé (tests) : restaure les quantités dans le stock citerne puis supprime le voyage.
+     * Réservé aux administrateurs.
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @DeleteMapping("/{id}/suppression-test-decharge")
+    public ResponseEntity<?> deleteDechargePourTests(@PathVariable Long id) {
+        try {
+            voyageService.deleteDechargePourTests(id);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .header("X-Error-Message", e.getMessage() != null ? e.getMessage() : "Erreur lors de la suppression")
+                    .body(null);
+        }
+    }
+
     @GetMapping("/{id}/marge")
     public ResponseEntity<com.backend.gesy.voyage.dto.VoyageMargeDTO> getVoyageMarge(@PathVariable Long id) {
         return ResponseEntity.ok(voyageService.calculateMarge(id));

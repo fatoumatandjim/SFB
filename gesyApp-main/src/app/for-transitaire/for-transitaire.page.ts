@@ -17,7 +17,7 @@ import { IonIcon } from '@ionic/angular/standalone';
 import { AlertService } from '../nativeComp/alert/alert.service';
 import { ToastService } from '../nativeComp/toast/toast.service';
 import { sortByDateDepartDesc } from '../services/voyage-date.utils';
-import { getVoyageStatutLabel, getVoyageStatutClass } from '../services/voyage-statut.utils';
+import { getVoyageStatutLabel, getVoyageStatutClass, isVoyageStatutDecharge } from '../services/voyage-statut.utils';
 import {
   getChauffeurDisplay as getChauffeurDisplayUtil,
   formatDateFr,
@@ -399,8 +399,8 @@ export class ForTransitairePage implements OnInit {
   /** True si le voyage est en état "À déclarer" (douane non déclaré ou passé non déclaré). Jamais true pour Archives. */
   isStatutADeclarer(voyage: VoyageDisplay): boolean {
     if (!voyage) return false;
+    if (isVoyageStatutDecharge(voyage.statut)) return false;
     const statut = (voyage.statut || '').toString().toUpperCase();
-    if (statut === 'DECHARGER' || statut === 'PARTIELLEMENT_DECHARGER') return false;
     const isDouane = statut === 'DOUANE';
     const isPasseNonDeclarer = voyage.passager === 'passer_non_declarer';
     return (isDouane || isPasseNonDeclarer) && !this.isDeclared(voyage);

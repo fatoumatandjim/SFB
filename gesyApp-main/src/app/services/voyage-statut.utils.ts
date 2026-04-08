@@ -66,6 +66,14 @@ export const STATUTS_EN_COURS: readonly string[] = [
   'DOUANE'
 ];
 
+/** Voyage terminé côté déchargement (complet ou partiel) — aligné backend `VoyageServiceImpl.isVoyageStatutDecharge`. */
+export const STATUTS_VOYAGE_DECHARGE: readonly string[] = ['DECHARGER', 'PARTIELLEMENT_DECHARGER'];
+
+/** True si le statut est déchargé ou partiellement déchargé. */
+export function isVoyageStatutDecharge(statut: string | undefined | null): boolean {
+  return statut != null && STATUTS_VOYAGE_DECHARGE.includes(statut);
+}
+
 /** True si le statut correspond à un voyage en (attente de) chargement. */
 export function isVoyageEnChargement(statut: string | undefined): boolean {
   return statut != null && STATUTS_EN_CHARGEMENT.includes(statut);

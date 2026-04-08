@@ -322,6 +322,12 @@
                 <span>🗑️</span>
               </button>
               }
+              @if (canDeleteDechargePourTests(voyage)) {
+              <button type="button" class="action-btn btn-delete-decharge-test" (click)="confirmDeleteDechargePourTests(voyage)"
+                title="Supprimer (test) — restaure le stock citerne">
+                <span>🧪</span>
+              </button>
+              }
             </div>
           </td>
         </tr>
@@ -459,6 +465,12 @@
               @if (canDeleteVoyage(voyage)) {
               <button class="action-btn btn-delete" (click)="confirmDeleteVoyage(voyage)" title="Supprimer">
                 <span>🗑️</span>
+              </button>
+              }
+              @if (canDeleteDechargePourTests(voyage)) {
+              <button type="button" class="action-btn btn-delete-decharge-test" (click)="confirmDeleteDechargePourTests(voyage)"
+                title="Supprimer (test) — restaure le stock citerne">
+                <span>🧪</span>
               </button>
               }
             </div>

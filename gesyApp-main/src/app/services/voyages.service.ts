@@ -292,6 +292,13 @@ export class VoyagesService {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
 
+  /**
+   * Supprime un voyage déjà déchargé (admin) : restaure le stock citerne puis supprime l’enregistrement (tests / données de démo).
+   */
+  deleteDechargePourTests(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${id}/suppression-test-decharge`);
+  }
+
   declarerVoyagesMultiple(voyageIds: number[], compteId?: number, caisseId?: number): Observable<Voyage[]> {
     let url = `${this.apiUrl}/declarer-multiple?`;
     if (compteId) {

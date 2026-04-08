@@ -1703,13 +1703,85 @@ public class VoyageServiceImpl implements VoyageService {
         Voyage voyage = voyageRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Voyage non trouvé avec l'id: " + id));
 
-        // 0. Interdire la suppression si le voyage est déjà attribué et déchargé
-        Voyage.StatutVoyage statut = voyage.getStatut();
-        if (statut == Voyage.StatutVoyage.DECHARGER || statut == Voyage.StatutVoyage.PARTIELLEMENT_DECHARGER) {
+        if (isVoyageStatutDecharge(voyage.getStatut())) {
             throw new RuntimeException("Impossible de supprimer un voyage déjà attribué et déchargé. Le produit a été livré aux clients.");
         }
 
-        // 1. Retirer les transactions du voyage des paiements (évite FK paiement_transactions)
+        remettreStockCiterneVersDepotSiSuppressionVoyageNonDecharge(voyage);
+        supprimerVoyageEtLiensMetier(voyage);
+    }
+
+    @Override
+    public void deleteDechargePourTests(Long id) {
+        Voyage voyage = voyageRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Voyage non trouvé avec l'id: " + id));
+
+        if (!isVoyageStatutDecharge(voyage.getStatut())) {
+            throw new RuntimeException(
+                    "Cette suppression n'est possible que pour un voyage déchargé ou partiellement déchargé.");
+        }
+
+        reverserRetraitsStockCiternePourSuppressionTestDechargement(voyage, LocalDateTime.now());
+        supprimerVoyageEtLiensMetier(voyage);
+    }
+
+    private static boolean isVoyageStatutDecharge(Voyage.StatutVoyage statut) {
+        return statut == Voyage.StatutVoyage.DECHARGER || statut == Voyage.StatutVoyage.PARTIELLEMENT_DECHARGER;
+    }
+
+    /**
+     * Cas suppression standard (voyage non déchargé) : partie du volume encore « en citerne » repart au dépôt.
+     */
+    private void remettreStockCiterneVersDepotSiSuppressionVoyageNonDecharge(Voyage voyage) {
+        Voyage.StatutVoyage statut = voyage.getStatut();
+        Long id = voyage.getId();
+        if (statut == null || statut == Voyage.StatutVoyage.EN_ATTENTE_CHARGEMENT
+                || voyage.getDepot() == null || voyage.getProduit() == null
+                || voyage.getQuantite() == null || voyage.getQuantite() <= 0 || id == null) {
+            return;
+        }
+        double quantiteLivree = 0.0;
+        for (ClientVoyage cv : clientVoyageRepository.findByVoyageId(id)) {
+            if (cv.getStatut() == ClientVoyage.StatutLivraison.LIVRER && cv.getQuantite() != null) {
+                quantiteLivree += cv.getQuantite();
+            }
+        }
+        double quantiteARemettre = voyage.getQuantite() - quantiteLivree;
+        if (quantiteARemettre > 0) {
+            remettreStockCiterneVersDepot(voyage, quantiteARemettre, LocalDateTime.now());
+        }
+    }
+
+    /**
+     * Étapes communes à toute suppression de voyage : paiements, factures, manquants, camion, puis DELETE.
+     * Les ajustements de stock doivent être faits avant l'appel.
+     */
+    private void supprimerVoyageEtLiensMetier(Voyage voyage) {
+        Long id = voyage.getId();
+        if (id == null) {
+            throw new RuntimeException("Voyage sans identifiant, suppression impossible.");
+        }
+
+        detachTransactionsDuVoyageDesPaiements(voyage);
+
+        for (Paiement p : paiementRepository.findByVoyage(voyage)) {
+            p.setVoyage(null);
+            paiementRepository.saveAndFlush(p);
+        }
+
+        for (Facture f : factureRepository.findByVoyageId(id)) {
+            f.setVoyage(null);
+            factureRepository.saveAndFlush(f);
+        }
+
+        manquantRepository.findByVoyageIdOrderByDateCreationDesc(id).forEach(manquantRepository::delete);
+
+        remettreCamionDisponibleSiApplicable(voyage);
+
+        voyageRepository.deleteById(id);
+    }
+
+    private void detachTransactionsDuVoyageDesPaiements(Voyage voyage) {
         Set<Long> txIds = voyage.getTransactions() != null
                 ? voyage.getTransactions().stream().map(Transaction::getId).filter(Objects::nonNull).collect(Collectors.toSet())
                 : Collections.emptySet();
@@ -1724,47 +1796,63 @@ public class VoyageServiceImpl implements VoyageService {
         for (Paiement p : paiementsToUpdate) {
             paiementRepository.saveAndFlush(p);
         }
+    }
 
-        // 2. Libérer les références voyage sur les Paiements
-        for (Paiement p : paiementRepository.findByVoyage(voyage)) {
-            p.setVoyage(null);
-            paiementRepository.saveAndFlush(p);
-        }
-
-        // 3. Libérer les références voyage sur les Factures
-        for (Facture f : factureRepository.findByVoyageId(id)) {
-            f.setVoyage(null);
-            factureRepository.saveAndFlush(f);
-        }
-
-        // 4. Supprimer les Manquants (voyage_id NOT NULL)
-        manquantRepository.findByVoyageIdOrderByDateCreationDesc(id).forEach(manquantRepository::delete);
-
-        // 5. Remettre le stock utilisé à son état initial (dépôt)
-        if (statut != null && statut != Voyage.StatutVoyage.EN_ATTENTE_CHARGEMENT
-                && voyage.getDepot() != null && voyage.getProduit() != null && voyage.getQuantite() != null && voyage.getQuantite() > 0) {
-            double quantiteLivree = 0.0;
-            List<ClientVoyage> clientVoyages = clientVoyageRepository.findByVoyageId(id);
-            for (ClientVoyage cv : clientVoyages) {
-                if (cv.getStatut() == ClientVoyage.StatutLivraison.LIVRER && cv.getQuantite() != null) {
-                    quantiteLivree += cv.getQuantite();
-                }
-            }
-            double quantiteARemettre = voyage.getQuantite() - quantiteLivree;
-            if (quantiteARemettre > 0) {
-                remettreStockCiterneVersDepot(voyage, quantiteARemettre, LocalDateTime.now());
-            }
-        }
-
-        // 6. Remettre le camion en DISPONIBLE (il n'est plus utilisé par ce voyage)
+    private void remettreCamionDisponibleSiApplicable(Voyage voyage) {
         Camion camion = voyage.getCamion();
         if (camion != null && camion.getStatut() != Camion.StatutCamion.EN_MAINTENANCE
                 && camion.getStatut() != Camion.StatutCamion.HORS_SERVICE) {
             camion.setStatut(Camion.StatutCamion.DISPONIBLE);
             camionRepository.save(camion);
         }
+    }
 
-        voyageRepository.deleteById(id);
+    /**
+     * Inverse les sorties stock citerne effectuées à chaque livraison (retirerDuStockCiterne) pour ce voyage.
+     */
+    private void reverserRetraitsStockCiternePourSuppressionTestDechargement(Voyage voyage, LocalDateTime now) {
+        if (voyage.getProduit() == null) {
+            return;
+        }
+        Optional<Stock> stockCiterneOpt = stockRepository.findByProduitIdAndCiterne(
+                voyage.getProduit().getId(),
+                true);
+        if (stockCiterneOpt.isEmpty()) {
+            throw new RuntimeException("Stock Citerne non trouvé pour le produit du voyage.");
+        }
+        Stock stockCiterne = stockCiterneOpt.get();
+        List<ClientVoyage> clientVoyages = clientVoyageRepository.findByVoyageId(voyage.getId());
+        double cumul = stockCiterne.getQuantite() != null ? stockCiterne.getQuantite() : 0.0;
+
+        for (ClientVoyage cv : clientVoyages) {
+            if (cv.getStatut() != ClientVoyage.StatutLivraison.LIVRER) {
+                continue;
+            }
+            if (cv.getQuantite() == null || cv.getQuantite() <= 0) {
+                continue;
+            }
+            double q = cv.getQuantite();
+            cumul += q;
+            String desc = "Annulation test déchargement – retour stock citerne, voyage " + voyage.getNumeroVoyage();
+            if (cv.getClient() != null) {
+                desc += " – client " + cv.getClient().getNom();
+            }
+            enregistrerMouvementStockCiterne(stockCiterne, q, "ENTREE", desc);
+        }
+
+        stockCiterne.setQuantite(cumul);
+        stockCiterne.setDateDerniereMiseAJour(now);
+        stockRepository.save(stockCiterne);
+    }
+
+    private void enregistrerMouvementStockCiterne(Stock stockCiterne, double quantite, String typeMouvement, String description) {
+        MouvementDTO mouvementDTO = new MouvementDTO();
+        mouvementDTO.setStockId(stockCiterne.getId());
+        mouvementDTO.setTypeMouvement(typeMouvement);
+        mouvementDTO.setQuantite(quantite);
+        mouvementDTO.setUnite(stockCiterne.getUnite());
+        mouvementDTO.setDescription(description);
+        mouvementService.save(mouvementDTO);
     }
 
     /**
@@ -2336,14 +2424,8 @@ public class VoyageServiceImpl implements VoyageService {
                 description += " - Client: " + clientVoyage.getClient().getNom();
             }
         }
-        
-        MouvementDTO mouvementDTO = new MouvementDTO();
-        mouvementDTO.setStockId(stockCiterne.getId());
-        mouvementDTO.setTypeMouvement("SORTIE");
-        mouvementDTO.setQuantite(quantiteARetirer);
-        mouvementDTO.setUnite(stockCiterne.getUnite());
-        mouvementDTO.setDescription(description);
-        mouvementService.save(mouvementDTO);
+
+        enregistrerMouvementStockCiterne(stockCiterne, quantiteARetirer, "SORTIE", description);
     }
 
     @Override

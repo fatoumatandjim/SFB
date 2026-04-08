@@ -571,6 +571,17 @@
       transform: scale(1.05);
     }
   }
+
+  &.btn-delete-decharge-test {
+    background: #f59e0b;
+    color: #1f2937;
+
+    &:hover {
+      background: #d97706;
+      color: var(--bg-card);
+      transform: scale(1.05);
+    }
+  }
 }
 
 .voyage-numero {
