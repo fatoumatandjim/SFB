@@ -110,15 +110,36 @@ public class PaiementServiceImpl implements PaiementService {
         List<Paiement> filtered = all.stream()
             .filter(VoyagePaiementMenuRules::isPaiementRowVisibleInMenu)
             .collect(Collectors.toList());
-        // --- DIAGNOSTIC ---
+        // --- DIAGNOSTIC COMPLET ---
         System.out.println("==== PAIEMENTS findByStatut(" + statut + ") ====");
         System.out.println("Avant filtre: " + all.size() + " | Après filtre: " + filtered.size());
         for (Paiement p : all) {
             boolean visible = filtered.stream().anyMatch(f -> f.getId().equals(p.getId()));
-            String vInfo = p.getVoyage() != null
+            String vDirect = p.getVoyage() != null
                 ? "v=" + p.getVoyage().getId() + "(" + p.getVoyage().getStatut() + ")"
                 : "v=null";
-            System.out.println("  id=" + p.getId() + " " + (visible ? "OK" : "MASQUE") + " " + vInfo);
+            String vFacture = "fv=null";
+            if (p.getFacture() != null) {
+                vFacture = p.getFacture().getVoyage() != null
+                    ? "fv=" + p.getFacture().getVoyage().getId() + "(" + p.getFacture().getVoyage().getStatut() + ")"
+                    : "fv=null(facture=" + p.getFacture().getId() + ")";
+            }
+            int txCount = p.getTransactions() != null ? p.getTransactions().size() : 0;
+            StringBuilder txVoyages = new StringBuilder("tx=[");
+            if (p.getTransactions() != null) {
+                for (Transaction t : p.getTransactions()) {
+                    if (t.getVoyage() != null) {
+                        txVoyages.append(t.getId()).append("->v").append(t.getVoyage().getId())
+                            .append("(").append(t.getVoyage().getStatut()).append(") ");
+                    }
+                }
+            }
+            txVoyages.append("]");
+            java.util.Set<com.backend.gesy.voyage.Voyage> linked = VoyagePaiementMenuRules.collectVoyagesLinkedToPaiement(p);
+            System.out.println("  id=" + p.getId() + " " + (visible ? "OK" : "MASQUE")
+                + " " + vDirect + " " + vFacture + " txCount=" + txCount + " " + txVoyages
+                + " linkedVoyages=" + linked.size()
+                + " ref=" + p.getReference());
         }
         System.out.println("=====================================");
         // --- FIN DIAGNOSTIC ---
