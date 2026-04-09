@@ -248,7 +248,7 @@
       <p>Aucun paiement ne correspond à vos critères de recherche.</p>
     </div>
     } @else {
-    <table class="paiements-table">
+    <table class="paiements-table paiements-table--transactions">
       <thead>
         <tr>
           <th>N° Paiement</th>
@@ -256,8 +256,8 @@
           <th>Date</th>
           <th>Montant</th>
           <th>Type</th>
-          <th>Statut</th>
-          <th>Actions</th>
+          <th class="col-statut">Statut</th>
+          <th class="col-actions">Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -281,13 +281,13 @@
           <td>
             <div class="methode-value">{{ paiement.methode }}</div>
           </td>
-          <td>
-            <span class="status-badge" [class]="getStatutClass(getTransactionStatut(paiement.id))">
+          <td class="col-statut">
+            <span [ngClass]="['status-badge', 'status-badge--compact', getStatutClass(getTransactionStatut(paiement.id))]">
               {{ getStatutLabel(getTransactionStatut(paiement.id)) }}
             </span>
           </td>
-          <td>
-            <div class="actions">
+          <td class="col-actions">
+            <div class="actions actions--transactions">
               <button class="action-btn" (click)="viewPaiement(paiement)" title="Voir">
                 <span>👁️</span>
               </button>

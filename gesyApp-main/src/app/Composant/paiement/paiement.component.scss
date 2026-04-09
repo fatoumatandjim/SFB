@@ -346,11 +346,51 @@
   border-radius: 20px;
   font-size: 12px;
   font-weight: 500;
+  white-space: nowrap;
+  line-height: 1.2;
+  vertical-align: middle;
 
   &.badge-green { background: var(--success-bg); color: var(--success); }
   &.badge-orange { background: var(--warning-bg); color: var(--warning); }
   &.badge-red { background: var(--danger-bg); color: var(--danger); }
   &.badge-grey { background: var(--bg-tertiary); color: var(--text-muted); }
+
+  &.status-badge--compact {
+    padding: 4px 10px;
+    font-size: 11px;
+    max-width: 100%;
+  }
+}
+
+// Onglet Transactions : colonnes Statut / Actions sans retour à la ligne ni boutons surdimensionnés
+.paiements-table--transactions {
+  th.col-statut,
+  td.col-statut {
+    width: 1%;
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+
+  th.col-actions,
+  td.col-actions {
+    width: 1%;
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+
+  .actions--transactions {
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    gap: 4px;
+    min-width: 0;
+
+    .action-btn {
+      flex: 0 0 auto;
+      width: 30px;
+      height: 30px;
+      font-size: 14px;
+    }
+  }
 }
 
 .actions {
@@ -998,6 +1038,10 @@
   .filters { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; .filter-btn { white-space: nowrap; } }
   .search-container { width: 100%; min-width: 100%; }
   .paiements-table { min-width: 900px; th, td { padding: 12px 10px; font-size: 13px; } }
+  .paiements-table--transactions {
+    .status-badge--compact { padding: 3px 8px; font-size: 10px; }
+    .actions--transactions .action-btn { width: 28px; height: 28px; font-size: 13px; }
+  }
   .actions { gap: 4px; }
   .btn-faire-paiement { padding: 6px 12px; font-size: 12px; }
   .action-btn { width: 28px; height: 28px; font-size: 14px; }
@@ -1019,4 +1063,8 @@
   .stat-card { padding: 14px; .stat-value { font-size: 24px; } }
   .btn-faire-paiement { padding: 5px 10px; font-size: 11px; }
   .action-btn { width: 26px; height: 26px; font-size: 13px; }
+  .paiements-table--transactions {
+    .status-badge--compact { padding: 2px 6px; font-size: 10px; }
+    .actions--transactions .action-btn { width: 26px; height: 26px; font-size: 12px; }
+  }
 }
