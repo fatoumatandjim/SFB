@@ -355,7 +355,9 @@
 
 .actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
 }
 
 .action-btn {
@@ -577,6 +579,7 @@
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
+  white-space: nowrap;
   transition: all var(--transition-fast);
 
   &:hover { background: #059669; }
@@ -995,6 +998,9 @@
   .filters { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; .filter-btn { white-space: nowrap; } }
   .search-container { width: 100%; min-width: 100%; }
   .paiements-table { min-width: 900px; th, td { padding: 12px 10px; font-size: 13px; } }
+  .actions { gap: 4px; }
+  .btn-faire-paiement { padding: 6px 12px; font-size: 12px; }
+  .action-btn { width: 28px; height: 28px; font-size: 14px; }
   .pagination { flex-direction: column; gap: 12px; padding: 12px; .btn-pagination { width: 100%; } }
   .modal-overlay { padding: 10px; }
   .modal-content { max-width: 100%; max-height: 95vh; border-radius: var(--radius-lg); }
@@ -1011,4 +1017,6 @@
   .paiement-container { padding: 10px; }
   .paiement-header h1 { font-size: 20px; }
   .stat-card { padding: 14px; .stat-value { font-size: 24px; } }
+  .btn-faire-paiement { padding: 5px 10px; font-size: 11px; }
+  .action-btn { width: 26px; height: 26px; font-size: 13px; }
 }
