@@ -88,11 +88,7 @@ public class PaiementServiceImpl implements PaiementService {
         int deleted = 0;
         for (List<Paiement> group : byKey.values()) {
             if (group.size() <= 1) continue;
-            group.sort(Comparator
-                .comparingInt((Paiement p) ->
-                    p.getTransactions() != null ? p.getTransactions().size() : 0)
-                .reversed()
-                .thenComparing(Paiement::getId, Comparator.reverseOrder()));
+            group.sort(Comparator.comparing(Paiement::getId, Comparator.reverseOrder()));
             for (int i = 1; i < group.size(); i++) {
                 paiementRepository.delete(group.get(i));
                 deleted++;
