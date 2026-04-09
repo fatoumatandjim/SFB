@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -52,24 +53,22 @@ public class PaiementServiceImpl implements PaiementService {
     private final VoyageRepository voyageRepository;
 
     /**
-     * Au démarrage, répare les paiements orphelins (voyage_id NULL) dont la référence
-     * contient un numéro de voyage existant. Ces paiements ont été créés avant que le
-     * code ne fasse {@code paiement.setVoyage(...)}.
+     * Au démarrage :
+     * 1. Relie les paiements orphelins (voyage_id NULL) à leur voyage via la référence.
+     * 2. Supprime les doublons (même voyage + même référence), en gardant celui qui a
+     *    des transactions liées (ou le plus récent sinon).
      */
     @PostConstruct
     @Transactional
     public void repairOrphanedPaiements() {
-        List<Paiement> orphans = paiementRepository.findAll().stream()
-            .filter(p -> p.getVoyage() == null && p.getReference() != null)
-            .collect(Collectors.toList());
+        List<Paiement> all = paiementRepository.findAll();
 
-        if (orphans.isEmpty()) return;
-
+        // --- Étape 1 : relier les orphelins ---
         int repaired = 0;
-        for (Paiement p : orphans) {
+        for (Paiement p : all) {
+            if (p.getVoyage() != null || p.getReference() == null) continue;
             String voyageNum = extractVoyageNumber(p.getReference());
             if (voyageNum == null) continue;
-
             Optional<Voyage> voyage = voyageRepository.findByNumeroVoyage(voyageNum);
             if (voyage.isPresent()) {
                 p.setVoyage(voyage.get());
@@ -77,8 +76,31 @@ public class PaiementServiceImpl implements PaiementService {
                 repaired++;
             }
         }
+
+        // --- Étape 2 : supprimer les doublons (même voyage_id + même référence) ---
         if (repaired > 0) {
-            log.info("Paiements orphelins réparés (voyage_id restauré via référence): {}", repaired);
+            all = paiementRepository.findAll();
+        }
+        Map<String, List<Paiement>> byKey = all.stream()
+            .filter(p -> p.getVoyage() != null && p.getReference() != null)
+            .collect(Collectors.groupingBy(p -> p.getVoyage().getId() + "|" + p.getReference()));
+
+        int deleted = 0;
+        for (List<Paiement> group : byKey.values()) {
+            if (group.size() <= 1) continue;
+            group.sort(Comparator
+                .comparingInt((Paiement p) ->
+                    p.getTransactions() != null ? p.getTransactions().size() : 0)
+                .reversed()
+                .thenComparing(Paiement::getId, Comparator.reverseOrder()));
+            for (int i = 1; i < group.size(); i++) {
+                paiementRepository.delete(group.get(i));
+                deleted++;
+            }
+        }
+
+        if (repaired > 0 || deleted > 0) {
+            log.info("Paiements: {} orphelins réparés, {} doublons supprimés", repaired, deleted);
         }
     }
 
