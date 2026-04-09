@@ -13,22 +13,34 @@ import com.backend.gesy.comptebancaire.CompteBancaire;
 import com.backend.gesy.comptebancaire.CompteBancaireRepository;
 import com.backend.gesy.caisse.Caisse;
 import com.backend.gesy.caisse.CaisseRepository;
+import com.backend.gesy.voyage.Voyage;
+import com.backend.gesy.voyage.VoyagePaiementMenuRules;
+import com.backend.gesy.voyage.VoyageRepository;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import com.backend.gesy.voyage.VoyagePaiementMenuRules;
 
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class PaiementServiceImpl implements PaiementService {
+
+    private static final Logger log = LoggerFactory.getLogger(PaiementServiceImpl.class);
+
+    private static final Pattern VOYAGE_NUM_IN_REF = Pattern.compile("(VOY-\\d{4}-\\d{4})");
+
     private final PaiementRepository paiementRepository;
     private final FactureRepository factureRepository;
     private final PaiementMapper paiementMapper;
@@ -37,11 +49,43 @@ public class PaiementServiceImpl implements PaiementService {
     private final CaisseRepository caisseRepository;
     private final AlerteService alerteService;
     private final CategorieDepenseRepository categorieDepenseRepository;
+    private final VoyageRepository voyageRepository;
+
+    /**
+     * Au démarrage, répare les paiements orphelins (voyage_id NULL) dont la référence
+     * contient un numéro de voyage existant. Ces paiements ont été créés avant que le
+     * code ne fasse {@code paiement.setVoyage(...)}.
+     */
+    @PostConstruct
+    @Transactional
+    public void repairOrphanedPaiements() {
+        List<Paiement> orphans = paiementRepository.findAll().stream()
+            .filter(p -> p.getVoyage() == null && p.getReference() != null)
+            .collect(Collectors.toList());
+
+        if (orphans.isEmpty()) return;
+
+        int repaired = 0;
+        for (Paiement p : orphans) {
+            String voyageNum = extractVoyageNumber(p.getReference());
+            if (voyageNum == null) continue;
+
+            Optional<Voyage> voyage = voyageRepository.findByNumeroVoyage(voyageNum);
+            if (voyage.isPresent()) {
+                p.setVoyage(voyage.get());
+                paiementRepository.save(p);
+                repaired++;
+            }
+        }
+        if (repaired > 0) {
+            log.info("Paiements orphelins réparés (voyage_id restauré via référence): {}", repaired);
+        }
+    }
 
     @Override
     public List<PaiementDTO> findAll() {
-        return paiementRepository.findAll().stream()
-            .filter(VoyagePaiementMenuRules::isPaiementRowVisibleInMenu)
+        List<Paiement> all = paiementRepository.findAll();
+        return applyVoyageFilter(all).stream()
             .sorted(Comparator.comparing(Paiement::getDate, Comparator.nullsLast(Comparator.reverseOrder()))
                 .thenComparing(Paiement::getId, Comparator.reverseOrder()))
             .map(paiementMapper::toDTO)
@@ -107,47 +151,44 @@ public class PaiementServiceImpl implements PaiementService {
         List<Paiement> all = paiementRepository.findAll().stream()
             .filter(p -> p.getStatut() == statut)
             .collect(Collectors.toList());
-        List<Paiement> filtered = all.stream()
-            .filter(VoyagePaiementMenuRules::isPaiementRowVisibleInMenu)
-            .collect(Collectors.toList());
-        // --- DIAGNOSTIC COMPLET ---
-        System.out.println("==== PAIEMENTS findByStatut(" + statut + ") ====");
-        System.out.println("Avant filtre: " + all.size() + " | Après filtre: " + filtered.size());
-        for (Paiement p : all) {
-            boolean visible = filtered.stream().anyMatch(f -> f.getId().equals(p.getId()));
-            String vDirect = p.getVoyage() != null
-                ? "v=" + p.getVoyage().getId() + "(" + p.getVoyage().getStatut() + ")"
-                : "v=null";
-            String vFacture = "fv=null";
-            if (p.getFacture() != null) {
-                vFacture = p.getFacture().getVoyage() != null
-                    ? "fv=" + p.getFacture().getVoyage().getId() + "(" + p.getFacture().getVoyage().getStatut() + ")"
-                    : "fv=null(facture=" + p.getFacture().getId() + ")";
-            }
-            int txCount = p.getTransactions() != null ? p.getTransactions().size() : 0;
-            StringBuilder txVoyages = new StringBuilder("tx=[");
-            if (p.getTransactions() != null) {
-                for (Transaction t : p.getTransactions()) {
-                    if (t.getVoyage() != null) {
-                        txVoyages.append(t.getId()).append("->v").append(t.getVoyage().getId())
-                            .append("(").append(t.getVoyage().getStatut()).append(") ");
-                    }
-                }
-            }
-            txVoyages.append("]");
-            java.util.Set<com.backend.gesy.voyage.Voyage> linked = VoyagePaiementMenuRules.collectVoyagesLinkedToPaiement(p);
-            System.out.println("  id=" + p.getId() + " " + (visible ? "OK" : "MASQUE")
-                + " " + vDirect + " " + vFacture + " txCount=" + txCount + " " + txVoyages
-                + " linkedVoyages=" + linked.size()
-                + " ref=" + p.getReference());
-        }
-        System.out.println("=====================================");
-        // --- FIN DIAGNOSTIC ---
-        return filtered.stream()
+
+        return applyVoyageFilter(all).stream()
             .sorted(Comparator.comparing(Paiement::getDate, Comparator.nullsLast(Comparator.reverseOrder()))
                 .thenComparing(Paiement::getId, Comparator.reverseOrder()))
             .map(paiementMapper::toDTO)
             .collect(Collectors.toList());
+    }
+
+    /**
+     * Applique le filtre voyage : exclut les paiements liés (directement ou via référence)
+     * à un voyage {@code EN_ATTENTE_CHARGEMENT}.
+     */
+    private List<Paiement> applyVoyageFilter(List<Paiement> paiements) {
+        List<Paiement> filtered = paiements.stream()
+            .filter(VoyagePaiementMenuRules::isPaiementRowVisibleInMenu)
+            .collect(Collectors.toList());
+
+        Set<String> blockedVoyageNumbers = voyageRepository
+            .findByStatut(Voyage.StatutVoyage.EN_ATTENTE_CHARGEMENT).stream()
+            .map(Voyage::getNumeroVoyage)
+            .collect(Collectors.toSet());
+
+        if (blockedVoyageNumbers.isEmpty()) return filtered;
+
+        return filtered.stream()
+            .filter(p -> {
+                String ref = p.getReference();
+                if (ref == null || p.getVoyage() != null) return true;
+                String voyageNum = extractVoyageNumber(ref);
+                return voyageNum == null || !blockedVoyageNumbers.contains(voyageNum);
+            })
+            .collect(Collectors.toList());
+    }
+
+    private static String extractVoyageNumber(String reference) {
+        if (reference == null) return null;
+        Matcher m = VOYAGE_NUM_IN_REF.matcher(reference);
+        return m.find() ? m.group(1) : null;
     }
 
     @Override

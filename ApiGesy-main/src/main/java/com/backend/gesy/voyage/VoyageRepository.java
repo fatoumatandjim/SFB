@@ -312,6 +312,8 @@ public interface VoyageRepository extends JpaRepository<Voyage, Long> {
        @Query("SELECT v FROM Voyage v WHERE v.cession = false AND (v.prixUnitaire IS NULL OR v.prixUnitaire <= 0) ORDER BY v.dateDepart DESC, v.id DESC")
        Page<Voyage> findVoyagesSansPrixTransport(Pageable pageable);
 
+       List<Voyage> findByStatut(Voyage.StatutVoyage statut);
+
        /** Pour sync : voyages déclarés avec état "Décharger" validé mais statut encore différent de DECHARGER */
        @Query("SELECT v FROM Voyage v WHERE v.declarer = true " +
                      "AND (v.statut IS NULL OR v.statut <> 'DECHARGER') " +
