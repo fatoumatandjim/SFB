@@ -104,9 +104,25 @@ public class PaiementServiceImpl implements PaiementService {
 
     @Override
     public List<PaiementDTO> findByStatut(Paiement.StatutPaiement statut) {
-        return paiementRepository.findAll().stream()
+        List<Paiement> all = paiementRepository.findAll().stream()
             .filter(p -> p.getStatut() == statut)
+            .collect(Collectors.toList());
+        List<Paiement> filtered = all.stream()
             .filter(VoyagePaiementMenuRules::isPaiementRowVisibleInMenu)
+            .collect(Collectors.toList());
+        // --- DIAGNOSTIC ---
+        System.out.println("==== PAIEMENTS findByStatut(" + statut + ") ====");
+        System.out.println("Avant filtre: " + all.size() + " | Après filtre: " + filtered.size());
+        for (Paiement p : all) {
+            boolean visible = filtered.stream().anyMatch(f -> f.getId().equals(p.getId()));
+            String vInfo = p.getVoyage() != null
+                ? "v=" + p.getVoyage().getId() + "(" + p.getVoyage().getStatut() + ")"
+                : "v=null";
+            System.out.println("  id=" + p.getId() + " " + (visible ? "OK" : "MASQUE") + " " + vInfo);
+        }
+        System.out.println("=====================================");
+        // --- FIN DIAGNOSTIC ---
+        return filtered.stream()
             .sorted(Comparator.comparing(Paiement::getDate, Comparator.nullsLast(Comparator.reverseOrder()))
                 .thenComparing(Paiement::getId, Comparator.reverseOrder()))
             .map(paiementMapper::toDTO)
