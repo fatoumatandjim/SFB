@@ -42,6 +42,10 @@ public class PaiementServiceImpl implements PaiementService {
 
     private static final Pattern VOYAGE_NUM_IN_REF = Pattern.compile("(VOY-\\d{4}-\\d{4})");
 
+    private static final Comparator<Paiement> NEWEST_FIRST =
+        Comparator.comparing(Paiement::getDate, Comparator.nullsLast(Comparator.reverseOrder()))
+            .thenComparing(Paiement::getId, Comparator.reverseOrder());
+
     private final PaiementRepository paiementRepository;
     private final FactureRepository factureRepository;
     private final PaiementMapper paiementMapper;
@@ -55,8 +59,7 @@ public class PaiementServiceImpl implements PaiementService {
     /**
      * Au démarrage :
      * 1. Relie les paiements orphelins (voyage_id NULL) à leur voyage via la référence.
-     * 2. Supprime les doublons (même voyage + même référence), en gardant celui qui a
-     *    des transactions liées (ou le plus récent sinon).
+     * 2. Supprime les doublons (même voyage + même référence), en gardant le plus récent.
      */
     @PostConstruct
     @Transactional
@@ -102,12 +105,7 @@ public class PaiementServiceImpl implements PaiementService {
 
     @Override
     public List<PaiementDTO> findAll() {
-        List<Paiement> all = paiementRepository.findAll();
-        return applyVoyageFilter(all).stream()
-            .sorted(Comparator.comparing(Paiement::getDate, Comparator.nullsLast(Comparator.reverseOrder()))
-                .thenComparing(Paiement::getId, Comparator.reverseOrder()))
-            .map(paiementMapper::toDTO)
-            .collect(Collectors.toList());
+        return filterSortAndMap(paiementRepository.findAll());
     }
 
     @Override
@@ -166,21 +164,19 @@ public class PaiementServiceImpl implements PaiementService {
 
     @Override
     public List<PaiementDTO> findByStatut(Paiement.StatutPaiement statut) {
-        List<Paiement> all = paiementRepository.findAll().stream()
+        List<Paiement> byStatut = paiementRepository.findAll().stream()
             .filter(p -> p.getStatut() == statut)
             .collect(Collectors.toList());
+        return filterSortAndMap(byStatut);
+    }
 
-        return applyVoyageFilter(all).stream()
-            .sorted(Comparator.comparing(Paiement::getDate, Comparator.nullsLast(Comparator.reverseOrder()))
-                .thenComparing(Paiement::getId, Comparator.reverseOrder()))
+    private List<PaiementDTO> filterSortAndMap(List<Paiement> paiements) {
+        return applyVoyageFilter(paiements).stream()
+            .sorted(NEWEST_FIRST)
             .map(paiementMapper::toDTO)
             .collect(Collectors.toList());
     }
 
-    /**
-     * Applique le filtre voyage : exclut les paiements liés (directement ou via référence)
-     * à un voyage {@code EN_ATTENTE_CHARGEMENT}.
-     */
     private List<Paiement> applyVoyageFilter(List<Paiement> paiements) {
         List<Paiement> filtered = paiements.stream()
             .filter(VoyagePaiementMenuRules::isPaiementRowVisibleInMenu)

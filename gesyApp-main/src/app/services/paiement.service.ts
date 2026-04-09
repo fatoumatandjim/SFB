@@ -17,6 +17,8 @@ export interface Paiement {
   transactions?: any[];
   compteId?: number;
   caisseId?: number;
+  voyageId?: number;
+  numeroVoyage?: string;
 }
 
 @Injectable({
@@ -37,6 +39,10 @@ export class PaiementService {
 
   getPaiementsByStatut(statut: string): Observable<Paiement[]> {
     return this.http.get<Paiement[]>(`${this.apiUrl}/statut/${statut}`);
+  }
+
+  deletePaiement(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
 
   validerPaiement(id: number, compteId?: number, caisseId?: number): Observable<Paiement> {

@@ -281,9 +281,9 @@ export class PaiementComponent implements OnInit {
     if (this.searchTermPaiements) {
       const term = this.searchTermPaiements.toLowerCase();
       filtered = filtered.filter(p =>
-        (p.reference && p.reference.toLowerCase().includes(term)) ||
-        (p.notes && p.notes.toLowerCase().includes(term)) ||
-        (p.reference && p.reference.toLowerCase().includes(term))
+        p.reference?.toLowerCase().includes(term) ||
+        p.notes?.toLowerCase().includes(term) ||
+        p.numeroVoyage?.toLowerCase().includes(term)
       );
     }
     this.filteredPaiementsNonEffectues = filtered;
@@ -306,6 +306,35 @@ export class PaiementComponent implements OnInit {
     this.selectedPaiementToPay = null;
     this.selectedCompteId = undefined;
     this.selectedCaisseId = undefined;
+  }
+
+  deletePaiementNonEffectue(paiement: PaiementBackend) {
+    if (paiement.voyageId) {
+      this.alertService.warning(
+        'Suppression impossible',
+        `Ce paiement est lié au voyage ${paiement.numeroVoyage || '#' + paiement.voyageId}. Supprimez le voyage directement depuis le menu Voyages.`
+      );
+      return;
+    }
+
+    this.alertService.confirm(
+      `Supprimer le paiement ${paiement.reference || '#' + paiement.id} de ${paiement.montant?.toLocaleString()} FCFA ?`,
+      'Confirmer la suppression'
+    ).subscribe((confirmed: boolean) => {
+      if (confirmed) {
+        this.paiementService.deletePaiement(Number(paiement.id)).subscribe({
+          next: () => {
+            this.toastService.success('Paiement supprimé');
+            this.loadPaiementsNonEffectues();
+            this.loadStats();
+          },
+          error: (error: any) => {
+            console.error('Erreur lors de la suppression du paiement:', error);
+            this.toastService.error(error?.error?.message || 'Erreur lors de la suppression');
+          }
+        });
+      }
+    });
   }
 
   viewPaiementDetail(paiement: PaiementBackend) {
