@@ -98,7 +98,40 @@ public class PaiementServiceImpl implements PaiementService {
 
     @Override
     public List<PaiementDTO> findByStatut(Paiement.StatutPaiement statut) {
-        return paiementRepository.findByStatutPourMenuPaiements(statut).stream()
+        // --- DIAGNOSTIC TEMPORAIRE ---
+        List<Paiement> tousParStatut = paiementRepository.findAll().stream()
+            .filter(p -> p.getStatut() == statut)
+            .collect(Collectors.toList());
+        List<Paiement> filtres = paiementRepository.findByStatutPourMenuPaiements(statut);
+        System.out.println("====== DIAGNOSTIC PAIEMENTS statut=" + statut + " ======");
+        System.out.println("Sans filtre voyage: " + tousParStatut.size());
+        System.out.println("Avec filtre voyage: " + filtres.size());
+        for (Paiement p : tousParStatut) {
+            boolean inclus = filtres.stream().anyMatch(f -> f.getId().equals(p.getId()));
+            String voyageInfo = p.getVoyage() != null
+                ? "voyage.id=" + p.getVoyage().getId() + " statut=" + p.getVoyage().getStatut()
+                : "voyage=null";
+            String factureVoyageInfo = "facture=null";
+            if (p.getFacture() != null) {
+                factureVoyageInfo = p.getFacture().getVoyage() != null
+                    ? "facture.voyage.id=" + p.getFacture().getVoyage().getId() + " statut=" + p.getFacture().getVoyage().getStatut()
+                    : "facture.voyage=null";
+            }
+            int nbTx = p.getTransactions() != null ? p.getTransactions().size() : 0;
+            String txInfo = "";
+            if (p.getTransactions() != null) {
+                txInfo = p.getTransactions().stream()
+                    .map(t -> "tx.id=" + t.getId()
+                        + " tx.voyage=" + (t.getVoyage() != null ? t.getVoyage().getId() + "(" + t.getVoyage().getStatut() + ")" : "null")
+                        + " tx.facture.voyage=" + (t.getFacture() != null && t.getFacture().getVoyage() != null ? t.getFacture().getVoyage().getId() + "(" + t.getFacture().getVoyage().getStatut() + ")" : "null"))
+                    .collect(Collectors.joining("; "));
+            }
+            System.out.println("  Paiement id=" + p.getId() + " " + (inclus ? "INCLUS" : "*** EXCLU ***")
+                + " | " + voyageInfo + " | " + factureVoyageInfo + " | nbTx=" + nbTx + " [" + txInfo + "]");
+        }
+        System.out.println("=================================================");
+        // --- FIN DIAGNOSTIC ---
+        return filtres.stream()
             .map(paiementMapper::toDTO)
             .collect(Collectors.toList());
     }

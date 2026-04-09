@@ -513,9 +513,33 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     public TransactionPageDTO findAllPaginated(int page, int size, boolean exclureVoyageEnAttenteChargement) {
         Pageable pageable = PageRequest.of(page, size);
+        // --- DIAGNOSTIC TEMPORAIRE ---
+        Page<Transaction> sansFiltre = transactionRepository.findAllOrderedByDate(pageable);
+        Page<Transaction> avecFiltre = transactionRepository.findAllOrderedByDateExclureVoyageEnAttenteChargement(pageable);
+        System.out.println("====== DIAGNOSTIC TRANSACTIONS page=" + page + " exclure=" + exclureVoyageEnAttenteChargement + " ======");
+        System.out.println("Sans filtre: totalElements=" + sansFiltre.getTotalElements());
+        System.out.println("Avec filtre: totalElements=" + avecFiltre.getTotalElements());
+        long diff = sansFiltre.getTotalElements() - avecFiltre.getTotalElements();
+        System.out.println("Différence (masquées par filtre): " + diff);
+        if (diff > 0 && page == 0) {
+            for (Transaction t : sansFiltre.getContent()) {
+                boolean inclus = avecFiltre.getContent().stream().anyMatch(f -> f.getId().equals(t.getId()));
+                String vInfo = t.getVoyage() != null
+                    ? "voyage.id=" + t.getVoyage().getId() + " statut=" + t.getVoyage().getStatut()
+                    : "voyage=null";
+                String fvInfo = "facture.voyage=null";
+                if (t.getFacture() != null && t.getFacture().getVoyage() != null) {
+                    fvInfo = "facture.voyage.id=" + t.getFacture().getVoyage().getId() + " statut=" + t.getFacture().getVoyage().getStatut();
+                }
+                System.out.println("  tx.id=" + t.getId() + " type=" + t.getType() + " " + (inclus ? "INCLUS" : "*** EXCLU ***")
+                    + " | " + vInfo + " | " + fvInfo);
+            }
+        }
+        System.out.println("=================================================");
+        // --- FIN DIAGNOSTIC ---
         Page<Transaction> transactionPage = exclureVoyageEnAttenteChargement
-            ? transactionRepository.findAllOrderedByDateExclureVoyageEnAttenteChargement(pageable)
-            : transactionRepository.findAllOrderedByDate(pageable);
+            ? avecFiltre
+            : sansFiltre;
         return mapToPageDto(transactionPage);
     }
 
