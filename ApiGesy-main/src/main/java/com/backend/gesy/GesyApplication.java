@@ -53,24 +53,32 @@ public class GesyApplication {
 			initialiserCategorieDepenseParDefaut();
 			initialiserProduitsParDefaut(produitService);
 			initialiserDepotsParDefaut(depotService);
+			// Compte admin avant migration : au 1er démarrage la base est vide, la migration aurait sinon 0 compte à traiter.
+			initialiserCompteAdminSiAbsent();
 			migratePasswordsAndAssignRoles();
-			if (utilisateurRepository.findByIdentifiant("adminSFB").isEmpty()){
-				Utilisateur adminUser = new Utilisateur();
-				adminUser.setIdentifiant("adminSFB");
-				adminUser.setMotDePasse(passwordEncoder.encode("adminSFB@_123"));
-				adminUser.setDefaultPass("adminSFB@_123");
-				adminUser.setEmail("sfb@admin.com");
-				adminUser.setNom("Admin SFB");
-				adminUser.setTelephone("2230000000");
-				adminUser.setActif(true);
-				adminUser.setStatut(Utilisateur.StatutUtilisateur.ACTIF);
-				adminUser.setCreatedAt(java.time.LocalDateTime.now());
-				Roles roles = rolesRepository.findByNom("Admin").orElseThrow(() -> new RuntimeException("Rôle Admin non trouvé"));
-				adminUser.getRoles().add(roles);
-				utilisateurRepository.save(adminUser);
-			}
-
 		};
+	}
+
+	/** Admin initial (identifiant adminSFB) — doit exister avant migratePasswordsAndAssignRoles pour un 1er lancement cohérent. */
+	private void initialiserCompteAdminSiAbsent() {
+		if (utilisateurRepository.findByIdentifiant("adminSFB").isPresent()) {
+			return;
+		}
+		Utilisateur adminUser = new Utilisateur();
+		adminUser.setIdentifiant("adminSFB");
+		adminUser.setMotDePasse(passwordEncoder.encode("adminSFB@_123"));
+		adminUser.setDefaultPass("adminSFB@_123");
+		adminUser.setEmail("sfb@admin.com");
+		adminUser.setNom("Admin SFB");
+		adminUser.setTelephone("2230000000");
+		adminUser.setActif(true);
+		adminUser.setStatut(Utilisateur.StatutUtilisateur.ACTIF);
+		adminUser.setCreatedAt(java.time.LocalDateTime.now());
+		Roles roles = rolesRepository.findByNom("Admin")
+				.orElseThrow(() -> new RuntimeException("Rôle Admin non trouvé — vérifier initialiserRolesParDefaut()"));
+		adminUser.getRoles().add(roles);
+		utilisateurRepository.save(adminUser);
+		System.out.println("Compte administrateur initial créé : adminSFB");
 	}
 
 	private void initialiserCategorieDepenseParDefaut() {
@@ -209,6 +217,8 @@ public class GesyApplication {
 		System.out.println("Démarrage de la migration des mots de passe et attribution des rôles...");
 
 		List<Compte> comptes = compteRepository.findAll();
+		System.out.println("Comptes en base à analyser : " + comptes.size()
+				+ " (migration = mots de passe en clair → BCrypt, et rôles manquants selon le type de compte).");
 		int migratedCount = 0;
 		int rolesAssignedCount = 0;
 
@@ -248,7 +258,11 @@ public class GesyApplication {
 			}
 		}
 
-		System.out.println("Migration terminée. Mots de passe migrés: " + migratedCount + ", Comptes avec rôles assignés: " + rolesAssignedCount);
+		System.out.println("Migration terminée. Mots de passe migrés (clair → BCrypt): " + migratedCount
+				+ ", comptes ayant reçu des rôles par défaut: " + rolesAssignedCount + ".");
+		if (!comptes.isEmpty() && migratedCount == 0 && rolesAssignedCount == 0) {
+			System.out.println("Aucune modification nécessaire : comptes déjà conformes (ex. admin seedé avec BCrypt et rôles).");
+		}
 	}
 
 	/**
