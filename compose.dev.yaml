@@ -1,4 +1,4 @@
-# GesY — stack locale « tout-en-un » pour tests (DB PostgreSQL, API Spring, front Angular/Nginx, MailHog, Adminer).
+# GesY — stack locale « tout-en-un » pour tests (DB PostgreSQL, API Spring, front Angular/Nginx, Adminer optionnel).
 #
 # Prérequis : Docker + Docker Compose v2
 # Démarrage (depuis ce dossier sfb/) :
@@ -16,17 +16,21 @@
 #
 # URLs :
 #   - Front (Nginx)     http://localhost:8081
-#   - API               http://localhost:8080/api
-#   - MailHog (web UI)  http://localhost:8025
-#   - Adminer           http://localhost:8082  → serveur « db », utilisateur/mot de passe = variables POSTGRES_*
+#   - API               http://localhost:${API_PORT:-8082}/api
+#   - Adminer (si décommenté) → serveur « db », utilisateur/mot de passe = variables POSTGRES_*
 #
 # PostgreSQL depuis l’hôte (psql, DBeaver, etc.) : localhost:${POSTGRES_PORT:-5433} (défaut 5433 pour éviter
 # le conflit avec un Postgres local sur 5432). Pour forcer 5432 : POSTGRES_PORT=5432 dans un fichier .env
 # à côté de ce compose, ou : docker compose -f compose.dev.yaml run … (seulement si 5432 est libre).
 #
+# Mail (SMTP / IMAP) : définir dans un fichier .env à côté de ce fichier (jamais committer les secrets).
+#   Exemples — Hostinger : souvent smtp.hostinger.com, port 465, MAIL_PROTOCOL=smtps.
+#   Google Workspace / Gmail : smtp.gmail.com, port 587, MAIL_PROTOCOL=smtp + mot de passe d’application ;
+#   il peut être nécessaire d’ajuster spring.mail.properties (STARTTLS) dans application-prod ou des variables SPRING_MAIL_PROPERTIES_* si le fournisseur l’exige.
+#
 # Compte admin initial (voir GesyApplication) : identifiant adminSFB / mot de passe adminSFB@_123
 #
-# Le front est compilé avec apiUrl = http://localhost:8080/api (appel depuis votre navigateur, pas le réseau Docker).
+# Le front est compilé avec API_URL (PUBLIC_HOST + API_PORT) — en local : PUBLIC_HOST=localhost et API_PORT cohérent avec le mapping ci-dessous.
 
 name: gesy-dev
 
@@ -48,12 +52,6 @@ services:
       retries: 12
       start_period: 10s
 
-  # mailhog:
-  #   image: mailhog/mailhog:latest
-  #   ports:
-  #     - "1025:1025"
-  #     - "8025:8025"
-
   api:
     build:
       context: ./ApiGesy-main
@@ -68,21 +66,28 @@ services:
       DATABASE_USER: ${POSTGRES_USER:-gesy}
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-gesy_dev_local}
       FILE_UPLOAD_DIR: /data/uploads
-      # SMTP dev → MailHog (écoute sur 1025)
-      MAIL_HOST: mailhog
-      MAIL_PORT: "1025"
-      MAIL_PROTOCOL: smtp
-      MAIL_USERNAME: ""
-      MAIL_PASSWORD: ""
-      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "false"
-      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: "false"
+      # SMTP / IMAP — mappés sur spring.mail.* via application.properties (valeurs vides = inchangé côté Spring)
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-465}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_PROTOCOL: ${MAIL_PROTOCOL:-smtps}
+      MAIL_DEBUG: ${MAIL_DEBUG:-false}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-true}
+      MAIL_SMTP_STARTTLS_ENABLE: ${MAIL_SMTP_STARTTLS_ENABLE:-false}
+      MAIL_SMTP_STARTTLS_REQUIRED: ${MAIL_SMTP_STARTTLS_REQUIRED:-false}
+      MAIL_SMTP_SSL_ENABLE: ${MAIL_SMTP_SSL_ENABLE:-true}
+      MAIL_SMTP_SSL_TRUST: ${MAIL_SMTP_SSL_TRUST:-}
+      MAIL_SMTPS_AUTH: ${MAIL_SMTPS_AUTH:-true}
+      MAIL_SMTPS_SSL_ENABLE: ${MAIL_SMTPS_SSL_ENABLE:-true}
+      MAIL_SMTPS_SSL_TRUST: ${MAIL_SMTPS_SSL_TRUST:-}
+      MAIL_IMAP_HOST: ${MAIL_IMAP_HOST:-}
+      MAIL_IMAP_PORT: ${MAIL_IMAP_PORT:-993}
     volumes:
       - dev_gesy_uploads:/data/uploads
     depends_on:
       db:
         condition: service_healthy
-      # mailhog:
-      #   condition: service_started
 
   web:
     build:
@@ -90,7 +95,7 @@ services:
       dockerfile: Dockerfile
       args:
         # URL API telle que le navigateur l’atteint (hôte public + port mappé de l’API)
-        # For local use : API_URL: http://localhost:${API_PORT:-8080}/api
+        # For local use : PUBLIC_HOST=localhost, API_URL: http://localhost:${API_PORT:-8082}/api
         API_URL: http://${PUBLIC_HOST:-76.13.57.94}:${API_PORT:-8082}/api
     ports:
       - "${WEB_PORT:-8081}:80"
