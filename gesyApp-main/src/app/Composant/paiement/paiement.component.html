@@ -615,6 +615,14 @@
         }
       </div>
 
+      @if (selectedTransaction.id) {
+        <app-justificatifs-financiers-panel
+          [ownerType]="justificatifOwnerTransaction"
+          [ownerId]="selectedTransaction.id"
+          [lazy]="false"
+        />
+      }
+
       <div class="modal-actions">
         <button type="button" class="btn-cancel" (click)="closeDetailModal()">
           Fermer
@@ -690,11 +698,26 @@
             @if (transaction.description) {
             <div class="transaction-description">{{ transaction.description }}</div>
             }
+            @if (transaction.id) {
+              <app-justificatifs-financiers-panel
+                [ownerType]="justificatifOwnerTransaction"
+                [ownerId]="transaction.id"
+                [lazy]="true"
+                title="Justificatifs transaction"
+              />
+            }
           </div>
           }
         </div>
       </div>
       }
+
+      <app-justificatifs-financiers-panel
+        [ownerType]="justificatifOwnerPaiement"
+        [ownerId]="selectedPaiementDetail.id"
+        [lazy]="false"
+        title="Justificatifs du dossier de paiement"
+      />
 
       <div class="modal-actions">
         <button type="button" class="btn-cancel" (click)="closeDetailPaiementModal()">

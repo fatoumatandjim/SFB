@@ -9,6 +9,8 @@ export interface Caisse {
   solde: number;
   statut: 'ACTIF' | 'FERME' | 'SUSPENDU';
   description?: string;
+  /** Comptes utilisateurs autorisés à gérer cette caisse (hors admin). */
+  responsableIds?: number[];
 }
 
 @Injectable({

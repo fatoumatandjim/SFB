@@ -421,6 +421,15 @@
             <p class="cession-badge-detail">Achat de cession — pas de paiement ni de marge. La quantité est enregistrée en stock en cession.</p>
           </div>
           }
+
+          @if (selectedAchat.transactionId) {
+            <app-justificatifs-financiers-panel
+              [ownerType]="justificatifOwnerTransaction"
+              [ownerId]="selectedAchat.transactionId"
+              [lazy]="false"
+              title="Justificatifs du paiement (transaction)"
+            />
+          }
         </div>
       </div>
     </div>

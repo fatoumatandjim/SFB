@@ -77,6 +77,8 @@ export interface Voyage {
   numeroChauffeur?: string;
   /** Vente de type cession : pas de cout du voyage, client ayant déjà un achat */
   cession?: boolean;
+  /** Cession : tarif convenu avec le client (F/L) — sert uniquement à la facture auto Facturation ; frais douane comptables = tarif pays */
+  droitDouaneParLitre?: number;
   /** Voyage libéré par le transitaire */
   liberer?: boolean;
 }
@@ -174,6 +176,16 @@ export class VoyagesService {
       `${this.apiUrl}/transitaire/identifiant/${identifiant}/en-cours`,
       { params }
     );
+  }
+
+  /** Même chose par id transitaire (vue admin / transitaire-detail) */
+  getVoyagesEnCoursByTransitaire(
+    transitaireId: number,
+    page: number = 0,
+    size: number = 10
+  ): Observable<VoyagePage> {
+    const params = new HttpParams().set('page', page.toString()).set('size', size.toString());
+    return this.http.get<VoyagePage>(`${this.apiUrl}/transitaire/${transitaireId}/en-cours`, { params });
   }
 
   passerNonDeclarer(voyageId: number): Observable<Voyage> {

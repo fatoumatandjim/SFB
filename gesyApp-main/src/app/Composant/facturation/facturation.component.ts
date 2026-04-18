@@ -11,15 +11,21 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { AlertService } from '../../nativeComp/alert/alert.service';
 import { ToastService } from '../../nativeComp/toast/toast.service';
+import { AuthService } from '../../services/auth.service';
+import { getHttpErrorMessage } from '../../utils/http-error.util';
+import { JustificatifsFinanciersPanelComponent } from '../justificatifs-financiers-panel/justificatifs-financiers-panel.component';
+import { JUSTIFICATIF_OWNER_TRANSACTION } from '../../services/justificatifs-financiers.service';
 
 @Component({
   selector: 'app-facturation',
   templateUrl: './facturation.component.html',
   styleUrls: ['./facturation.component.scss'],
   standalone: true,
-  imports: [CommonModule, FormsModule]
+  imports: [CommonModule, FormsModule, JustificatifsFinanciersPanelComponent]
 })
 export class FacturationComponent implements OnInit {
+  readonly justificatifOwnerTransaction = JUSTIFICATIF_OWNER_TRANSACTION;
+
   activeFilter: string = 'toutes';
   searchTerm: string = '';
   showAddModal: boolean = false;
@@ -27,6 +33,8 @@ export class FacturationComponent implements OnInit {
   selectedFacture: Facture | null = null;
   activeTab: 'details' | 'transactions' | 'telecharger' = 'details';
   isLoading: boolean = false;
+  /** Suppression facture (admin) en cours pour une ligne donnée */
+  deletingFactureId: number | null = null;
   showAddTransactionForm: boolean = false;
 
   clients: Client[] = [];
@@ -117,8 +125,13 @@ export class FacturationComponent implements OnInit {
     private comptesBancairesService: ComptesBancairesService,
     private caissesService: CaissesService,
     private alertService: AlertService,
-    private toastService: ToastService
+    private toastService: ToastService,
+    private authService: AuthService
   ) { }
+
+  isAdmin(): boolean {
+    return this.authService.isAdmin();
+  }
 
   ngOnInit() {
     this.loadFactures();
@@ -284,6 +297,39 @@ export class FacturationComponent implements OnInit {
     }
 
     return filtered;
+  }
+
+  confirmDeleteFacture(facture: Facture, event?: Event) {
+    if (event) {
+      event.stopPropagation();
+      event.preventDefault();
+    }
+    if (!this.isAdmin() || !facture.id) return;
+    this.alertService
+      .confirm(
+        `Supprimer définitivement la facture ${facture.numero || ''} ?\n\n` +
+          'Si des paiements ou des transactions comptables y sont liés, la suppression sera refusée : supprimez-les d’abord.',
+        'Suppression facture (admin)'
+      )
+      .subscribe(confirmed => {
+        if (!confirmed) return;
+        this.deletingFactureId = facture.id!;
+        this.facturesService.deleteFacture(facture.id!).subscribe({
+          next: () => {
+            this.deletingFactureId = null;
+            this.toastService.success('Facture supprimée');
+            if (this.selectedFacture?.id === facture.id) {
+              this.closeDetailModal();
+            }
+            this.loadFactures();
+            this.loadStats();
+          },
+          error: (err) => {
+            this.deletingFactureId = null;
+            this.toastService.error(getHttpErrorMessage(err, 'Suppression impossible'));
+          }
+        });
+      });
   }
 
   viewFacture(facture: Facture) {

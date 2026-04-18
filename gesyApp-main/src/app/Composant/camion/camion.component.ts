@@ -21,6 +21,8 @@ import { UtilisateursService, Utilisateur } from '../../services/utilisateurs.se
 import { EditPrixTransportModalComponent, VoyagePrixRef } from '../shared/edit-prix-transport-modal/edit-prix-transport-modal.component';
 import { getVoyageStatutLabel, getVoyageStatutClass, isVoyageEnCours } from '../../services/voyage-statut.utils';
 import { camionMatchesSearch, formatCamionLabel } from '../../utils/camion-label.utils';
+import { JustificatifsFinanciersPanelComponent } from '../justificatifs-financiers-panel/justificatifs-financiers-panel.component';
+import { JUSTIFICATIF_OWNER_TRANSACTION } from '../../services/justificatifs-financiers.service';
 
 /** Délai avant fermeture du panneau combobox après blur (laisse le temps au mousedown sur une option) */
 const VOYAGE_CAMION_COMBOBOX_BLUR_MS = 200;
@@ -34,9 +36,11 @@ interface CamionDisplay extends Camion {
   templateUrl: './camion.component.html',
   styleUrls: ['./camion.component.scss'],
   standalone: true,
-  imports: [CommonModule, FormsModule, EditPrixTransportModalComponent]
+  imports: [CommonModule, FormsModule, EditPrixTransportModalComponent, JustificatifsFinanciersPanelComponent]
 })
 export class CamionComponent implements OnInit {
+  readonly justificatifOwnerTransaction = JUSTIFICATIF_OWNER_TRANSACTION;
+
   /** Exposé au template pour le libellé camion (DRY avec `camion-label.utils`) */
   readonly formatCamionLabel = formatCamionLabel;
 
@@ -548,7 +552,8 @@ export class CamionComponent implements OnInit {
       prixUnitaire: undefined,
       chauffeur: undefined,
       numeroChauffeur: undefined,
-      cession: false
+      cession: false,
+      droitDouaneParLitre: undefined
     };
 
     this.loadClientsWithAchat();
@@ -577,7 +582,8 @@ export class CamionComponent implements OnInit {
       depotId: undefined,
       responsableId: undefined,
       prixUnitaire: undefined,
-      cession: false
+      cession: false,
+      droitDouaneParLitre: undefined
     };
     this.voyageErrors = {};
   }
@@ -603,7 +609,11 @@ export class CamionComponent implements OnInit {
       responsableId: this.newVoyage.responsableId!,
       prixUnitaire: isCession ? undefined : this.newVoyage.prixUnitaire,
       notes: this.newVoyage.notes,
-      cession: isCession
+      cession: isCession,
+      droitDouaneParLitre:
+        isCession && this.newVoyage.droitDouaneParLitre != null && this.newVoyage.droitDouaneParLitre > 0
+          ? this.newVoyage.droitDouaneParLitre
+          : undefined
     };
 
     this.voyagesService.createVoyage(voyage).subscribe({

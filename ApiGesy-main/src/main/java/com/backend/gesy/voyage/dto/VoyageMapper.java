@@ -70,6 +70,7 @@ public class VoyageMapper {
         dto.setResponsableIdentifiant(voyage.getResponsable() != null ? voyage.getResponsable().getIdentifiant() : null);
         dto.setNumeroBonEnlevement(voyage.getNumeroBonEnlevement());
         dto.setCession(voyage.isCession());
+        dto.setDroitDouaneParLitre(voyage.getDroitDouaneParLitre());
         dto.setLiberer(voyage.getLiberer() != null ? voyage.getLiberer() : false);
 
         // Calculer le coût du voyage (0 en cas de cession)
@@ -167,6 +168,7 @@ public class VoyageMapper {
         voyage.setManquant(dto.getManquant());
         voyage.setPrixUnitaire(dto.getPrixUnitaire());
         voyage.setCession(Boolean.TRUE.equals(dto.getCession()));
+        voyage.setDroitDouaneParLitre(dto.getDroitDouaneParLitre());
         voyage.setLiberer(Boolean.TRUE.equals(dto.getLiberer()));
         voyage.setNotes(dto.getNotes());
         voyage.setNumeroBonEnlevement(dto.getNumeroBonEnlevement());

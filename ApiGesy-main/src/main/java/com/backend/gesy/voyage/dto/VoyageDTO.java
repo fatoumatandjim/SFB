@@ -60,6 +60,8 @@ public class VoyageDTO {
     private String chauffeur; // Nom du chauffeur
     private String numeroChauffeur;
     private Boolean cession; // Vente de type cession (pas de cout du voyage)
+    /** Cession : tarif convenu avec le client (F/L) — facture auto Facturation uniquement ; frais douane comptables = pays. */
+    private java.math.BigDecimal droitDouaneParLitre;
     private Boolean liberer; // Voyage libéré par le transitaire
     private List<ClientVoyageDTO> clientVoyages; // Liste des clients associés au voyage
     private List<FactureDTO> factures; // Liste des factures associées au voyage

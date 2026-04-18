@@ -396,6 +396,15 @@ export class ForTransitairePage implements OnInit {
     return d === true || d === 'true';
   }
 
+  /**
+   * Sortie douane (Libérer) : même règle que sans cession — uniquement après déclaration
+   * ou « passé non déclaré », pour que la déclaration reste possible tant que ce n’est pas fait.
+   */
+  canLibererSortieDouane(voyage: VoyageDisplay): boolean {
+    if (!voyage?.id || voyage.liberer) return false;
+    return this.isDeclared(voyage) || voyage.passager === 'passer_non_declarer';
+  }
+
   /** True si le voyage est en état "À déclarer" (douane non déclaré ou passé non déclaré). Jamais true pour Archives. */
   isStatutADeclarer(voyage: VoyageDisplay): boolean {
     if (!voyage) return false;
@@ -420,10 +429,16 @@ export class ForTransitairePage implements OnInit {
     return getVoyageStatutClass(statut, voyage);
   }
 
-  /** True si le statut doit être cliquable pour déclencher la déclaration. Dans l'onglet À déclarer : tout voyage non déclaré. */
+  /**
+   * Tant que le voyage n'est pas déclaré, la déclaration doit rester possible (y compris cession libérée
+   * sans déclaration : statut DECHARGER en archives, ou autre statut hors DOUANE).
+   */
   canDeclarer(voyage: VoyageDisplay): boolean {
     if (!voyage) return false;
-    if (this.activeTab === 'en-cours') return !this.isDeclared(voyage);
+    if (this.isDeclared(voyage)) return false;
+    if (this.activeTab === 'en-cours' || this.activeTab === 'voyages-en-cours' || this.activeTab === 'archives') {
+      return true;
+    }
     return this.isStatutADeclarer(voyage);
   }
 
@@ -541,6 +556,7 @@ export class ForTransitairePage implements OnInit {
           this.voyagesService.declarerVoyage(voyage.id!, undefined, undefined).subscribe({
             next: () => {
               this.loadVoyages();
+              if (this.activeTab === 'voyages-en-cours') this.loadVoyagesEnCours();
               this.loadStats();
               this.toastService.success('Voyage déclaré avec succès');
             },
@@ -638,8 +654,9 @@ export class ForTransitairePage implements OnInit {
     return this.selectedVoyages.size;
   }
 
+  /** Tous les voyages non déclarés de l’onglet « À déclarer » (sélection / tout sélectionner). */
   get voyagesADeclarer(): VoyageDisplay[] {
-    return this.filteredVoyages.filter(v => v.statut === 'DOUANE' && v.id);
+    return this.filteredVoyages.filter(v => v.id && !this.isDeclared(v));
   }
 
   get allVoyagesSelected(): boolean {
@@ -653,7 +670,9 @@ export class ForTransitairePage implements OnInit {
 
   /** Nombre de voyages sélectionnés qui ne sont pas encore libérés */
   getSelectedLibererCount(): number {
-    return this.filteredVoyages.filter(v => v.id && this.selectedVoyages.has(v.id) && !v.liberer).length;
+    return this.filteredVoyages.filter(
+      v => v.id && this.selectedVoyages.has(v.id) && this.canLibererSortieDouane(v)
+    ).length;
   }
 
   libererVoyage(voyage: VoyageDisplay) {
@@ -674,16 +693,17 @@ export class ForTransitairePage implements OnInit {
 
   libererTous() {
     const voyageIds = this.filteredVoyages
-      .filter(v => v.id && this.selectedVoyages.has(v.id) && !v.liberer)
+      .filter(v => v.id && this.selectedVoyages.has(v.id) && this.canLibererSortieDouane(v))
       .map(v => v.id!);
     if (voyageIds.length === 0) {
       this.toastService.warning('Aucun voyage à libérer dans la sélection');
       return;
     }
     this.isLiberingMultiple = true;
-    this.voyagesService.libererVoyages(voyageIds).subscribe({
+        this.voyagesService.libererVoyages(voyageIds).subscribe({
       next: (updatedVoyages) => {
         this.loadVoyages();
+        if (this.activeTab === 'voyages-en-cours') this.loadVoyagesEnCours();
         this.selectedVoyages.clear();
         this.isLiberingMultiple = false;
         this.toastService.success(`${updatedVoyages.length} voyage(s) libéré(s) avec succès`);
@@ -736,6 +756,7 @@ export class ForTransitairePage implements OnInit {
         this.voyagesService.declarerVoyagesMultiple(voyageIds, undefined, undefined).subscribe({
           next: (updatedVoyages) => {
             this.loadVoyages();
+            if (this.activeTab === 'voyages-en-cours') this.loadVoyagesEnCours();
             this.loadStats();
             this.selectedVoyages.clear();
             this.toastService.success(`${updatedVoyages.length} voyage(s) déclaré(s) avec succès`);

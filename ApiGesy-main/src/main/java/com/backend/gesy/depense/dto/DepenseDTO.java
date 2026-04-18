@@ -25,5 +25,8 @@ public class DepenseDTO {
     private Long compteId;
     /** Caisse pour déduire le montant (exclusif avec compteId). */
     private Long caisseId;
+
+    /** Id de la transaction de paiement associée (lecture seule, renseigné par le serveur). */
+    private Long transactionId;
 }
 

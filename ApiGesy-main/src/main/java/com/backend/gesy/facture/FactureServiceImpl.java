@@ -4,6 +4,10 @@ import com.backend.gesy.alerte.Alerte;
 import com.backend.gesy.alerte.AlerteService;
 import com.backend.gesy.client.Client;
 import com.backend.gesy.client.ClientRepository;
+import com.backend.gesy.paiement.Paiement;
+import com.backend.gesy.paiement.PaiementRepository;
+import com.backend.gesy.transaction.Transaction;
+import com.backend.gesy.transaction.TransactionRepository;
 import com.backend.gesy.facture.dto.CreanceDTO;
 import com.backend.gesy.facture.dto.FactureDTO;
 import com.backend.gesy.facture.dto.FactureMapper;
@@ -15,6 +19,7 @@ import com.backend.gesy.produit.Produit;
 import com.backend.gesy.produit.ProduitRepository;
 import com.backend.gesy.transaction.TransactionService;
 import com.backend.gesy.transaction.dto.TransactionDTO;
+import com.backend.gesy.voyage.Voyage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -34,9 +39,14 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional
 public class FactureServiceImpl implements FactureService {
+
+    /** Marqueur en {@link Facture#getNotes()} pour idempotence de la facture auto cession / douane. */
+    public static final String AUTO_FACTURE_CESSION_DROIT_DOUANE_MARKER = "AUTO_FACTURE_CESSION_DROIT_DOUANE";
     private final FactureRepository factureRepository;
     private final ClientRepository clientRepository;
     private final ProduitRepository produitRepository;
+    private final PaiementRepository paiementRepository;
+    private final TransactionRepository transactionRepository;
     private final LigneFactureRepository ligneFactureRepository;
     private final FactureMapper factureMapper;
     private final TransactionService transactionService;
@@ -347,7 +357,34 @@ public class FactureServiceImpl implements FactureService {
 
     @Override
     public void deleteById(Long id) {
-        factureRepository.deleteById(id);
+        Facture facture = factureRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Facture non trouvée."));
+
+        List<Paiement> paiements = paiementRepository.findByFacture(facture);
+        if (paiements != null && !paiements.isEmpty()) {
+            throw new IllegalStateException(
+                    "Impossible de supprimer : " + paiements.size()
+                            + " paiement(s) sont liés à cette facture. Supprimez ou modifiez d'abord ces paiements (menu Paiements).");
+        }
+
+        List<Transaction> transactions = transactionRepository.findByFacture(facture);
+        if (transactions != null && !transactions.isEmpty()) {
+            throw new IllegalStateException(
+                    "Impossible de supprimer : " + transactions.size()
+                            + " transaction(s) comptable(s) sont liées à cette facture. Supprimez d'abord ces écritures (ou dissociez-les).");
+        }
+
+        BigDecimal paye = facture.getMontantPaye() != null ? facture.getMontantPaye() : BigDecimal.ZERO;
+        if (paye.compareTo(BigDecimal.ZERO) > 0) {
+            throw new IllegalStateException(
+                    "Impossible de supprimer : la facture a un montant payé enregistré. Vérifiez les paiements et transactions associés.");
+        }
+
+        List<LigneFacture> lignes = ligneFactureRepository.findByFactureId(id);
+        if (lignes != null && !lignes.isEmpty()) {
+            ligneFactureRepository.deleteAll(lignes);
+        }
+        factureRepository.delete(facture);
     }
 
     @Override
@@ -499,6 +536,57 @@ public class FactureServiceImpl implements FactureService {
         
         // Générer le PDF
         return pdfFactureService.generateFacturesPdf(client, factures);
+    }
+
+    @Override
+    public void createFactureAutoCessionDroitDouaneIfAbsent(Voyage voyage, Client client, BigDecimal montantTTC,
+            BigDecimal tarifParLitre, double litres) {
+        if (voyage == null || voyage.getId() == null || client == null || client.getId() == null) {
+            return;
+        }
+        if (montantTTC == null || montantTTC.compareTo(BigDecimal.ZERO) <= 0) {
+            return;
+        }
+        Produit produit = voyage.getProduit() != null && voyage.getProduit().getId() != null
+                ? produitRepository.findById(voyage.getProduit().getId()).orElse(null)
+                : null;
+        if (produit == null) {
+            return;
+        }
+        for (Facture f : factureRepository.findByVoyageId(voyage.getId())) {
+            if (f.getNotes() != null && f.getNotes().contains(AUTO_FACTURE_CESSION_DROIT_DOUANE_MARKER)) {
+                return;
+            }
+        }
+
+        String numero = generateUniqueNumeroFacture();
+        Facture facture = new Facture();
+        facture.setNumero(numero);
+        facture.setClient(client);
+        facture.setDate(LocalDate.now());
+        facture.setVoyage(voyage);
+        facture.setDescription("Droit de douane (cession) — voyage " + voyage.getNumeroVoyage());
+        facture.setNotes(AUTO_FACTURE_CESSION_DROIT_DOUANE_MARKER
+                + " — Montant client = tarif convenu x litres (les frais douane société suivent le tarif pays).");
+        facture.setMontant(montantTTC);
+        facture.setMontantHT(montantTTC);
+        facture.setMontantTTC(montantTTC);
+        facture.setTauxTVA(BigDecimal.ZERO);
+        facture.setStatut(Facture.StatutFacture.EMISE);
+        facture.setMontantPaye(BigDecimal.ZERO);
+        Facture saved = factureRepository.save(facture);
+
+        alerteService.creerAlerte(Alerte.TypeAlerte.FACTURE_EMISE,
+                "Facture cession (douane) : " + numero + " - " + client.getNom() + " - " + montantTTC + " FCFA",
+                Alerte.PrioriteAlerte.MOYENNE, "Facture", saved.getId(), "/factures/" + saved.getId());
+
+        LigneFacture ligne = new LigneFacture();
+        ligne.setFacture(saved);
+        ligne.setProduit(produit);
+        ligne.setQuantite(litres);
+        ligne.setPrixUnitaire(tarifParLitre != null ? tarifParLitre : BigDecimal.ZERO);
+        ligne.setTotal(montantTTC);
+        ligneFactureRepository.save(ligne);
     }
 }
 

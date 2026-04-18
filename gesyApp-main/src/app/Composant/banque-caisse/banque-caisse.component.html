@@ -165,8 +165,16 @@
   @if (activeTab === 'caisse') {
   <div class="comptes-section">
     <div class="section-header section-header--stacked">
-      <h2>Caisses</h2>
-      <p class="section-subtitle">Soldes issus de l’entité Caisse (distincte des comptes bancaires)</p>
+      <div class="section-header-row">
+        <div>
+          <h2>Caisses</h2>
+          <p class="section-subtitle">Soldes issus de l’entité Caisse (distincte des comptes bancaires). Plusieurs caisses possibles (Caisse 1, Caisse 2, …).</p>
+        </div>
+        <button type="button" class="btn-add-banque" (click)="nouvelleCaisse()">
+          <span>+</span>
+          Nouvelle caisse
+        </button>
+      </div>
     </div>
     @if (isLoadingCaisses) {
       <div class="loading-state">
@@ -306,6 +314,97 @@
   </div>
 </div>
 
+@if (showAddCaisseModal) {
+  <div class="modal-overlay" (click)="closeAddCaisseModal()">
+    <div class="modal-content add-banque-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Nouvelle caisse</h2>
+        <button class="modal-close" (click)="closeAddCaisseModal()" aria-label="Fermer">×</button>
+      </div>
+      <div class="modal-body">
+        <form (ngSubmit)="saveCaisse()">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="caisse-nom">Nom de la caisse *</label>
+              <input
+                type="text"
+                id="caisse-nom"
+                [(ngModel)]="newCaisse.nom"
+                name="caisseNom"
+                required
+                placeholder="Ex: Caisse 1"
+                class="form-input"
+              />
+            </div>
+            <div class="form-group">
+              <label for="caisse-statut">Statut *</label>
+              <select
+                id="caisse-statut"
+                [(ngModel)]="newCaisse.statut"
+                name="caisseStatut"
+                required
+                class="form-select"
+              >
+                <option value="ACTIF">Actif</option>
+                <option value="FERME">Fermé</option>
+                <option value="SUSPENDU">Suspendu</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="caisse-solde">Solde initial (FCFA) *</label>
+              <input
+                type="number"
+                id="caisse-solde"
+                [(ngModel)]="newCaisse.solde"
+                name="caisseSolde"
+                required
+                min="0"
+                step="0.01"
+                class="form-input"
+              />
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="caisse-description">Description</label>
+            <textarea
+              id="caisse-description"
+              [(ngModel)]="newCaisse.description"
+              name="caisseDescription"
+              rows="2"
+              class="form-textarea"
+              placeholder="Optionnel"
+            ></textarea>
+          </div>
+          <div class="form-group">
+            <label for="caisse-responsables">Responsables (gestion de cette caisse)</label>
+            <select
+              id="caisse-responsables"
+              multiple
+              [(ngModel)]="newCaisse.responsableIds"
+              name="caisseResponsableIds"
+              class="form-select"
+              size="5"
+            >
+              @for (u of utilisateursPourResponsable; track u.id) {
+                <option [ngValue]="u.id">{{ u.nom }} @if (u.identifiant) { ({{ u.identifiant }}) }</option>
+              }
+            </select>
+            <p class="form-hint">Ctrl/Cmd pour plusieurs. Vide = pas de restriction (admin toujours autorisé).</p>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" (click)="closeAddCaisseModal()">Annuler</button>
+            <button type="submit" class="btn-submit" [disabled]="isLoading">
+              @if (isLoading) { Enregistrement… } @else { Créer la caisse }
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+}
+
 @if (showAddBanqueModal) {
   <div class="modal-overlay" (click)="closeAddBanqueModal()">
     <div class="modal-content add-banque-modal" (click)="$event.stopPropagation()">
@@ -416,6 +515,23 @@
               placeholder="Description du compte (optionnel)..."
               class="form-textarea"
             ></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="banque-responsables">Responsables (gestion du compte)</label>
+            <select
+              id="banque-responsables"
+              multiple
+              [(ngModel)]="newCompteBancaire.responsableIds"
+              name="responsableIdsBanque"
+              class="form-select"
+              size="5"
+            >
+              @for (u of utilisateursPourResponsable; track u.id) {
+                <option [ngValue]="u.id">{{ u.nom }} @if (u.identifiant) { ({{ u.identifiant }}) }</option>
+              }
+            </select>
+            <p class="form-hint">Maintenir Ctrl (ou Cmd) pour sélectionner plusieurs utilisateurs. Vide = pas de restriction (comportement existant). Les administrateurs ont toujours accès.</p>
           </div>
 
           <div class="modal-actions">
@@ -920,6 +1036,14 @@
         <p class="no-account">Aucun compte associé</p>
         }
       </div>
+
+      @if (selectedTransaction.id) {
+        <app-justificatifs-financiers-panel
+          [ownerType]="justificatifOwnerTransaction"
+          [ownerId]="selectedTransaction.id"
+          [lazy]="false"
+        />
+      }
 
       <div class="modal-actions">
         <button type="button" class="btn-cancel" (click)="closeDetailModal()">

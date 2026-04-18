@@ -52,5 +52,9 @@ public class Depense {
     private LocalDateTime dateCreation = LocalDateTime.now();
 
     private String creePar; // Identifiant de l'utilisateur qui a créé la dépense
+
+    /** Transaction de débit créée à l'enregistrement (pour rétablir le solde à la suppression). */
+    @Column(name = "transaction_id")
+    private Long transactionId;
 }
 

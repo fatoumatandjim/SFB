@@ -176,7 +176,13 @@
                         🗑️
                       </button>
                     } @else {
-                      <span class="action-hint" title="Géré dans le menu Paiements">-</span>
+                      <button
+                        type="button"
+                        class="action-btn"
+                        (click)="openJustificatifsPaiement(ligne)"
+                        title="Justificatifs financiers">
+                        📎
+                      </button>
                     }
                   </div>
                 </td>
@@ -354,6 +360,14 @@
           <label>Description</label>
           <textarea [(ngModel)]="depenseForm.description" placeholder="Description optionnelle..." rows="3"></textarea>
         </div>
+        @if (depenseForm.id) {
+          <app-justificatifs-financiers-panel
+            [ownerType]="justificatifOwnerDepense"
+            [ownerId]="depenseForm.id"
+            [lazy]="false"
+            title="Justificatifs (factures, reçus…)"
+          />
+        }
       </div>
       <div class="modal-footer">
         <button class="btn-secondary" (click)="closeDepenseModal()">Annuler</button>
@@ -427,6 +441,27 @@
       <div class="modal-footer">
         <button class="btn-secondary" (click)="cancelDelete()">Annuler</button>
         <button class="btn-danger" (click)="executeDelete()">Supprimer</button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (showJustificatifPaiementModal && justificatifPaiementId != null) {
+  <div class="modal-overlay" (click)="closeJustificatifPaiementModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Justificatifs — paiement</h2>
+        <button type="button" class="close-btn" (click)="closeJustificatifPaiementModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <app-justificatifs-financiers-panel
+          [ownerType]="justificatifOwnerPaiement"
+          [ownerId]="justificatifPaiementId"
+          [lazy]="false"
+        />
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" (click)="closeJustificatifPaiementModal()">Fermer</button>
       </div>
     </div>
   </div>

@@ -1,8 +1,8 @@
 <div class="transitaire-container">
   <div class="transitaire-header">
     <div class="header-info">
-      <h1>Détail Transitaire</h1>
-      <p>Voyages assignés à {{ transitaireInfo?.nom || '...' }}</p>
+      <h1>Interface Transitaire</h1>
+      <p>Gestion de vos voyages assignés</p>
     </div>
     <div class="header-actions">
       @if (transitaireInfo) {
@@ -11,13 +11,12 @@
         <span class="transitaire-id">ID: {{ transitaireInfo.identifiant }}</span>
       </div>
       }
-      <button class="btn-back" (click)="back()" type="button">
+      <button type="button" class="btn-back" (click)="back()">
         <ion-icon name="arrow-back-outline"></ion-icon>
         <span>Retour à la liste</span>
       </button>
     </div>
   </div>
-
   <!-- Statistiques -->
   <div class="stats-section">
     <div class="stat-card">
@@ -54,27 +53,38 @@
     <div class="tabs">
       <button
         class="tab-btn"
-        [class.active]="activeTab === 'en-cours'"
-        (click)="setTab('en-cours')">
-        <span>📋</span>
-        À déclarer
-      </button>
-      <button
-        class="tab-btn"
         [class.active]="activeTab === 'voyages-en-cours'"
-        (click)="setTab('voyages-en-cours')">
+        (click)="setTab('voyages-en-cours')"
+        title="Tous les statuts sauf Décharger (En route, Chargement, Chargé, Départ, Arriver à la frontière, Douane, Réceptionné, Attribué, Partiellement déchargé)">
         <span>🚛</span>
         Voyages en cours
       </button>
       <button
         class="tab-btn"
+        [class.active]="activeTab === 'en-cours'"
+        (click)="setTab('en-cours')"
+        title="Tous les voyages non déclarés (tous statuts, peu importe déchargé ou non)">
+        <span>📋</span>
+        À déclarer
+      </button>
+      <button
+        class="tab-btn"
         [class.active]="activeTab === 'archives'"
-        (click)="setTab('archives')">
+        (click)="setTab('archives')"
+        title="Uniquement statut Décharger">
         <span>📦</span>
         Archives
       </button>
+      <button
+        class="tab-btn"
+        [class.active]="activeTab === 'axes'"
+        (click)="setTab('axes')">
+        <span>🧭</span>
+        Axes / Frais
+      </button>
     </div>
 
+    @if (activeTab !== 'axes') {
     <div class="actions-bar">
       <div class="search-container">
         <input
@@ -97,6 +107,12 @@
             Tout sélectionner
           </button>
           @if (getSelectedCount() > 0) {
+            <button
+              class="btn-liberer-tous"
+              (click)="libererTous()"
+              [disabled]="isLiberingMultiple || getSelectedLibererCount() === 0">
+              {{ isLiberingMultiple ? 'Libération en cours...' : `Libérer la sélection (${getSelectedLibererCount()})` }}
+            </button>
             @if (voyagesADeclarer.length > 0) {
               <button
                 class="btn-declarer-tous"
@@ -105,12 +121,6 @@
                 {{ isDeclaringMultiple ? 'Déclaration en cours...' : `Déclarer tout (${getSelectedCount()})` }}
               </button>
             }
-            <button
-              class="btn-liberer-tous"
-              (click)="libererTous()"
-              [disabled]="isLiberingMultiple || getSelectedLibererCount() === 0">
-              {{ isLiberingMultiple ? 'Libération en cours...' : `Libérer la sélection (${getSelectedLibererCount()})` }}
-            </button>
           }
         </div>
       }
@@ -167,10 +177,26 @@
         </div>
       }
     </div>
+    }
   </div>
 
+  @if (activeTab !== 'axes') {
   <div class="table-container">
-    <table class="voyages-table">
+    <table class="voyages-table" [class.table-voyages-en-cours]="activeTab === 'voyages-en-cours'">
+      @if (activeTab === 'voyages-en-cours') {
+        <colgroup>
+          <col class="col-v-ec-numero">
+          <col class="col-v-ec-camion">
+          <col class="col-v-ec-chauffeur">
+          <col class="col-v-ec-client">
+          <col class="col-v-ec-statut">
+          <col class="col-v-ec-produit">
+          <col class="col-v-ec-quantite">
+          <col class="col-v-ec-depart">
+          <col class="col-v-ec-dest">
+          <col class="col-actions">
+        </colgroup>
+      }
       <thead>
         <tr>
           @if (activeTab === 'en-cours') {
@@ -185,27 +211,28 @@
           }
           <th>Numéro Voyage</th>
           <th>Camion</th>
+          <th>Chauffeur</th>
           <th>Client</th>
           <th>Statut</th>
           <th>Type Produit</th>
           <th>Quantité</th>
           <th>Départ</th>
-          <th>Axe</th>
-          <th>Actions</th>
+          <th>Destination</th>
+          <th class="col-actions">Actions</th>
         </tr>
       </thead>
       <tbody>
         @if (activeTab === 'voyages-en-cours') {
           @if (isLoadingEnCours) {
             <tr>
-              <td colspan="9" class="empty-state">
+              <td colspan="10" class="empty-state">
                 <div class="empty-message">Chargement...</div>
               </td>
             </tr>
           } @else if (voyagesEnCours.length === 0) {
             <tr>
-              <td colspan="9" class="empty-state">
-                <div class="empty-message">Aucun voyage en cours trouvé</div>
+              <td colspan="10" class="empty-state">
+                <div class="empty-message">Aucun voyage en cours (non déchargé) trouvé</div>
               </td>
             </tr>
           } @else {
@@ -220,6 +247,7 @@
                     </div>
                   </div>
                 </td>
+                <td><div class="chauffeur-info">{{ getChauffeurDisplay(voyage) }}</div></td>
                 <td>
                   @if (voyage.clientNom) {
                     <div class="client-info">
@@ -236,16 +264,42 @@
                   }
                 </td>
                 <td>
-                  <span class="status-badge" [class]="getStatusClass(voyage.statut || '', voyage)">
-                    {{ getStatusLabel(voyage.statut, voyage) }}
-                  </span>
+                  @if (canDeclarer(voyage)) {
+                    <button
+                      type="button"
+                      class="status-cell status-cell--button"
+                      (click)="onStatutClick(voyage)"
+                      [title]="'Cliquer pour déclarer le voyage ' + (voyage.numeroVoyage || '')">
+                      <span class="status-badge status-badge--declare-cta">Déclarer</span>
+                    </button>
+                  } @else {
+                    <div class="status-cell">
+                      <span class="status-badge" [class]="getStatusClass(voyage.statut || '', voyage)">
+                        {{ getStatusLabel(voyage.statut, voyage) }}
+                      </span>
+                    </div>
+                  }
                 </td>
                 <td><div class="produit-type">{{ voyage.typeProduit || 'Essence' }}</div></td>
                 <td><div class="quantite">{{ voyage.quantite }} L</div></td>
                 <td><div class="date-value">{{ formatDate(voyage.dateDepart) }}</div></td>
-                <td><div class="destination-value">{{ getAxeName(voyage) }}</div></td>
-                <td>
-                  <button class="action-btn" (click)="viewVoyage(voyage)" title="Voir le détail">Voir</button>
+                <td><div class="destination-value">{{ voyage.destination }}</div></td>
+                <td class="col-actions">
+                  <div class="action-cell-inner">
+                    <div class="action-buttons">
+                      <button type="button" class="action-btn btn-view" (click)="viewVoyage(voyage)" title="Voir le détail du voyage">
+                        <span>👁️</span>
+                      </button>
+                      @if (voyage.liberer) {
+                        <span class="status-badge badge-libere" title="Voyage libéré">Liberé</span>
+                      } @else if (canLibererSortieDouane(voyage)) {
+                        <button type="button" class="btn-action-sm btn-liberer" (click)="libererVoyage(voyage)" title="Libérer le voyage">Libérer</button>
+                      }
+                      @if (!isDeclared(voyage) && !voyage.passager && voyage.statut === 'DOUANE') {
+                        <button type="button" class="btn-action-sm btn-passer" (click)="passerNonDeclarer(voyage)" title="Passer non déclaré">Passer</button>
+                      }
+                    </div>
+                  </div>
                 </td>
               </tr>
             }
@@ -253,110 +307,110 @@
         } @else {
           @if (isLoading) {
             <tr>
-              <td [attr.colspan]="activeTab === 'en-cours' ? 10 : 9" class="empty-state">
+              <td [attr.colspan]="activeTab === 'en-cours' ? 11 : 10" class="empty-state">
                 <div class="empty-message">Chargement...</div>
               </td>
             </tr>
-          } @else if (filteredVoyages.length === 0) {
+          } @else if (displayListEnCoursOuArchives.length === 0) {
             <tr>
-              <td [attr.colspan]="activeTab === 'en-cours' ? 10 : 9" class="empty-state">
+              <td [attr.colspan]="activeTab === 'en-cours' ? 11 : 10" class="empty-state">
                 <div class="empty-message">
                   Aucun voyage {{ activeTab === 'en-cours' ? 'à déclarer' : 'archivé' }} trouvé
                 </div>
               </td>
             </tr>
           } @else {
-            @for (voyage of filteredVoyages; track voyage.id) {
-            <tr>
-              @if (activeTab === 'en-cours') {
-                <td class="checkbox-column">
-                  @if (voyage.statut === 'DOUANE') {
-                    <input
-                      type="checkbox"
-                      [checked]="isVoyageSelected(voyage.id)"
-                      (change)="toggleVoyageSelection(voyage.id)"
-                    />
+            @for (voyage of displayListEnCoursOuArchives; track voyage.id) {
+              <tr>
+                @if (activeTab === 'en-cours') {
+                  <td class="checkbox-column">
+                    @if (!isDeclared(voyage)) {
+                      <input
+                        type="checkbox"
+                        [checked]="isVoyageSelected(voyage.id)"
+                        (change)="toggleVoyageSelection(voyage.id)"
+                      />
+                    }
+                  </td>
+                }
+                <td>
+                  <div class="voyage-numero">{{ voyage.numeroVoyage }}</div>
+                </td>
+                <td>
+                  <div class="camion-info">
+                    <div class="truck-icon">🚛</div>
+                    <div class="camion-details">
+                      <div class="camion-id">{{ voyage.camionImmatriculation || 'N/A' }}</div>
+                    </div>
+                  </div>
+                </td>
+                <td><div class="chauffeur-info">{{ getChauffeurDisplay(voyage) }}</div></td>
+                <td>
+                  @if (voyage.clientNom) {
+                    <div class="client-info">
+                      <div class="client-avatar" [class]="'avatar-' + getClientColor(voyage.clientNom)">
+                        {{ getClientInitiales(voyage.clientNom) }}
+                      </div>
+                      <div class="client-details">
+                        <div class="client-nom">{{ voyage.clientNom }}</div>
+                        <div class="client-email">{{ voyage.clientEmail || '' }}</div>
+                      </div>
+                    </div>
+                  } @else {
+                    <div class="no-client">-</div>
                   }
                 </td>
-              }
-              <td>
-                <div class="voyage-numero">{{ voyage.numeroVoyage }}</div>
-              </td>
-              <td>
-                <div class="camion-info">
-                  <div class="truck-icon">🚛</div>
-                  <div class="camion-details">
-                    <div class="camion-id">{{ voyage.camionImmatriculation || 'N/A' }}</div>
-                  </div>
-                </div>
-              </td>
-              <td>
-                @if (voyage.clientNom) {
-                  <div class="client-info">
-                    <div class="client-avatar" [class]="'avatar-' + getClientColor(voyage.clientNom)">
-                      {{ getClientInitiales(voyage.clientNom) }}
-                    </div>
-                    <div class="client-details">
-                      <div class="client-nom">{{ voyage.clientNom }}</div>
-                      <div class="client-email">{{ voyage.clientEmail || '' }}</div>
-                    </div>
-                  </div>
-                } @else {
-                  <div class="no-client">-</div>
-                }
-              </td>
-              <td>
-                <div class="status-cell">
-                  @if (activeTab === 'en-cours' && !voyage.declarer && voyage.statut === 'DOUANE') {
+                <td>
+                  @if (canDeclarer(voyage)) {
                     <button
-                      class="btn-declarer"
-                      (click)="declarerVoyage(voyage)"
-                      title="Déclarer le voyage">
-                      Déclarer
+                      type="button"
+                      class="status-cell status-cell--button"
+                      (click)="onStatutClick(voyage)"
+                      [title]="'Cliquer pour déclarer le voyage ' + (voyage.numeroVoyage || '')">
+                      <span class="status-badge status-badge--declare-cta">Déclarer</span>
                     </button>
                   } @else {
-                    <span class="status-badge" [class]="getStatusClass(voyage.statut || '', voyage)">
-                      {{ getStatusLabel(voyage.statut, voyage) }}
-                    </span>
+                    <div class="status-cell">
+                      <span class="status-badge" [class]="getStatusClass(voyage.statut || '', voyage)">
+                        {{ getStatusLabel(voyage.statut, voyage) }}
+                      </span>
+                    </div>
                   }
-                </div>
-              </td>
-              <td>
-                <div class="produit-type">{{ voyage.typeProduit || 'Essence' }}</div>
-              </td>
-              <td>
-                <div class="quantite">{{ voyage.quantite }} L</div>
-              </td>
-              <td>
-                <div class="date-value">{{ formatDate(voyage.dateDepart) }}</div>
-              </td>
-              <td>
-                <div class="destination-value">{{ getAxeName(voyage) }}</div>
-              </td>
-              <td>
-                <div class="action-buttons">
-                  @if (activeTab === 'en-cours') {
-                    @if (voyage.liberer) {
-                      <span class="status-badge badge-libere" title="Voyage libéré">Liberé</span>
-                    } @else if (voyage.declarer || voyage.passager === 'passer_non_declarer') {
-                      <button
-                        class="action-btn liberer-btn"
-                        (click)="libererVoyage(voyage)"
-                        title="Libérer le voyage">
-                        <span>Libérer</span>
+                </td>
+                <td>
+                  <div class="produit-type">{{ voyage.typeProduit || 'Essence' }}</div>
+                </td>
+                <td>
+                  <div class="quantite">{{ voyage.quantite }} L</div>
+                </td>
+                <td>
+                  <div class="date-value">{{ formatDate(voyage.dateDepart) }}</div>
+                </td>
+                <td>
+                  <div class="destination-value">{{ voyage.destination }}</div>
+                </td>
+                <td class="col-actions">
+                  <div class="action-cell-inner">
+                    <div class="action-buttons">
+                      <button type="button" class="action-btn btn-view" (click)="viewVoyage(voyage)" title="Voir le détail du voyage">
+                        <span>👁️</span>
                       </button>
-                    }
-                    @if (!voyage.declarer && !voyage.passager && voyage.statut === 'DOUANE') {
-                      <button class="action-btn passer-btn" (click)="passerNonDeclarer(voyage)" title="Passer non déclaré">
-                        <span>Passer non déclaré</span>
-                      </button>
-                    }
-                  }
-                </div>
-              </td>
-            </tr>
+                      @if (activeTab === 'en-cours') {
+                        @if (voyage.liberer) {
+                          <span class="status-badge badge-libere" title="Voyage libéré">Liberé</span>
+                        } @else if (canLibererSortieDouane(voyage)) {
+                          <button type="button" class="btn-action-sm btn-liberer" (click)="libererVoyage(voyage)" title="Libérer le voyage">Libérer</button>
+                        }
+                        @if (!isDeclared(voyage) && !voyage.passager && voyage.statut === 'DOUANE') {
+                          <button type="button" class="btn-action-sm btn-passer" (click)="passerNonDeclarer(voyage)" title="Passer non déclaré">Passer</button>
+                        }
+                      }
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            }
           }
-        }
         }
       </tbody>
     </table>
@@ -401,4 +455,72 @@
       </div>
     }
   </div>
+  }
+
+  @if (activeTab === 'axes') {
+  <div class="axes-management-section">
+    <app-axes></app-axes>
+  </div>
+  }
 </div>
+
+@if (showDetailModal && selectedVoyage) {
+<div class="modal-overlay" (click)="closeDetailModal()" role="dialog" aria-modal="true" aria-labelledby="voyage-detail-title">
+  <div class="modal-content voyage-detail-modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2 id="voyage-detail-title">Détails du voyage {{ selectedVoyage.numeroVoyage }}</h2>
+      <button type="button" class="modal-close" (click)="closeDetailModal()" aria-label="Fermer">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="detail-content voyage-details">
+        <div class="detail-section">
+          <h3>Informations</h3>
+          <div class="detail-grid">
+            <div class="detail-item">
+              <span class="detail-label">Numéro:</span>
+              <span class="detail-value">{{ selectedVoyage.numeroVoyage }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Statut:</span>
+              <span class="status-badge" [class]="getStatusClass(selectedVoyage.statut || '', selectedVoyage)">
+                {{ getStatusLabel(selectedVoyage.statut, selectedVoyage) }}
+              </span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Camion:</span>
+              <span class="detail-value">{{ selectedVoyage.camionImmatriculation || 'N/A' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Chauffeur:</span>
+              <span class="detail-value">{{ getChauffeurDisplay(selectedVoyage) }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Client:</span>
+              <span class="detail-value">{{ selectedVoyage.clientNom || '–' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Produit:</span>
+              <span class="detail-value">{{ selectedVoyage.typeProduit || 'Essence' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Quantité:</span>
+              <span class="detail-value">{{ selectedVoyage.quantite }} L</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Départ:</span>
+              <span class="detail-value">{{ formatDate(selectedVoyage.dateDepart) }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Destination:</span>
+              <span class="detail-value">{{ selectedVoyage.destination || '–' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn-close-modal" (click)="closeDetailModal()">Fermer</button>
+    </div>
+  </div>
+</div>
+}

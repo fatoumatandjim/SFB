@@ -81,6 +81,9 @@ public interface VoyageService {
         /** Voyages en cours du transitaire (non déchargés), paginés, par identifiant */
         VoyagePageDto findVoyagesEnCoursByTransitaireIdentifiant(String identifiant, int page, int size);
 
+        /** Voyages en cours du transitaire (non déchargés), paginés, par id (ex. vue admin) */
+        VoyagePageDto findVoyagesEnCoursByTransitaireId(Long transitaireId, int page, int size);
+
         VoyagePageDto findArchivedVoyagesByTransitaireIdentifiantAndDate(String identifiant, LocalDate date, int page,
                         int size);
 

@@ -6,6 +6,10 @@ import com.backend.gesy.facture.dto.FacturePageDto;
 import com.backend.gesy.facture.dto.FactureStatsDTO;
 import com.backend.gesy.facture.dto.RecouvrementStatsDTO;
 
+import com.backend.gesy.client.Client;
+import com.backend.gesy.voyage.Voyage;
+
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -26,5 +30,13 @@ public interface FactureService {
     RecouvrementStatsDTO getRecouvrementStats();
     
     byte[] generateFacturesPdf(Long clientId);
+
+    /**
+     * Facture client (Facturation) : montant = tarif convenu au litre × litres ; utilisé uniquement pour les cessions,
+     * en complément des frais douane / T1 calculés comme hors cession. Sans effet si une facture avec le marqueur
+     * dédié existe déjà pour ce voyage.
+     */
+    void createFactureAutoCessionDroitDouaneIfAbsent(Voyage voyage, Client client, BigDecimal montantTTC,
+            BigDecimal tarifParLitre, double litres);
 }
 

@@ -37,6 +37,8 @@ import {
 } from '../../services/voyage-display.utils';
 import { guardAdmin } from '../../utils/admin-action.util';
 import { getHttpErrorMessage } from '../../utils/http-error.util';
+import { JustificatifsFinanciersPanelComponent } from '../justificatifs-financiers-panel/justificatifs-financiers-panel.component';
+import { JUSTIFICATIF_OWNER_TRANSACTION } from '../../services/justificatifs-financiers.service';
 
 /** Valeur du champ passager pour les voyages à la douane (non déclarés) */
 const PASSAGER_NON_DECLARER = 'passer_non_declarer';
@@ -62,9 +64,11 @@ interface VoyageDisplay extends Voyage {
   templateUrl: './suivi-transport.component.html',
   styleUrls: ['./suivi-transport.component.scss'],
   standalone: true,
-  imports: [CommonModule, FormsModule, EditPrixTransportModalComponent]
+  imports: [CommonModule, FormsModule, EditPrixTransportModalComponent, JustificatifsFinanciersPanelComponent]
 })
 export class SuiviTransportComponent implements OnInit {
+  readonly justificatifOwnerTransaction = JUSTIFICATIF_OWNER_TRANSACTION;
+
   activeTab: 'en-cours' | 'archives' = 'en-cours';
   /** Filtre par statut (liste déroulante) */
   filterStatut: string = '';
@@ -2766,6 +2770,8 @@ export class SuiviTransportComponent implements OnInit {
   canDeclarerVoyage(voyage: Voyage): boolean {
     if (!this.canDeclareOrLiberate()) return false;
     if (voyage.declarer) return false;
+    // Libéré sans déclaration (données historiques ou correction) : autoriser le complément de déclaration
+    if (voyage.liberer === true) return true;
     const isDouane = voyage.statut === 'DOUANE';
     const isPasseNonDeclarer = voyage.passager === PASSAGER_NON_DECLARER;
     if (!isDouane && !isPasseNonDeclarer) return false;
@@ -2796,6 +2802,8 @@ export class SuiviTransportComponent implements OnInit {
     if (!this.canDeclareOrLiberate()) return actions;
     if (voyage.declarer && !voyage.liberer) {
       actions.push({ key: 'liberer', label: 'Libérer', fn: () => this.libererVoyage(voyage.id!) });
+    } else if (!voyage.declarer && voyage.liberer && this.canDeclarerVoyage(voyage)) {
+      actions.push({ key: 'declarer', label: 'Déclarer', fn: () => this.declarerVoyage(voyage.id!) });
     } else if (voyage.passager === PASSAGER_NON_DECLARER) {
       if (this.canDeclarerVoyage(voyage)) {
         actions.push({ key: 'declarer', label: 'Déclarer', fn: () => this.declarerVoyage(voyage.id!) });

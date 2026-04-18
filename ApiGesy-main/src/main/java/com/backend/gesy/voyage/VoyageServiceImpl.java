@@ -183,8 +183,8 @@ public class VoyageServiceImpl implements VoyageService {
     public List<VoyageDTO> findVoyagesNonDeclaresByTransitaireId(Long transitaireId) {
         Transitaire transitaire = transitaireRepository.findById(transitaireId)
                 .orElseThrow(() -> new RuntimeException("Transitaire non trouvé avec l'id: " + transitaireId));
-        // À déclarer : uniquement statut DOUANE (Arrivé à la douane) et non déclarés
-        return voyageRepository.findVoyagesADeclarerByTransitaire(transitaire)
+        // Onglet « À déclarer » : tous les voyages du transitaire encore non déclarés (tous statuts)
+        return voyageRepository.findVoyagesNonDeclaresByTransitaire(transitaire)
                 .stream()
                 .map(voyageMapper::toDTO)
                 .collect(Collectors.toList());
@@ -194,8 +194,7 @@ public class VoyageServiceImpl implements VoyageService {
     public List<VoyageDTO> findVoyagesNonDeclaresByTransitaireIdentifiant(String identifiant) {
         Transitaire transitaire = transitaireRepository.findByIdentifiant(identifiant)
                 .orElseThrow(() -> new RuntimeException("Transitaire non trouvé avec l'identifiant: " + identifiant));
-        // À déclarer : uniquement statut DOUANE (Arrivé à la douane) et non déclarés
-        return voyageRepository.findVoyagesADeclarerByTransitaire(transitaire)
+        return voyageRepository.findVoyagesNonDeclaresByTransitaire(transitaire)
                 .stream()
                 .map(voyageMapper::toDTO)
                 .collect(Collectors.toList());
@@ -405,12 +404,25 @@ public class VoyageServiceImpl implements VoyageService {
 
         Stock stock = stockOpt.get();
 
-        // Vérifier que le stock est suffisant
+        // Vérifier que le stock est suffisant (cession : quantités « cession » uniquement, sans passage par la citerne)
         Double quantiteVoyage = voyage.getQuantite() != null ? voyage.getQuantite() : camion.getCapacite();
-        if (stock.getQuantite() == null || stock.getQuantite() < quantiteVoyage) {
-            throw new RuntimeException("Stock insuffisant dans le dépôt " + depot.getNom() +
-                    ". Stock disponible: " + (stock.getQuantite() != null ? stock.getQuantite() : 0) +
-                    " L, Quantité requise: " + quantiteVoyage + " L");
+        if (Boolean.TRUE.equals(voyageDTO.getCession())) {
+            double qCess = stock.getQuantityCession() != null ? stock.getQuantityCession() : 0.0;
+            if (qCess + 0.001 < quantiteVoyage) {
+                throw new RuntimeException("Stock cession insuffisant dans le dépôt " + depot.getNom() +
+                        ". Quantité cession disponible: " + qCess +
+                        " L, Quantité requise: " + quantiteVoyage + " L");
+            }
+        } else {
+            if (stock.getQuantite() == null || stock.getQuantite() < quantiteVoyage) {
+                throw new RuntimeException("Stock insuffisant dans le dépôt " + depot.getNom() +
+                        ". Stock disponible: " + (stock.getQuantite() != null ? stock.getQuantite() : 0) +
+                        " L, Quantité requise: " + quantiteVoyage + " L");
+            }
+        }
+
+        if (Boolean.TRUE.equals(voyageDTO.getCession()) && voyageDTO.getDroitDouaneParLitre() != null) {
+            voyage.setDroitDouaneParLitre(voyageDTO.getDroitDouaneParLitre());
         }
 
         Voyage savedVoyage = voyageRepository.save(voyage);
@@ -576,6 +588,12 @@ public class VoyageServiceImpl implements VoyageService {
             voyage.setDepot(depot);
         } else {
             voyage.setDepot(existingVoyage.getDepot());
+        }
+
+        if (voyageDTO.getDroitDouaneParLitre() != null) {
+            voyage.setDroitDouaneParLitre(voyageDTO.getDroitDouaneParLitre());
+        } else {
+            voyage.setDroitDouaneParLitre(existingVoyage.getDroitDouaneParLitre());
         }
 
         Voyage updatedVoyage = voyageRepository.save(voyage);
@@ -870,39 +888,39 @@ public class VoyageServiceImpl implements VoyageService {
                     
                     if (clientVoyages.isEmpty()) {
                         throw new RuntimeException("Impossible de décharger un voyage sans clients attribués");
-                    }
-                    
-                    // Vérifier que tous les ClientVoyage sont LIVRER
-                    boolean tousClientsLivres = clientVoyages.stream()
-                            .allMatch(cv -> cv.getStatut() == ClientVoyage.StatutLivraison.LIVRER);
-                    
-                    // Calculer la somme des quantités attribuées aux clients livrés
-                    Double quantiteTotaleLivree = clientVoyages.stream()
-                            .filter(cv -> cv.getStatut() == ClientVoyage.StatutLivraison.LIVRER)
-                            .mapToDouble(cv -> cv.getQuantite() != null ? cv.getQuantite() : 0.0)
-                            .sum();
-                    Double quantiteVoyage = voyage.getQuantite() != null ? voyage.getQuantite() : 0.0;
-                    
-                    // Complètement déchargé si tous les clients sont livrés ET la quantité totale livrée = quantité du voyage
-                    boolean completementDecharge = tousClientsLivres &&
-                            Math.abs(quantiteTotaleLivree - quantiteVoyage) <= 0.01;
-                    
-                    System.out.println("-----------------------------------------------------------------");
-                    System.out.println("Vérification du déchargement: Tous clients livrés = " + tousClientsLivres +
-                            ", Quantité totale livrée = " + quantiteTotaleLivree +
-                            ", Quantité du voyage = " + quantiteVoyage +
-                            ", Complètement déchargé = " + completementDecharge);
-                    System.out.println("-----------------------------------------------------------------");
-                    if (completementDecharge) {
-                        voyage.setStatut(Voyage.StatutVoyage.DECHARGER);
-                        validerEtat(voyage, "DECHARGER");
                     } else {
-                        voyage.setStatut(Voyage.StatutVoyage.PARTIELLEMENT_DECHARGER);
-                    }
+                        // Vérifier que tous les ClientVoyage sont LIVRER
+                        boolean tousClientsLivres = clientVoyages.stream()
+                                .allMatch(cv -> cv.getStatut() == ClientVoyage.StatutLivraison.LIVRER);
 
-                    System.out.println("---------------------------------------------------%%%%%%%%");
-                    System.out.println("Statut final du voyage après vérification: " + voyage.getStatut());
-                    System.out.println("---------------------------------------------------%%%%%%%%");
+                        // Calculer la somme des quantités attribuées aux clients livrés
+                        Double quantiteTotaleLivree = clientVoyages.stream()
+                                .filter(cv -> cv.getStatut() == ClientVoyage.StatutLivraison.LIVRER)
+                                .mapToDouble(cv -> cv.getQuantite() != null ? cv.getQuantite() : 0.0)
+                                .sum();
+                        Double quantiteVoyage = voyage.getQuantite() != null ? voyage.getQuantite() : 0.0;
+
+                        // Complètement déchargé si tous les clients sont livrés ET la quantité totale livrée = quantité du voyage
+                        boolean completementDecharge = tousClientsLivres &&
+                                Math.abs(quantiteTotaleLivree - quantiteVoyage) <= 0.01;
+
+                        System.out.println("-----------------------------------------------------------------");
+                        System.out.println("Vérification du déchargement: Tous clients livrés = " + tousClientsLivres +
+                                ", Quantité totale livrée = " + quantiteTotaleLivree +
+                                ", Quantité du voyage = " + quantiteVoyage +
+                                ", Complètement déchargé = " + completementDecharge);
+                        System.out.println("-----------------------------------------------------------------");
+                        if (completementDecharge) {
+                            voyage.setStatut(Voyage.StatutVoyage.DECHARGER);
+                            validerEtat(voyage, "DECHARGER");
+                        } else {
+                            voyage.setStatut(Voyage.StatutVoyage.PARTIELLEMENT_DECHARGER);
+                        }
+
+                        System.out.println("---------------------------------------------------%%%%%%%%");
+                        System.out.println("Statut final du voyage après vérification: " + voyage.getStatut());
+                        System.out.println("---------------------------------------------------%%%%%%%%");
+                    }
                 }
             }
 
@@ -1732,9 +1750,14 @@ public class VoyageServiceImpl implements VoyageService {
         LocalDateTime now = LocalDateTime.now();
         // 1) Réinjecter en citerne les sorties liées aux livraisons (inverse de retirerDuStockCiterne)
         reverserRetraitsStockCiternePourSuppressionTestDechargement(voyage, now);
-        // 2) Ramener au dépôt la quantité du voyage (inverse de retirerDuDepotEtAjouterAuStockCiterne) — sans ceci le dépôt reste à X-Q dans « Gestion Stocks »
+        // 2) Ramener la quantité au dépôt : voyage classique via la citerne ; cession archivée après sortie douane
+        //    (retirerDuStockCiterne déjà exécuté) → réintégration directe en quantityCession, sans repasser par la citerne.
         if (voyage.getDepot() != null && voyage.getQuantite() != null && voyage.getQuantite() > 0) {
-            remettreStockCiterneVersDepot(voyage, voyage.getQuantite(), now);
+            if (voyage.isCession()) {
+                reintegrerQuantiteCessionAuDepotApresSuppressionVoyageDecharge(voyage, now);
+            } else {
+                remettreStockCiterneVersDepot(voyage, voyage.getQuantite(), now);
+            }
         }
         supprimerVoyageEtLiensMetier(voyage);
     }
@@ -1896,7 +1919,12 @@ public class VoyageServiceImpl implements VoyageService {
         }
         double quantiteARemettre = voyage.getQuantite() - quantiteLivree;
         if (quantiteARemettre > 0) {
-            remettreStockCiterneVersDepot(voyage, quantiteARemettre, LocalDateTime.now());
+            LocalDateTime now = LocalDateTime.now();
+            if (voyage.isCession()) {
+                remettreStockCiterneVersDepotCession(voyage, quantiteARemettre, now);
+            } else {
+                remettreStockCiterneVersDepot(voyage, quantiteARemettre, now);
+            }
         }
     }
 
@@ -2086,6 +2114,117 @@ public class VoyageServiceImpl implements VoyageService {
     }
 
     /**
+     * Même logique que {@link #remettreStockCiterneVersDepot} mais réintègre en {@link Stock#getQuantityCession()}
+     * (voyages cession : le carburant provenait du stock « cession » du dépôt).
+     */
+    private void remettreStockCiterneVersDepotCession(Voyage voyage, Double quantiteARemettre, LocalDateTime now) {
+        if (voyage.getDepot() == null || voyage.getProduit() == null) {
+            return;
+        }
+        if (quantiteARemettre == null || quantiteARemettre <= 0) {
+            return;
+        }
+
+        Stock stockCiterne = stockRepository.findByProduitIdAndCiterne(
+                voyage.getProduit().getId(),
+                true)
+                .orElseThrow(() -> new RuntimeException(
+                        "Stock Citerne non trouvé pour le produit avec l'id: " + voyage.getProduit().getId()));
+
+        Optional<Stock> stockDepotOpt = stockRepository.findByDepotIdAndProduitId(
+                voyage.getDepot().getId(),
+                voyage.getProduit().getId());
+
+        if (stockDepotOpt.isEmpty()) {
+            throw new RuntimeException("Stock non trouvé pour le produit " + voyage.getProduit().getNom() +
+                    " dans le dépôt " + voyage.getDepot().getNom());
+        }
+
+        remettreQuantiteDuCiterneVersDepotCession(stockCiterne, stockDepotOpt.get(), quantiteARemettre,
+                voyage.getNumeroVoyage(), voyage.getDepot(), now);
+    }
+
+    private void remettreQuantiteDuCiterneVersDepotCession(
+            Stock stockCiterne,
+            Stock stockDepot,
+            double quantiteARemettre,
+            String numeroVoyage,
+            Depot depot,
+            LocalDateTime now) {
+        if (quantiteARemettre <= 0) {
+            return;
+        }
+
+        Double quantiteCiterneActuelle = stockCiterne.getQuantite();
+        if (quantiteCiterneActuelle == null || quantiteCiterneActuelle < quantiteARemettre) {
+            throw new RuntimeException(
+                    "Quantité insuffisante dans le stock citerne pour annulation. Disponible: " + quantiteCiterneActuelle +
+                            ", à remettre: " + quantiteARemettre);
+        }
+
+        stockCiterne.setQuantite(quantiteCiterneActuelle - quantiteARemettre);
+        stockCiterne.setDateDerniereMiseAJour(now);
+        stockRepository.save(stockCiterne);
+
+        MouvementDTO mouvementSortieCiterneDTO = new MouvementDTO();
+        mouvementSortieCiterneDTO.setStockId(stockCiterne.getId());
+        mouvementSortieCiterneDTO.setTypeMouvement("SORTIE");
+        mouvementSortieCiterneDTO.setQuantite(quantiteARemettre);
+        mouvementSortieCiterneDTO.setUnite(stockCiterne.getUnite());
+        mouvementSortieCiterneDTO.setDescription("Annulation voyage " + numeroVoyage + " - Remise stock cession au dépôt");
+        mouvementService.save(mouvementSortieCiterneDTO);
+
+        double qCess = stockDepot.getQuantityCession() != null ? stockDepot.getQuantityCession() : 0.0;
+        stockDepot.setQuantityCession(qCess + quantiteARemettre);
+        stockDepot.setDateDerniereMiseAJour(now);
+        stockRepository.save(stockDepot);
+
+        Double capaciteUtilisee = depot.getCapaciteUtilisee() != null ? depot.getCapaciteUtilisee() : 0.0;
+        depot.setCapaciteUtilisee(capaciteUtilisee + quantiteARemettre);
+        depotRepository.save(depot);
+
+        MouvementDTO mouvementEntreeDepotDTO = new MouvementDTO();
+        mouvementEntreeDepotDTO.setStockId(stockDepot.getId());
+        mouvementEntreeDepotDTO.setTypeMouvement("ENTREE");
+        mouvementEntreeDepotDTO.setQuantite(quantiteARemettre);
+        mouvementEntreeDepotDTO.setUnite(stockDepot.getUnite());
+        mouvementEntreeDepotDTO.setDescription("Remise stock cession au dépôt " + depot.getNom() + " - Annulation voyage " + numeroVoyage);
+        mouvementService.save(mouvementEntreeDepotDTO);
+    }
+
+    /**
+     * Suppression admin d'un voyage cession déjà archivé : le volume a quitté la citerne à la sortie douane.
+     * Réintègre la quantité dans {@link Stock#getQuantityCession()} du dépôt (pas de mouvement citerne).
+     */
+    private void reintegrerQuantiteCessionAuDepotApresSuppressionVoyageDecharge(Voyage voyage, LocalDateTime now) {
+        if (voyage.getDepot() == null || voyage.getProduit() == null
+                || voyage.getQuantite() == null || voyage.getQuantite() <= 0) {
+            return;
+        }
+        double q = voyage.getQuantite();
+        Stock stockDepot = stockRepository
+                .findByDepotIdAndProduitId(voyage.getDepot().getId(), voyage.getProduit().getId())
+                .orElseThrow(() -> new RuntimeException("Stock dépôt introuvable pour réintégration cession."));
+        double qCess = stockDepot.getQuantityCession() != null ? stockDepot.getQuantityCession() : 0.0;
+        stockDepot.setQuantityCession(qCess + q);
+        stockDepot.setDateDerniereMiseAJour(now);
+        stockRepository.save(stockDepot);
+
+        Depot depot = voyage.getDepot();
+        Double capaciteUtilisee = depot.getCapaciteUtilisee() != null ? depot.getCapaciteUtilisee() : 0.0;
+        depot.setCapaciteUtilisee(capaciteUtilisee + q);
+        depotRepository.save(depot);
+
+        MouvementDTO mouvementEntreeDTO = new MouvementDTO();
+        mouvementEntreeDTO.setStockId(stockDepot.getId());
+        mouvementEntreeDTO.setTypeMouvement("ENTREE");
+        mouvementEntreeDTO.setQuantite(q);
+        mouvementEntreeDTO.setUnite(stockDepot.getUnite());
+        mouvementEntreeDTO.setDescription("Réintégration stock cession (suppression voyage archivé " + voyage.getNumeroVoyage() + ")");
+        mouvementService.save(mouvementEntreeDTO);
+    }
+
+    /**
      * Génère un numéro de voyage unique au format VOY-YYYY-NNNN
      */
     private String generateUniqueNumeroVoyage() {
@@ -2163,23 +2302,26 @@ public class VoyageServiceImpl implements VoyageService {
                 // ET que tous les ClientVoyage sont "Livrer"
                 boolean dechargerValide = false;
                 boolean tousClientsLivresDecharger = false;
-                
+                List<ClientVoyage> clientVoyagesPourCamion = Collections.emptyList();
+
                 if (voyage != null && voyage.getId() != null) {
                     List<EtatVoyage> etats = etatVoyageRepository.findByVoyageId(voyage.getId());
                     dechargerValide = etats.stream()
                             .anyMatch(e -> "Décharger".equals(e.getEtat()) && Boolean.TRUE.equals(e.getValider()));
-                    
-                    // Vérifier que tous les ClientVoyage sont "Livrer"
-                    List<ClientVoyage> clientVoyages = clientVoyageRepository.findByVoyageId(voyage.getId());
-                    if (!clientVoyages.isEmpty()) {
-                        tousClientsLivresDecharger = clientVoyages.stream()
+
+                    clientVoyagesPourCamion = clientVoyageRepository.findByVoyageId(voyage.getId());
+                    if (!clientVoyagesPourCamion.isEmpty()) {
+                        tousClientsLivresDecharger = clientVoyagesPourCamion.stream()
                                 .allMatch(cv -> cv.getStatut() == ClientVoyage.StatutLivraison.LIVRER);
                     }
                 }
 
-                // Le camion devient disponible seulement si l'état "Décharger" est validé
-                // ET que tous les ClientVoyage sont "Livrer"
-                if (dechargerValide && tousClientsLivresDecharger &&
+                // Camion disponible : décharge validée et (cession sortie douane → DECHARGER sans livraisons internes,
+                // ou bien tous les clients livrés).
+                boolean cessionTerminee = voyage != null && Boolean.TRUE.equals(voyage.isCession());
+                boolean peutRendreDisponible = dechargerValide && (cessionTerminee
+                        || (!clientVoyagesPourCamion.isEmpty() && tousClientsLivresDecharger));
+                if (peutRendreDisponible &&
                         camion.getStatut() != Camion.StatutCamion.EN_MAINTENANCE &&
                         camion.getStatut() != Camion.StatutCamion.HORS_SERVICE) {
                     camion.setStatut(Camion.StatutCamion.DISPONIBLE);
@@ -2426,6 +2568,11 @@ public class VoyageServiceImpl implements VoyageService {
             return;
         }
 
+        if (voyage.isCession()) {
+            retirerQuantiteCessionDuDepotVersCiterne(voyage, now);
+            return;
+        }
+
         // Retirer du stock du dépôt
         Optional<Stock> stockDepotOpt = stockRepository.findByDepotIdAndProduitId(
                 voyage.getDepot().getId(),
@@ -2491,6 +2638,68 @@ public class VoyageServiceImpl implements VoyageService {
         mouvementSortieDTO
                 .setDescription("Sortie du dépôt " + depot.getNom() + " pour le voyage " + voyage.getNumeroVoyage());
         mouvementService.save(mouvementSortieDTO);
+    }
+
+    /**
+     * Cession : retire la quantité du stock « cession » du dépôt et l’ajoute au stock citerne (même enchaînement métier
+     * qu’un voyage classique après le chargement).
+     */
+    private void retirerQuantiteCessionDuDepotVersCiterne(Voyage voyage, LocalDateTime now) {
+        Optional<Stock> stockDepotOpt = stockRepository.findByDepotIdAndProduitId(
+                voyage.getDepot().getId(),
+                voyage.getProduit().getId());
+        if (stockDepotOpt.isEmpty()) {
+            throw new RuntimeException("Stock non trouvé pour le produit " + voyage.getProduit().getNom() +
+                    " dans le dépôt " + voyage.getDepot().getNom());
+        }
+        Stock stockDepot = stockDepotOpt.get();
+        Double quantiteARetirer = voyage.getQuantite();
+        Double qCess = stockDepot.getQuantityCession() != null ? stockDepot.getQuantityCession() : 0.0;
+        if (qCess + 0.001 < quantiteARetirer) {
+            throw new RuntimeException("Quantité cession insuffisante dans le dépôt. Disponible: " + qCess +
+                    " L, demandée: " + quantiteARetirer + " L");
+        }
+        stockDepot.setQuantityCession(Math.max(0.0, qCess - quantiteARetirer));
+        stockDepot.setDateDerniereMiseAJour(now);
+        stockRepository.save(stockDepot);
+
+        Depot depot = voyage.getDepot();
+        Double capaciteUtilisee = depot.getCapaciteUtilisee() != null ? depot.getCapaciteUtilisee() : 0.0;
+        depot.setCapaciteUtilisee(Math.max(0.0, capaciteUtilisee - quantiteARetirer));
+        if (depot.getCapaciteUtilisee() < depot.getCapacite()) {
+            if (depot.getStatut() == Depot.StatutDepot.PLEIN) {
+                depot.setStatut(Depot.StatutDepot.ACTIF);
+            }
+        }
+        depotRepository.save(depot);
+
+        MouvementDTO mouvementSortieDTO = new MouvementDTO();
+        mouvementSortieDTO.setStockId(stockDepot.getId());
+        mouvementSortieDTO.setTypeMouvement("SORTIE");
+        mouvementSortieDTO.setQuantite(quantiteARetirer);
+        mouvementSortieDTO.setUnite(stockDepot.getUnite());
+        mouvementSortieDTO.setDescription("Sortie stock cession du dépôt " + depot.getNom() + " pour le voyage "
+                + voyage.getNumeroVoyage());
+        mouvementService.save(mouvementSortieDTO);
+
+        Stock stockCiterne = stockRepository.findByProduitIdAndCiterne(
+                voyage.getProduit().getId(),
+                true)
+                .orElseThrow(() -> new RuntimeException(
+                        "Stock Citerne non trouvé pour le produit avec l'id: " + voyage.getProduit().getId()));
+
+        double qCiterne = stockCiterne.getQuantite() != null ? stockCiterne.getQuantite() : 0.0;
+        stockCiterne.setQuantite(qCiterne + quantiteARetirer);
+        stockCiterne.setDateDerniereMiseAJour(now);
+        stockRepository.save(stockCiterne);
+
+        MouvementDTO mouvementEntreeDTO = new MouvementDTO();
+        mouvementEntreeDTO.setStockId(stockCiterne.getId());
+        mouvementEntreeDTO.setTypeMouvement("ENTREE");
+        mouvementEntreeDTO.setQuantite(quantiteARetirer);
+        mouvementEntreeDTO.setUnite(stockCiterne.getUnite());
+        mouvementEntreeDTO.setDescription("Entrée citerne (cession) pour le voyage " + voyage.getNumeroVoyage());
+        mouvementService.save(mouvementEntreeDTO);
     }
 
     /**
@@ -2616,13 +2825,17 @@ public class VoyageServiceImpl implements VoyageService {
         boolean isGasoil = voyage.getProduit() != null && voyage.getProduit().getTypeProduit() != null
                 && voyage.getProduit().getTypeProduit() == Produit.TypeProduit.GAZOLE;
 
+        // Frais douane / T1 comptables : toujours tarif pays (même logique que hors cession).
+        // Le tarif convenu avec le client (cession) sert uniquement à la facture auto Facturation.
         BigDecimal fraisParLitre = isGasoil
                 ? (paysAxe.getFraisParLitreGasoil() != null ? paysAxe.getFraisParLitreGasoil() : BigDecimal.ZERO)
                 : (paysAxe.getFraisParLitre() != null ? paysAxe.getFraisParLitre() : BigDecimal.ZERO);
         BigDecimal fraisT1 = paysAxe.getFraisT1() != null ? paysAxe.getFraisT1() : BigDecimal.ZERO;
 
-        // Calculer les frais douane = fraisParLitre * capacité du camion
-        BigDecimal fraisDouane = fraisParLitre.multiply(BigDecimal.valueOf(camion.getCapacite()));
+        // Frais douane entreprise = tarif pays au litre × litres du voyage (capacité camion en pratique)
+        double litresDouane = camion.getCapacite() != null ? camion.getCapacite()
+                : (voyage.getQuantite() != null ? voyage.getQuantite() : 0.0);
+        BigDecimal fraisDouane = fraisParLitre.multiply(BigDecimal.valueOf(litresDouane));
 
         // Vérifier qu'on ne sélectionne pas les deux en même temps
         // if (compteId != null && caisseId != null) {
@@ -2630,13 +2843,22 @@ public class VoyageServiceImpl implements VoyageService {
         // soit une caisse, pas les deux");
         // }
 
-        // Changer le statut du voyage à RÉCEPTIONNÉ
-        voyage.setStatut(Voyage.StatutVoyage.RECEPTIONNER);
-        voyage.setDeclarer(true); // Marquer le voyage comme déclaré
-        voyage.setPassager("passer_declarer"); // Marquer comme passé déclaré
-        updateCamionStatusFromVoyage(camion, voyage.getStatut(), voyage);
+        // Déclaration : passage en RÉCEPTIONNÉ sauf cession déjà déchargée (sortie douane avant déclaration).
+        // Dans ce cas on conserve DECHARGER pour ne pas sortir l'archive ni incohérence camion/stock.
+        boolean cessionDejaDecharge = voyage.isCession()
+                && voyage.getStatut() == Voyage.StatutVoyage.DECHARGER;
+        voyage.setDeclarer(true);
+        voyage.setPassager("passer_declarer");
+        if (!cessionDejaDecharge) {
+            voyage.setStatut(Voyage.StatutVoyage.RECEPTIONNER);
+            updateCamionStatusFromVoyage(camion, voyage.getStatut(), voyage);
+        }
         Voyage savedVoyage = voyageRepository.save(voyage);
-        validerEtat(voyage, "RECEPTIONNER");
+        if (!cessionDejaDecharge) {
+            validerEtat(voyage, "RECEPTIONNER");
+        } else {
+            validerEtat(voyage, "DECHARGER");
+        }
         alerteService.creerAlerte(
                 Alerte.TypeAlerte.VOYAGE_DECLARE,
                 "Voyage déclaré à la douane : " + savedVoyage.getNumeroVoyage(),
@@ -2664,7 +2886,6 @@ public class VoyageServiceImpl implements VoyageService {
 
         // Sauvegarder les transactions
         transactionFraisDouane = transactionRepository.save(transactionFraisDouane);
-        transactionFraisT1 = transactionRepository.save(transactionFraisT1);
 
         // Créer deux paiements en attente : un pour les frais de douane, un pour le T1
         Paiement paiementDouane = new Paiement();
@@ -2678,6 +2899,9 @@ public class VoyageServiceImpl implements VoyageService {
         paiementDouane.setVoyage(savedVoyage);
         assignCategorieToPaiementIfPresent(paiementDouane, CategorieDepense.NOM_DROIT_DOUANE);
 
+        paiementRepository.save(paiementDouane);
+
+        transactionFraisT1 = transactionRepository.save(transactionFraisT1);
         Paiement paiementT1 = new Paiement();
         paiementT1.setMontant(fraisT1);
         paiementT1.setDate(LocalDate.now());
@@ -2688,9 +2912,29 @@ public class VoyageServiceImpl implements VoyageService {
         paiementT1.getTransactions().add(transactionFraisT1);
         paiementT1.setVoyage(savedVoyage);
         assignCategorieToPaiementIfPresent(paiementT1, CategorieDepense.NOM_FRAIS_T1);
-
-        paiementRepository.save(paiementDouane);
         paiementRepository.save(paiementT1);
+
+        // Cession : facture client = tarif convenu au litre × litres uniquement (Facturation), indépendant du tarif pays.
+        if (savedVoyage.isCession()) {
+            BigDecimal tarifConvenuClient = savedVoyage.getDroitDouaneParLitre();
+            if (tarifConvenuClient != null && tarifConvenuClient.compareTo(BigDecimal.ZERO) > 0) {
+                BigDecimal montantFactureClient = tarifConvenuClient.multiply(BigDecimal.valueOf(litresDouane));
+                if (montantFactureClient.compareTo(BigDecimal.ZERO) > 0) {
+                    Voyage forFacture = voyageRepository.findById(savedVoyage.getId()).orElse(savedVoyage);
+                    if (forFacture.getClientVoyages() != null) {
+                        forFacture.getClientVoyages().size();
+                    }
+                    Client clientFacture = null;
+                    if (forFacture.getClientVoyages() != null && !forFacture.getClientVoyages().isEmpty()) {
+                        clientFacture = forFacture.getClientVoyages().iterator().next().getClient();
+                    }
+                    if (clientFacture != null) {
+                        factureService.createFactureAutoCessionDroitDouaneIfAbsent(
+                                forFacture, clientFacture, montantFactureClient, tarifConvenuClient, litresDouane);
+                    }
+                }
+            }
+        }
 
         return voyageMapper.toDTO(savedVoyage);
     }
@@ -2727,9 +2971,26 @@ public class VoyageServiceImpl implements VoyageService {
     public VoyageDTO libererVoyage(Long voyageId) {
         Voyage voyage = voyageRepository.findById(voyageId)
                 .orElseThrow(() -> new RuntimeException("Voyage non trouvé avec l'id: " + voyageId));
+        if (!Boolean.TRUE.equals(voyage.getDeclarer()) && !"passer_non_declarer".equals(voyage.getPassager())) {
+            throw new RuntimeException(
+                    "Déclarez le voyage en douane (ou marquez « passé non déclaré ») avant la sortie douane — y compris pour les cessions.");
+        }
         voyage.setLiberer(true);
+        LocalDateTime now = LocalDateTime.now();
+        if (voyage.isCession()) {
+            if (voyage.getStatut() != Voyage.StatutVoyage.DECHARGER) {
+                retirerDuStockCiterne(voyage, null, now);
+            }
+            voyage.setStatut(Voyage.StatutVoyage.DECHARGER);
+            validerEtat(voyage, "DECHARGER");
+        } else {
+            validerEtat(voyage, "RECEPTIONNER");
+        }
+        Camion camion = voyage.getCamion();
+        if (camion != null) {
+            updateCamionStatusFromVoyage(camion, voyage.getStatut(), voyage);
+        }
         Voyage savedVoyage = voyageRepository.save(voyage);
-        validerEtat(voyage, "RECEPTIONNER");
         alerteService.creerAlerte(
                 Alerte.TypeAlerte.VOYAGE_LIBERE,
                 "Camion sortie de la douane : " + savedVoyage.getNumeroVoyage(),
@@ -2745,16 +3006,10 @@ public class VoyageServiceImpl implements VoyageService {
         }
         List<VoyageDTO> result = new ArrayList<>();
         for (Long voyageId : voyageIds) {
-            Voyage voyage = voyageRepository.findById(voyageId).orElse(null);
-            if (voyage != null) {
-                voyage.setLiberer(true);
-                Voyage savedVoyage = voyageRepository.save(voyage);
-                alerteService.creerAlerte(
-                        Alerte.TypeAlerte.VOYAGE_LIBERE,
-                        "Voyage libéré (archivé) : " + savedVoyage.getNumeroVoyage(),
-                        Alerte.PrioriteAlerte.BASSE,
-                        "Voyage", savedVoyage.getId(), "/voyages/" + savedVoyage.getId());
-                result.add(voyageMapper.toDTO(savedVoyage));
+            try {
+                result.add(libererVoyage(voyageId));
+            } catch (RuntimeException e) {
+                System.err.println("Erreur lors de la libération du voyage " + voyageId + ": " + e.getMessage());
             }
         }
         return result;
@@ -2961,6 +3216,26 @@ public class VoyageServiceImpl implements VoyageService {
     public VoyagePageDto findVoyagesEnCoursByTransitaireIdentifiant(String identifiant, int page, int size) {
         Transitaire transitaire = transitaireRepository.findByIdentifiant(identifiant)
                 .orElseThrow(() -> new RuntimeException("Transitaire non trouvé avec l'identifiant: " + identifiant));
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Voyage> voyagePage = voyageRepository.findVoyagesEnCoursByTransitaire(transitaire, pageable);
+
+        List<VoyageDTO> voyages = voyagePage.getContent().stream()
+                .map(voyageMapper::toDTO)
+                .collect(Collectors.toList());
+
+        return new VoyagePageDto(
+                voyages,
+                voyagePage.getNumber(),
+                voyagePage.getTotalPages(),
+                voyagePage.getTotalElements(),
+                voyagePage.getSize());
+    }
+
+    @Override
+    public VoyagePageDto findVoyagesEnCoursByTransitaireId(Long transitaireId, int page, int size) {
+        Transitaire transitaire = transitaireRepository.findById(transitaireId)
+                .orElseThrow(() -> new RuntimeException("Transitaire non trouvé avec l'id: " + transitaireId));
 
         Pageable pageable = PageRequest.of(page, size);
         Page<Voyage> voyagePage = voyageRepository.findVoyagesEnCoursByTransitaire(transitaire, pageable);

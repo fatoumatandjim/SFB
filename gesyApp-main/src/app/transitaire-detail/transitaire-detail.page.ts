@@ -9,14 +9,20 @@ import { TransitairesService, Transitaire } from '../services/transitaires.servi
 import { CamionsService, Camion } from '../services/camions.service';
 import { PaysService, Pays } from '../services/pays.service';
 import { AxesService, Axe } from '../services/axes.service';
+import { AxesComponent } from '../Composant/axes/axes.component';
 import { addIcons } from 'ionicons';
 import { arrowBackOutline } from 'ionicons/icons';
 import { IonIcon } from '@ionic/angular/standalone';
 import { AlertService } from '../nativeComp/alert/alert.service';
 import { ToastService } from '../nativeComp/toast/toast.service';
 import { sortByDateDepartDesc } from '../services/voyage-date.utils';
-import { getVoyageStatutLabel, getVoyageStatutClass } from '../services/voyage-statut.utils';
-import { formatDateFr, getClientInitiales as getClientInitialesUtil, getClientColor as getClientColorUtil } from '../services/voyage-display.utils';
+import { getVoyageStatutLabel, getVoyageStatutClass, isVoyageStatutDecharge } from '../services/voyage-statut.utils';
+import {
+  getChauffeurDisplay as getChauffeurDisplayUtil,
+  formatDateFr,
+  getClientInitiales as getClientInitialesUtil,
+  getClientColor as getClientColorUtil
+} from '../services/voyage-display.utils';
 
 interface VoyageDisplay extends Voyage {
   camionImmatriculation?: string;
@@ -25,7 +31,7 @@ interface VoyageDisplay extends Voyage {
   typeProduit?: string;
   declarer?: boolean;
   liberer?: boolean;
-  passager?: string;
+  passager?: string; // passer_declarer, passer_non_declarer ou null
   transactions?: Transaction[];
 }
 
@@ -40,32 +46,34 @@ interface TransitaireInfo {
   templateUrl: './transitaire-detail.page.html',
   styleUrls: ['./transitaire-detail.page.scss'],
   standalone: true,
-  imports: [CommonModule, FormsModule, IonIcon]
+  imports: [CommonModule, FormsModule, IonIcon, AxesComponent]
 })
 export class TransitaireDetailPage implements OnInit {
-  activeTab: 'en-cours' | 'voyages-en-cours' | 'archives' = 'en-cours';
+  /** Onglet actif : Voyages en cours (défaut, comme Suivi transport) | À déclarer | Archives | Axes */
+  activeTab: 'en-cours' | 'voyages-en-cours' | 'archives' | 'axes' = 'voyages-en-cours';
   searchTerm: string = '';
   isLoading: boolean = false;
   voyages: VoyageDisplay[] = [];
   filteredVoyages: VoyageDisplay[] = [];
 
-  // Onglet "Voyages en cours" (non déclarés ou passer_non_declarer, paginés)
+  // Onglet "Voyages en cours" (tous les voyages non déchargés, paginés)
   voyagesEnCours: VoyageDisplay[] = [];
   currentPageEnCours: number = 0;
   pageSizeEnCours: number = 10;
   totalPagesEnCours: number = 0;
   totalElementsEnCours: number = 0;
   isLoadingEnCours: boolean = false;
-
   showDetailModal: boolean = false;
   selectedVoyage: VoyageDisplay | null = null;
   activeDetailTab: 'details' | 'frais' = 'details';
   transitaireInfo: TransitaireInfo | null = null;
 
+  // Sélection multiple
   selectedVoyages: Set<number> = new Set();
   isDeclaringMultiple: boolean = false;
   isLiberingMultiple: boolean = false;
 
+  // Statistiques
   stats: {
     nombreCamionsDeclares: number;
     totalFraisDouane: number;
@@ -77,11 +85,13 @@ export class TransitaireDetailPage implements OnInit {
   };
   isLoadingStats: boolean = false;
 
+  // Pagination pour les archives
   currentPage: number = 0;
   pageSize: number = 10;
   totalPages: number = 0;
   totalElements: number = 0;
 
+  // Filtres de date pour les archives
   filterDate: string = '';
   filterStartDate: string = '';
   filterEndDate: string = '';
@@ -91,9 +101,10 @@ export class TransitaireDetailPage implements OnInit {
   axesList: Axe[] = [];
 
   constructor(
-    private route: ActivatedRoute,
-    private router: Router,
     private voyagesService: VoyagesService,
+    private transactionsService: TransactionsService,
+    private router: Router,
+    private route: ActivatedRoute,
     private transitairesService: TransitairesService,
     private camionsService: CamionsService,
     private paysService: PaysService,
@@ -122,6 +133,7 @@ export class TransitaireDetailPage implements OnInit {
           nom: t.nom ?? '',
           identifiant: t.identifiant ?? ''
         };
+        this.loadVoyagesEnCours();
         this.loadVoyages();
         this.loadStats();
         this.loadPaysAndAxes();
@@ -137,55 +149,21 @@ export class TransitaireDetailPage implements OnInit {
     this.router.navigate(['/home'], { queryParams: { section: 'transitaire' } });
   }
 
+  /** Id réel du transitaire pour les API (page admin : toujours depuis la route / getTransitaireById). */
+  private transitaireApiId(): number | null {
+    const id = this.transitaireInfo?.id;
+    return id != null && !Number.isNaN(Number(id)) && id > 0 ? id : null;
+  }
+
   loadVoyages() {
-    if (!this.transitaireInfo?.identifiant) return;
+    const tid = this.transitaireApiId();
+    if (tid == null) return;
+
     this.isLoading = true;
-    this.voyagesService.getVoyagesNonDeclaresByTransitaireIdentifiant(this.transitaireInfo.identifiant).subscribe({
-      next: (data) => {
-        this.voyages = data.map(v => ({
-          ...v,
-          camionImmatriculation: (v as any).camionImmatriculation,
-          clientNom: (v as any).clientNom,
-          clientEmail: (v as any).clientEmail,
-          typeProduit: (v as any).typeProduit || 'Essence',
-          transactions: (v as any).transactions || [],
-          liberer: (v as any).liberer ?? false
-        }));
-        this.voyages = sortByDateDepartDesc(this.voyages);
-        this.updateFilteredVoyages();
-        this.isLoading = false;
-      },
-      error: () => {
-        this.isLoading = false;
-      }
-    });
-  }
-
-  setTab(tab: 'en-cours' | 'voyages-en-cours' | 'archives') {
-    this.activeTab = tab;
-    if (tab === 'archives') {
-      this.currentPage = 0;
-      this.loadArchivedVoyages();
-    } else if (tab === 'voyages-en-cours') {
-      this.currentPageEnCours = 0;
-      this.loadVoyagesEnCours();
-    } else {
-      this.loadVoyages();
-    }
-  }
-
-  loadVoyagesEnCours() {
-    if (!this.transitaireInfo?.identifiant) return;
-    this.isLoadingEnCours = true;
-    this.voyagesService
-      .getVoyagesEnCoursByTransitaireIdentifiant(
-        this.transitaireInfo.identifiant,
-        this.currentPageEnCours,
-        this.pageSizeEnCours
-      )
-      .subscribe({
-        next: (page: VoyagePage) => {
-          this.voyagesEnCours = (page.voyages || []).map(v => ({
+    this.voyagesService.getVoyagesNonDeclaresByTransitaire(tid).subscribe({
+      next: (data: any) => {
+        this.voyages = sortByDateDepartDesc(
+          data.map((v: any) => ({
             ...v,
             camionImmatriculation: (v as any).camionImmatriculation,
             clientNom: (v as any).clientNom,
@@ -193,8 +171,53 @@ export class TransitaireDetailPage implements OnInit {
             typeProduit: (v as any).typeProduit || 'Essence',
             transactions: (v as any).transactions || [],
             liberer: (v as any).liberer ?? false
-          }));
-          this.voyagesEnCours = sortByDateDepartDesc(this.voyagesEnCours);
+          }))
+        );
+        this.updateFilteredVoyages();
+        this.isLoading = false;
+      },
+      error: (error) => {
+        console.error('Erreur lors du chargement des voyages:', error);
+        this.isLoading = false;
+      }
+    });
+  }
+
+  setTab(tab: 'en-cours' | 'voyages-en-cours' | 'archives' | 'axes') {
+    this.activeTab = tab;
+    if (tab === 'archives') {
+      this.currentPage = 0;
+      this.loadArchivedVoyages();
+    } else if (tab === 'voyages-en-cours') {
+      this.currentPageEnCours = 0;
+      this.loadVoyagesEnCours();
+    } else if (tab === 'en-cours') {
+      this.loadVoyages();
+    }
+  }
+
+  loadVoyagesEnCours() {
+    const tid = this.transitaireApiId();
+    if (tid == null) return;
+
+    this.isLoadingEnCours = true;
+    this.voyagesService
+      .getVoyagesEnCoursByTransitaire(tid, this.currentPageEnCours, this.pageSizeEnCours)
+      .subscribe({
+        next: (page: VoyagePage) => {
+          // Backend exclut déjà les voyages déclaré + Décharger validé (une seule source de vérité)
+          this.voyagesEnCours = sortByDateDepartDesc(
+            (page.voyages || []).map(v => ({
+              ...v,
+              camionImmatriculation: (v as any).camionImmatriculation,
+              clientNom: (v as any).clientNom,
+              clientEmail: (v as any).clientEmail,
+              typeProduit: (v as any).typeProduit || 'Essence',
+              transactions: (v as any).transactions || [],
+              liberer: (v as any).liberer ?? false,
+              etats: (v as any).etats || []
+            }))
+          );
           this.totalPagesEnCours = page.totalPages ?? 0;
           this.totalElementsEnCours = page.totalElements ?? 0;
           this.isLoadingEnCours = false;
@@ -213,80 +236,97 @@ export class TransitaireDetailPage implements OnInit {
     }
   }
 
-  viewVoyage(voyage: VoyageDisplay) {
-    this.selectedVoyage = voyage;
-    this.activeDetailTab = 'details';
-    this.showDetailModal = true;
-  }
-
-  closeDetailModal() {
-    this.showDetailModal = false;
-    this.selectedVoyage = null;
-    this.activeDetailTab = 'details';
-  }
-
   updateFilteredVoyages() {
     let filtered = this.voyages;
-    if (this.activeTab !== 'en-cours') return;
+
+    // Filtrer par statut (en cours vs archives)
+    if (this.activeTab === 'en-cours') {
+      // Les voyages non déclarés sont déjà filtrés par le backend
+      // Pas besoin de re-filtrer ici, la liste contient uniquement les voyages non déclarés
+    } else {
+      // Pour les archives, on utilise la pagination backend, donc pas de filtrage local
+      return;
+    }
+
+    // Filtrer par terme de recherche
     if (this.searchTerm.trim()) {
       const term = this.searchTerm.toLowerCase();
       filtered = filtered.filter(v =>
         v.numeroVoyage?.toLowerCase().includes(term) ||
         v.clientNom?.toLowerCase().includes(term) ||
-        this.getAxeName(v).toLowerCase().includes(term) ||
+        v.destination?.toLowerCase().includes(term) ||
         v.camionImmatriculation?.toLowerCase().includes(term)
       );
     }
-    this.filteredVoyages = sortByDateDepartDesc(filtered);
+
+    this.filteredVoyages = filtered;
+  }
+
+  /** Liste affichée pour les onglets À déclarer / Archives. Archives = pagination backend (une seule source de vérité). */
+  get displayListEnCoursOuArchives(): VoyageDisplay[] {
+    return this.filteredVoyages;
   }
 
   onSearchChange() {
-    if (this.activeTab === 'en-cours') this.updateFilteredVoyages();
-    else {
+    if (this.activeTab === 'en-cours') {
+      this.updateFilteredVoyages();
+    } else {
+      // Pour les archives, recharger depuis le backend
       this.currentPage = 0;
       this.loadArchivedVoyages();
     }
   }
 
   loadArchivedVoyages() {
-    if (!this.transitaireInfo) return;
+    const tid = this.transitaireApiId();
+    if (tid == null) return;
+
     this.isLoading = true;
+
     let request: Observable<VoyagePage>;
     if (this.useDateRange && this.filterStartDate && this.filterEndDate) {
-      request = this.voyagesService.getArchivedVoyagesByTransitaireIdentifiantAndDateRange(
-        this.transitaireInfo.identifiant, this.filterStartDate, this.filterEndDate, this.currentPage, this.pageSize);
+      request = this.voyagesService.getArchivedVoyagesByTransitaireAndDateRange(
+        tid, this.filterStartDate, this.filterEndDate, this.currentPage, this.pageSize
+      );
     } else if (this.filterDate) {
-      request = this.voyagesService.getArchivedVoyagesByTransitaireIdentifiantAndDate(
-        this.transitaireInfo.identifiant, this.filterDate, this.currentPage, this.pageSize);
+      request = this.voyagesService.getArchivedVoyagesByTransitaireAndDate(
+        tid, this.filterDate, this.currentPage, this.pageSize
+      );
     } else {
-      request = this.voyagesService.getArchivedVoyagesByTransitaireIdentifiant(
-        this.transitaireInfo.identifiant, this.currentPage, this.pageSize);
+      request = this.voyagesService.getArchivedVoyagesByTransitaire(tid, this.currentPage, this.pageSize);
     }
+
     request.subscribe({
       next: (page: VoyagePage) => {
-        this.filteredVoyages = page.voyages.map(v => ({
-          ...v,
-          camionImmatriculation: (v as any).camionImmatriculation,
-          clientNom: (v as any).clientNom,
-          clientEmail: (v as any).clientEmail,
-          typeProduit: (v as any).typeProduit || 'Essence',
-          transactions: (v as any).transactions || []
-        }));
-        this.filteredVoyages = sortByDateDepartDesc(this.filteredVoyages);
+        this.filteredVoyages = sortByDateDepartDesc(
+          (page.voyages || []).map(v => ({
+            ...v,
+            camionImmatriculation: (v as any).camionImmatriculation,
+            clientNom: (v as any).clientNom,
+            clientEmail: (v as any).clientEmail,
+            typeProduit: (v as any).typeProduit || 'Essence',
+            transactions: (v as any).transactions || [],
+            etats: (v as any).etats || [],
+            liberer: (v as any).liberer ?? false
+          }))
+        );
+        // Filtre recherche côté client sur la page courante (pour cohérence totalElements/totalPages, un endpoint backend avec param search serait idéal)
         if (this.searchTerm.trim()) {
           const term = this.searchTerm.toLowerCase();
           this.filteredVoyages = this.filteredVoyages.filter(v =>
             v.numeroVoyage?.toLowerCase().includes(term) ||
             v.clientNom?.toLowerCase().includes(term) ||
-            this.getAxeName(v).toLowerCase().includes(term) ||
-            v.camionImmatriculation?.toLowerCase().includes(term));
+            v.destination?.toLowerCase().includes(term) ||
+            v.camionImmatriculation?.toLowerCase().includes(term)
+          );
         }
-        this.currentPage = page.currentPage;
-        this.totalPages = page.totalPages;
-        this.totalElements = page.totalElements;
+        this.currentPage = page.currentPage ?? 0;
+        this.totalPages = page.totalPages ?? 0;
+        this.totalElements = page.totalElements ?? 0;
         this.isLoading = false;
       },
-      error: () => {
+      error: (error) => {
+        console.error('Erreur lors du chargement des archives:', error);
         this.isLoading = false;
         this.toastService.error('Erreur lors du chargement des archives');
       }
@@ -307,6 +347,13 @@ export class TransitaireDetailPage implements OnInit {
     this.loadArchivedVoyages();
   }
 
+  goToPage(page: number) {
+    if (page >= 0 && page < this.totalPages) {
+      this.currentPage = page;
+      this.loadArchivedVoyages();
+    }
+  }
+
   previousPage() {
     if (this.currentPage > 0) {
       this.currentPage--;
@@ -321,12 +368,108 @@ export class TransitaireDetailPage implements OnInit {
     }
   }
 
-  getStatusLabel(statut: string | undefined, voyage?: { liberer?: boolean }): string {
-    return getVoyageStatutLabel(statut, voyage);
+  updateStatut(voyage: VoyageDisplay, event: Event) {
+    const select = event.target as HTMLSelectElement;
+    const newStatut = select.value;
+
+    if (newStatut === voyage.statut) return;
+
+    this.voyagesService.updateStatut(voyage.id!, newStatut, {}).subscribe({
+      next: (updatedVoyage) => {
+        // Mettre à jour le voyage dans la liste
+        const index = this.voyages.findIndex(v => v.id === voyage.id);
+        if (index !== -1) {
+          this.voyages[index] = {
+            ...this.voyages[index],
+            statut: updatedVoyage.statut as any
+          };
+        }
+        if (this.selectedVoyage && this.selectedVoyage.id === voyage.id) {
+          this.selectedVoyage.statut = updatedVoyage.statut as any;
+        }
+        this.updateFilteredVoyages();
+      },
+      error: (error) => {
+        console.error('Erreur lors de la mise à jour du statut:', error);
+        this.toastService.error('Erreur lors de la mise à jour du statut');
+        // Réinitialiser le select
+        select.value = voyage.statut || '';
+      }
+    });
   }
 
-  getStatusClass(statut: string, voyage?: { liberer?: boolean }): string {
+  isStatusLocked(statut: string | undefined): boolean {
+    if (!statut) return false;
+    // Les statuts finaux ne peuvent pas être modifiés
+    return statut === 'LIVRE' || statut === 'RECEPTIONNER';
+  }
+
+  /** Retourne true si le voyage est considéré comme déclaré (backend peut renvoyer boolean ou string). */
+  isDeclared(voyage: VoyageDisplay): boolean {
+    if (!voyage) return false;
+    const d = (voyage as { declarer?: boolean | string }).declarer;
+    return d === true || d === 'true';
+  }
+
+  /**
+   * Sortie douane (Libérer) : même règle que sans cession — uniquement après déclaration
+   * ou « passé non déclaré », pour que la déclaration reste possible tant que ce n’est pas fait.
+   */
+  canLibererSortieDouane(voyage: VoyageDisplay): boolean {
+    if (!voyage?.id || voyage.liberer) return false;
+    return this.isDeclared(voyage) || voyage.passager === 'passer_non_declarer';
+  }
+
+  /** True si le voyage est en état "À déclarer" (douane non déclaré ou passé non déclaré). Jamais true pour Archives. */
+  isStatutADeclarer(voyage: VoyageDisplay): boolean {
+    if (!voyage) return false;
+    if (isVoyageStatutDecharge(voyage.statut)) return false;
+    const statut = (voyage.statut || '').toString().toUpperCase();
+    const isDouane = statut === 'DOUANE';
+    const isPasseNonDeclarer = voyage.passager === 'passer_non_declarer';
+    return (isDouane || isPasseNonDeclarer) && !this.isDeclared(voyage);
+  }
+
+  /** Libellé du statut (DRY: délègue à voyage-statut.utils + isStatutADeclarer). Passe le voyage pour afficher "Décharger" si déclaré + état validé. */
+  getStatusLabel(statut: string | undefined, voyageOrDeclarer?: VoyageDisplay | boolean | string | null, passager?: string): string {
+    if (!statut) return 'N/A';
+    const v: VoyageDisplay = (voyageOrDeclarer && typeof voyageOrDeclarer === 'object' && 'statut' in voyageOrDeclarer)
+      ? voyageOrDeclarer
+      : { statut, declarer: voyageOrDeclarer, passager } as VoyageDisplay;
+    if (this.isStatutADeclarer(v)) return 'À déclarer';
+    return getVoyageStatutLabel(statut, v);
+  }
+
+  getStatusClass(statut: string, voyage?: { liberer?: boolean; declarer?: boolean; etats?: Array<{ etat?: string; valider?: boolean }> }): string {
     return getVoyageStatutClass(statut, voyage);
+  }
+
+  /**
+   * Tant que le voyage n'est pas déclaré, la déclaration doit rester possible (y compris cession libérée
+   * sans déclaration : statut DECHARGER en archives, ou autre statut hors DOUANE).
+   */
+  canDeclarer(voyage: VoyageDisplay): boolean {
+    if (!voyage) return false;
+    if (this.isDeclared(voyage)) return false;
+    if (this.activeTab === 'en-cours' || this.activeTab === 'voyages-en-cours' || this.activeTab === 'archives') {
+      return true;
+    }
+    return this.isStatutADeclarer(voyage);
+  }
+
+  /** Gestion du clic sur la cellule de statut « À déclarer » : déclarer ou passer non déclaré selon le statut. */
+  onStatutClick(voyage: VoyageDisplay) {
+    if (!this.canDeclarer(voyage)) return;
+    if (this.isStatutADeclarer(voyage)) {
+      if (voyage.passager === 'passer_non_declarer') {
+        this.declarerVoyage(voyage);
+      } else {
+        this.passerNonDeclarer(voyage);
+      }
+    } else {
+      // Onglet À déclarer : voyage non déclaré mais pas encore à la douane → tenter de déclarer (backend valide)
+      this.declarerVoyage(voyage);
+    }
   }
 
   formatDate(dateString: string | undefined): string {
@@ -336,30 +479,199 @@ export class TransitaireDetailPage implements OnInit {
   getClientInitiales = getClientInitialesUtil;
   getClientColor = getClientColorUtil;
 
+  /** Affiche le chauffeur (délègue à l'utilitaire partagé). */
+  getChauffeurDisplay = getChauffeurDisplayUtil;
+
+  viewVoyage(voyage: VoyageDisplay) {
+    this.selectedVoyage = voyage;
+    this.activeDetailTab = 'details';
+    this.showDetailModal = true;
+  }
+
+  closeDetailModal() {
+    this.showDetailModal = false;
+    this.selectedVoyage = null;
+    this.activeDetailTab = 'details';
+  }
+
+  setDetailTab(tab: 'details' | 'frais') {
+    this.activeDetailTab = tab;
+  }
+
+  getTotalFrais(): number {
+    if (!this.selectedVoyage || !this.selectedVoyage.transactions) return 0;
+    return this.selectedVoyage.transactions.reduce((sum, t) => sum + (t.montant || 0), 0);
+  }
+
+  getTransactionTypeLabel(type: string): string {
+    const labels: { [key: string]: string } = {
+      'DEPOT': 'Dépôt',
+      'RETRAIT': 'Retrait',
+      'VIREMENT_ENTRANT': 'Virement entrant',
+      'VIREMENT_SORTANT': 'Virement sortant',
+      'FRAIS': 'Frais',
+      'INTERET': 'Intérêt',
+      'FRAIS_LOCATION': 'Frais de location',
+      'FRAIS_FRONTIERE': 'Frais frontière',
+      'TS_FRAIS_PRESTATIONS': 'TS Frais de prestations',
+      'FRAIS_REPERTOIRE': 'Frais répertoire',
+      'FRAIS_CHAMBRE_COMMERCE': 'Frais chambre de commerce',
+      'SALAIRE': 'Salaire'
+    };
+    return labels[type] || type;
+  }
+
+  getTransactionStatusLabel(statut: string): string {
+    const labels: { [key: string]: string } = {
+      'EN_ATTENTE': 'En attente',
+      'VALIDE': 'Validé',
+      'REJETE': 'Rejeté',
+      'ANNULE': 'Annulé'
+    };
+    return labels[statut] || statut;
+  }
+
+  getTransactionStatusClass(statut: string): string {
+    const classes: { [key: string]: string } = {
+      'EN_ATTENTE': 'badge-yellow',
+      'VALIDE': 'badge-green',
+      'REJETE': 'badge-red',
+      'ANNULE': 'badge-gray'
+    };
+    return classes[statut] || 'badge-gray';
+  }
+
+  declarerVoyage(voyage: VoyageDisplay) {
+    if (!voyage.id || !voyage.camionId) {
+      this.toastService.error('Informations du voyage incomplètes');
+      return;
+    }
+
+    this.camionsService.getCamionById(voyage.camionId).subscribe({
+      next: (camion: Camion) => {
+        const pays = this.getPaysForVoyage(voyage);
+        if (!pays) {
+          this.toastService.error('Aucun pays/frais configuré pour l\'axe de ce voyage');
+          return;
+        }
+
+        const isGasoil = voyage.typeProduit === 'GAZOLE';
+        const fraisParLitre = isGasoil ? pays.fraisParLitreGasoil : pays.fraisParLitre;
+        const fraisDouane = fraisParLitre * camion.capacite;
+        const fraisT1 = pays.fraisT1;
+
+        const message = `Vous allez déclarer le citerne matriculé ${camion.immatriculation}\n\n` +
+          `Pays : ${pays.nom}\n` +
+          `Frais de douane: ${fraisDouane.toLocaleString('fr-FR')} FCFA\n` +
+          `Frais T1: ${fraisT1.toLocaleString('fr-FR')} FCFA\n\n` +
+          `Total: ${(fraisDouane + fraisT1).toLocaleString('fr-FR')} FCFA`;
+
+        this.alertService.confirm(message, 'Confirmation de déclaration').subscribe(confirmed => {
+          if (!confirmed) return;
+          this.voyagesService.declarerVoyage(voyage.id!, undefined, undefined).subscribe({
+            next: () => {
+              this.loadVoyages();
+              this.loadStats();
+              this.toastService.success('Voyage déclaré avec succès');
+            },
+            error: (error) => {
+              const errorMessage = error.error?.message || 'Erreur lors de la déclaration du voyage';
+              this.toastService.error(errorMessage);
+            }
+          });
+        });
+      },
+      error: () => {
+        this.toastService.error('Erreur lors de la récupération des informations du camion');
+      }
+    });
+  }
+
+  passerNonDeclarer(voyage: VoyageDisplay) {
+    if (!voyage.id) {
+      this.toastService.error('Informations du voyage incomplètes');
+      return;
+    }
+
+    this.alertService.confirm(
+      `Voulez-vous marquer le voyage ${voyage.numeroVoyage} comme "Passé non déclaré" ?`,
+      'Confirmation'
+    ).subscribe(confirmed => {
+      if (!confirmed) return;
+
+      this.voyagesService.passerNonDeclarer(voyage.id!).subscribe({
+        next: () => {
+          this.loadVoyages();
+          if (this.activeTab === 'voyages-en-cours') this.loadVoyagesEnCours();
+          this.toastService.success('Voyage marqué comme passé non déclaré');
+        },
+        error: (error) => {
+          console.error('Erreur lors du marquage:', error);
+          const errorMessage = error.error?.message || 'Erreur lors du marquage du voyage';
+          this.toastService.error(errorMessage);
+        }
+      });
+    });
+  }
+
+  loadStats() {
+    const tid = this.transitaireApiId();
+    if (tid == null) return;
+
+    this.isLoadingStats = true;
+    this.voyagesService.getTransitaireStats(tid).subscribe({
+      next: (stats: TransitaireStats) => {
+        this.stats = {
+          nombreCamionsDeclares: stats.nombreCamionsDeclaresCeMois,
+          totalFraisDouane: stats.totalFraisDouaneCeMois ?? 0,
+          totalMontantT1: stats.totalMontantT1CeMois ?? 0
+        };
+        this.isLoadingStats = false;
+      },
+      error: (error) => {
+        console.error('Erreur lors du chargement des statistiques:', error);
+        this.isLoadingStats = false;
+      }
+    });
+  }
+
   toggleVoyageSelection(voyageId: number | undefined) {
     if (!voyageId) return;
-    if (this.selectedVoyages.has(voyageId)) this.selectedVoyages.delete(voyageId);
-    else this.selectedVoyages.add(voyageId);
+    if (this.selectedVoyages.has(voyageId)) {
+      this.selectedVoyages.delete(voyageId);
+    } else {
+      this.selectedVoyages.add(voyageId);
+    }
   }
 
   isVoyageSelected(voyageId: number | undefined): boolean {
-    return !!(voyageId && this.selectedVoyages.has(voyageId));
+    if (!voyageId) return false;
+    return this.selectedVoyages.has(voyageId);
   }
 
   toggleSelectAll() {
-    const voyages = this.filteredVoyages.filter(v => v.statut === 'DOUANE' && v.id);
+    const voyages = this.voyagesADeclarer;
     if (voyages.length === 0) return;
-    const allSelected = voyages.every(v => v.id && this.selectedVoyages.has(v.id));
-    if (allSelected) voyages.forEach(v => { if (v.id) this.selectedVoyages.delete(v.id); });
-    else voyages.forEach(v => { if (v.id) this.selectedVoyages.add(v.id); });
+
+    const allSelected = this.allVoyagesSelected;
+    if (allSelected) {
+      voyages.forEach(v => {
+        if (v.id) this.selectedVoyages.delete(v.id);
+      });
+    } else {
+      voyages.forEach(v => {
+        if (v.id) this.selectedVoyages.add(v.id);
+      });
+    }
   }
 
   getSelectedCount(): number {
     return this.selectedVoyages.size;
   }
 
+  /** Tous les voyages non déclarés de l’onglet « À déclarer » (sélection / tout sélectionner). */
   get voyagesADeclarer(): VoyageDisplay[] {
-    return this.filteredVoyages.filter(v => v.statut === 'DOUANE' && v.id);
+    return this.filteredVoyages.filter(v => v.id && !this.isDeclared(v));
   }
 
   get allVoyagesSelected(): boolean {
@@ -371,88 +683,49 @@ export class TransitaireDetailPage implements OnInit {
     return this.allVoyagesSelected ? 'Désélectionner tout' : 'Sélectionner tout';
   }
 
+  /** Nombre de voyages sélectionnés qui ne sont pas encore libérés */
   getSelectedLibererCount(): number {
-    return this.filteredVoyages.filter(v => v.id && this.selectedVoyages.has(v.id) && !v.liberer).length;
-  }
-
-  declarerVoyage(voyage: VoyageDisplay) {
-    if (!voyage.id || !voyage.camionId) {
-      this.toastService.error('Informations du voyage incomplètes');
-      return;
-    }
-    this.camionsService.getCamionById(voyage.camionId).subscribe({
-      next: (camion: Camion) => {
-        const pays = this.getPaysForVoyage(voyage);
-        if (!pays) {
-          this.toastService.error('Aucun pays/frais configuré pour l\'axe de ce voyage');
-          return;
-        }
-        const isGasoil = voyage.typeProduit === 'GAZOLE';
-        const fraisParLitre = isGasoil ? pays.fraisParLitreGasoil : pays.fraisParLitre;
-        const fraisDouane = fraisParLitre * camion.capacite;
-        const fraisT1 = pays.fraisT1;
-        const message = `Déclarer le citerne ${camion.immatriculation}\n\nPays: ${pays.nom}\nFrais douane: ${fraisDouane.toLocaleString('fr-FR')} FCFA\nFrais T1: ${fraisT1.toLocaleString('fr-FR')} FCFA\nTotal: ${(fraisDouane + fraisT1).toLocaleString('fr-FR')} FCFA`;
-        this.alertService.confirm(message, 'Confirmation').subscribe(confirmed => {
-          if (!confirmed) return;
-          this.voyagesService.declarerVoyage(voyage.id!, undefined, undefined).subscribe({
-            next: () => {
-              this.loadVoyages();
-              this.loadStats();
-              this.toastService.success('Voyage déclaré avec succès');
-            },
-            error: (err) => this.toastService.error(err?.error?.message || 'Erreur lors de la déclaration')
-          });
-        });
-      },
-      error: () => this.toastService.error('Erreur lors de la récupération du camion')
-    });
-  }
-
-  passerNonDeclarer(voyage: VoyageDisplay) {
-    if (!voyage.id) return;
-    this.alertService.confirm(`Marquer le voyage ${voyage.numeroVoyage} comme "Passé non déclaré" ?`, 'Confirmation').subscribe(confirmed => {
-      if (!confirmed) return;
-      this.voyagesService.passerNonDeclarer(voyage.id!).subscribe({
-        next: () => {
-          this.loadVoyages();
-          this.toastService.success('Voyage marqué comme passé non déclaré');
-        },
-        error: (err) => this.toastService.error(err?.error?.message || 'Erreur')
-      });
-    });
+    return this.filteredVoyages.filter(
+      v => v.id && this.selectedVoyages.has(v.id) && this.canLibererSortieDouane(v)
+    ).length;
   }
 
   libererVoyage(voyage: VoyageDisplay) {
-    if (!voyage.id) return;
-    this.voyagesService.libererVoyage(voyage.id).subscribe({
+    const voyageId = voyage.id;
+    if (!voyageId) return;
+    this.voyagesService.libererVoyage(voyageId).subscribe({
       next: () => {
         this.loadVoyages();
-        this.selectedVoyages.delete(voyage.id!);
+        if (this.activeTab === 'voyages-en-cours') this.loadVoyagesEnCours();
+        this.selectedVoyages.delete(voyageId);
         this.toastService.success('Voyage libéré avec succès');
       },
-      error: (err) => this.toastService.error(err?.error?.message || 'Erreur')
+      error: (err) => {
+        this.toastService.error(err?.error?.message || 'Erreur lors de la libération du voyage');
+      }
     });
   }
 
   libererTous() {
     const voyageIds = this.filteredVoyages
-      .filter(v => v.id && this.selectedVoyages.has(v.id) && !v.liberer)
+      .filter(v => v.id && this.selectedVoyages.has(v.id) && this.canLibererSortieDouane(v))
       .map(v => v.id!);
     if (voyageIds.length === 0) {
-      this.toastService.warning('Aucun voyage à libérer');
+      this.toastService.warning('Aucun voyage à libérer dans la sélection');
       return;
     }
     this.isLiberingMultiple = true;
-    this.voyagesService.libererVoyages(voyageIds).subscribe({
+        this.voyagesService.libererVoyages(voyageIds).subscribe({
       next: (updatedVoyages) => {
         this.loadVoyages();
+        if (this.activeTab === 'voyages-en-cours') this.loadVoyagesEnCours();
         this.selectedVoyages.clear();
         this.isLiberingMultiple = false;
-        this.toastService.success(`${updatedVoyages.length} voyage(s) libéré(s)`);
+        this.toastService.success(`${updatedVoyages.length} voyage(s) libéré(s) avec succès`);
       },
       error: (err) => {
         this.isLiberingMultiple = false;
-        this.toastService.error(err?.error?.message || 'Erreur');
+        this.toastService.error(err?.error?.message || 'Erreur lors de la libération des voyages');
       }
     });
   }
@@ -463,11 +736,18 @@ export class TransitaireDetailPage implements OnInit {
       this.toastService.warning('Aucun voyage sélectionné');
       return;
     }
+
     const voyagesSelectionnes = this.filteredVoyages.filter(v => v.id && this.selectedVoyages.has(v.id));
-    const camionPromises = voyagesSelectionnes.map(v => v.camionId ? this.camionsService.getCamionById(v.camionId).toPromise() : Promise.resolve(null));
+
+    const camionPromises = voyagesSelectionnes.map(voyage => {
+      if (!voyage.camionId) return Promise.resolve(null);
+      return this.camionsService.getCamionById(voyage.camionId).toPromise();
+    });
+
     Promise.all(camionPromises).then(camions => {
       let totalFrais = 0;
       let totalCamions = 0;
+
       camions.forEach((camion, index) => {
         if (camion) {
           const voyage = voyagesSelectionnes[index];
@@ -480,42 +760,32 @@ export class TransitaireDetailPage implements OnInit {
           }
         }
       });
-      this.alertService.confirm(`Déclarer ${totalCamions} camion(s)\n\nTotal: ${totalFrais.toLocaleString('fr-FR')} FCFA`, 'Confirmation').subscribe(confirmed => {
+
+      const message = `Vous allez déclarer ${totalCamions} camion(s)\n\n` +
+        `Total des frais: ${totalFrais.toLocaleString('fr-FR')} FCFA`;
+
+      this.alertService.confirm(message, 'Confirmation de déclaration multiple').subscribe(confirmed => {
         if (!confirmed) return;
+
         this.isDeclaringMultiple = true;
         this.voyagesService.declarerVoyagesMultiple(voyageIds, undefined, undefined).subscribe({
           next: (updatedVoyages) => {
             this.loadVoyages();
+            if (this.activeTab === 'voyages-en-cours') this.loadVoyagesEnCours();
             this.loadStats();
             this.selectedVoyages.clear();
+            this.toastService.success(`${updatedVoyages.length} voyage(s) déclaré(s) avec succès`);
             this.isDeclaringMultiple = false;
-            this.toastService.success(`${updatedVoyages.length} voyage(s) déclaré(s)`);
           },
-          error: (err) => {
+          error: (error) => {
+            const errorMessage = error.error?.message || 'Erreur lors de la déclaration des voyages';
+            this.toastService.error(errorMessage);
             this.isDeclaringMultiple = false;
-            this.toastService.error(err?.error?.message || 'Erreur');
           }
         });
       });
     });
   }
-
-  loadStats() {
-    if (!this.transitaireInfo?.identifiant) return;
-    this.isLoadingStats = true;
-    this.voyagesService.getTransitaireStatsByIdentifiant(this.transitaireInfo.identifiant).subscribe({
-      next: (stats: TransitaireStats) => {
-        this.stats = {
-          nombreCamionsDeclares: stats.nombreCamionsDeclaresCeMois,
-          totalFraisDouane: stats.totalFraisDouaneCeMois ?? 0,
-          totalMontantT1: stats.totalMontantT1CeMois ?? 0
-        };
-        this.isLoadingStats = false;
-      },
-      error: () => { this.isLoadingStats = false; }
-    });
-  }
-
 
   loadPaysAndAxes() {
     this.paysService.getAll().subscribe({
@@ -535,16 +805,7 @@ export class TransitaireDetailPage implements OnInit {
     return this.paysList.find(p => p.id === axe.paysId) ?? null;
   }
 
-  getAxeName(voyage: VoyageDisplay): string {
-    if (!voyage.axeId) {
-      return voyage.destination || '';
-    }
-    const axe = this.axesList.find(a => a.id === voyage.axeId);
-    return axe?.nom || voyage.destination || '';
-  }
-
   formatDateTime(dateString: string): string {
     return formatDateFr(dateString);
   }
-
 }

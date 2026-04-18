@@ -190,9 +190,16 @@
                 <button class="action-btn" (click)="downloadFacture(facture)" title="Télécharger">
                   <span>⬇️</span>
                 </button>
-                <!-- <button class="action-btn" (click)="moreOptions(facture)" title="Plus d'options">
-                  <span>⋮</span>
-                </button> -->
+                @if (isAdmin()) {
+                  <button
+                    type="button"
+                    class="action-btn action-btn--danger"
+                    [disabled]="deletingFactureId === facture.id"
+                    (click)="confirmDeleteFacture(facture, $event)"
+                    title="Supprimer la facture (admin) — refusé si paiements ou transactions liés">
+                    <span>{{ deletingFactureId === facture.id ? '…' : '🗑️' }}</span>
+                  </button>
+                }
               </div>
             </td>
           </tr>
@@ -506,7 +513,19 @@
     <div class="modal-content detail-facture-modal" (click)="$event.stopPropagation()">
       <div class="modal-header">
         <h2>Facture {{ selectedFacture.numero }}</h2>
-        <button class="modal-close" (click)="closeDetailModal()" aria-label="Fermer">×</button>
+        <div class="modal-header-actions">
+          @if (isAdmin()) {
+            <button
+              type="button"
+              class="btn-delete-facture"
+              [disabled]="deletingFactureId === selectedFacture.id"
+              (click)="confirmDeleteFacture(selectedFacture, $event)"
+              title="Supprimer (admin) — impossible si paiements ou transactions liés">
+              {{ deletingFactureId === selectedFacture.id ? 'Suppression…' : '🗑️ Supprimer' }}
+            </button>
+          }
+          <button class="modal-close" (click)="closeDetailModal()" aria-label="Fermer">×</button>
+        </div>
       </div>
 
       <div class="modal-tabs">
@@ -858,6 +877,7 @@
                       <th>Statut</th>
                       <th>Description</th>
                       <th>Référence</th>
+                      <th>Justificatifs</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -882,13 +902,22 @@
                         </td>
                         <td>{{ transaction.description || '-' }}</td>
                         <td>{{ transaction.reference || '-' }}</td>
+                        <td class="jf-table-cell">
+                          @if (transaction.id) {
+                            <app-justificatifs-financiers-panel
+                              [ownerType]="justificatifOwnerTransaction"
+                              [ownerId]="transaction.id"
+                              [lazy]="true"
+                            />
+                          } @else { — }
+                        </td>
                       </tr>
                     }
                   </tbody>
                   <tfoot>
                     <tr class="total-row">
                       <td colspan="2"><strong>Total payé:</strong></td>
-                      <td colspan="4">
+                      <td colspan="5">
                         <strong class="total-montant">{{ getTotalTransactions() | number }} FCFA</strong>
                       </td>
                     </tr>

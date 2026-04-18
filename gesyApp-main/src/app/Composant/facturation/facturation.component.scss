@@ -297,6 +297,40 @@
 
   &:hover { background: var(--bg-hover); border-color: var(--accent-primary); color: var(--accent-primary-light); transform: scale(1.1); }
   span { display: block; }
+
+  &.action-btn--danger {
+    border-color: var(--danger);
+    color: var(--danger);
+    &:hover:not(:disabled) {
+      background: var(--danger-bg);
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+    &:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  }
+}
+
+.modal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-delete-facture {
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--danger);
+  background: var(--danger-bg);
+  color: var(--danger);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  &:hover:not(:disabled) {
+    background: var(--danger);
+    color: var(--text-primary);
+  }
+  &:disabled { opacity: 0.6; cursor: not-allowed; }
 }
 
 .sr-only {

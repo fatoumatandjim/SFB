@@ -1,0 +1,132 @@
+.jf-panel {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 8px;
+  background: var(--bg-secondary, #f9fafb);
+}
+
+.jf-title {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+}
+
+.jf-muted {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary, #6b7280);
+}
+
+.jf-toggle,
+.jf-collapse {
+  background: transparent;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text-primary, #374151);
+}
+
+.jf-toggle:hover,
+.jf-collapse:hover {
+  background: var(--bg-card, #fff);
+}
+
+.jf-count {
+  color: var(--text-secondary, #6b7280);
+  font-weight: 500;
+}
+
+.jf-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.jf-upload input[type='file'] {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+}
+
+.jf-upload {
+  position: relative;
+  cursor: pointer;
+}
+
+.jf-upload-label {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: var(--accent-primary, #3b82f6);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.jf-refresh {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px 8px;
+  opacity: 0.8;
+}
+
+.jf-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.jf-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+  font-size: 13px;
+}
+
+.jf-item:last-child {
+  border-bottom: none;
+}
+
+.jf-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.jf-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.jf-btn {
+  border: 1px solid var(--border-color, #d1d5db);
+  background: var(--bg-card, #fff);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.jf-btn.jf-danger {
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.jf-collapse {
+  margin-top: 8px;
+}

@@ -19,6 +19,7 @@ import com.backend.gesy.transaction.dto.TransactionMapper;
 import com.backend.gesy.transaction.dto.TransactionPageDTO;
 import com.backend.gesy.transaction.dto.TransactionStatsDTO;
 import com.backend.gesy.transaction.dto.VirementRequestDTO;
+import com.backend.gesy.finance.FinanceEntityAccessService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -48,6 +49,7 @@ public class TransactionServiceImpl implements TransactionService {
     private final VoyageRepository voyageRepository;
     private final CaisseRepository caisseRepository;
     private final TransactionMapper transactionMapper;
+    private final FinanceEntityAccessService financeEntityAccessService;
 
     private List<Transaction> applyVoyageFilter(List<Transaction> list, boolean exclure) {
         if (!exclure) return list;
@@ -685,6 +687,7 @@ public class TransactionServiceImpl implements TransactionService {
         if (transactionDTO.getCompteId() != null) {
             CompteBancaire compte = compteBancaireRepository.findById(transactionDTO.getCompteId())
                 .orElseThrow(() -> new RuntimeException("Compte bancaire non trouvé avec l'id: " + transactionDTO.getCompteId()));
+            financeEntityAccessService.assertCanManageCompteBancaire(compte);
             transaction.setCompte(compte);
 
             // Débiter le compte bancaire si le statut est VALIDE
@@ -709,6 +712,7 @@ public class TransactionServiceImpl implements TransactionService {
         if (transactionDTO.getCaisseId() != null) {
             Caisse caisse = caisseRepository.findById(transactionDTO.getCaisseId())
                 .orElseThrow(() -> new RuntimeException("Caisse non trouvée avec l'id: " + transactionDTO.getCaisseId()));
+            financeEntityAccessService.assertCanManageCaisse(caisse);
             transaction.setCaisse(caisse);
 
             // Débiter la caisse si le statut est VALIDE

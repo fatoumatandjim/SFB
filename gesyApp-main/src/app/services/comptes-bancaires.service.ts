@@ -13,6 +13,7 @@ export interface CompteBancaire {
   numeroCompteBancaire?: string;
   statut: 'ACTIF' | 'FERME' | 'SUSPENDU';
   description?: string;
+  responsableIds?: number[];
 }
 
 @Injectable({

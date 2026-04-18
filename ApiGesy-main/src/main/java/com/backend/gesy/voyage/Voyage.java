@@ -100,6 +100,14 @@ public class Voyage {
     @Column(name = "cession")
     private boolean cession = false;
 
+    /**
+     * Droit de douane convenu par litre avec le client (cession uniquement). Sert uniquement à générer la facture
+     * client automatique (menu Facturation) : {@code droitDouaneParLitre × litres du voyage}. Les frais douane / T1
+     * comptables à la déclaration suivent le tarif du pays de l’axe, comme pour un voyage hors cession.
+     */
+    @Column(name = "droit_douane_par_litre", precision = 19, scale = 6)
+    private java.math.BigDecimal droitDouaneParLitre;
+
     /** Indique si le voyage a été libéré (par le transitaire) */
     @Column(nullable = false)
     private Boolean liberer = false;

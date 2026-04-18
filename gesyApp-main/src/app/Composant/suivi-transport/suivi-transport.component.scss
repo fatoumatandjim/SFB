@@ -780,6 +780,12 @@
     border-color: rgba(251, 191, 36, 0.3);
   }
 
+  &.badge-douane {
+    background: rgba(99, 102, 241, 0.12);
+    color: #6366f1;
+    border-color: rgba(99, 102, 241, 0.28);
+  }
+
   &.badge-gray {
     background: var(--bg-tertiary);
     color: var(--text-secondary);
@@ -834,6 +840,11 @@
     background: rgba(251, 191, 36, 0.2);
     color: #fbbf24;
     border-color: rgba(251, 191, 36, 0.3);
+  }
+  &.badge-douane {
+    background: rgba(99, 102, 241, 0.12);
+    color: #6366f1;
+    border-color: rgba(99, 102, 241, 0.28);
   }
   &.badge-gray {
     background: var(--bg-tertiary);
@@ -2167,6 +2178,12 @@
   background: rgba(251, 191, 36, 0.2);
   color: #fbbf24;
   border-color: rgba(251, 191, 36, 0.3);
+}
+
+.badge-douane {
+  background: rgba(99, 102, 241, 0.12);
+  color: #6366f1;
+  border-color: rgba(99, 102, 241, 0.28);
 }
 
 // Modal de changement de statut (Suivi de transport - Changer le statut du voyage)

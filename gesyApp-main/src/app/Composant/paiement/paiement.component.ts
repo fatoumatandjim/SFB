@@ -11,6 +11,8 @@ import { jsPDF } from 'jspdf';
 import { AlertService } from '../../nativeComp/alert/alert.service';
 import { ToastService } from '../../nativeComp/toast/toast.service';
 import { PdfService } from '../../services/pdf.service';
+import { JustificatifsFinanciersPanelComponent } from '../justificatifs-financiers-panel/justificatifs-financiers-panel.component';
+import { JUSTIFICATIF_OWNER_PAIEMENT, JUSTIFICATIF_OWNER_TRANSACTION } from '../../services/justificatifs-financiers.service';
 
 interface Paiement {
   id: string;
@@ -34,9 +36,12 @@ interface Paiement {
   templateUrl: './paiement.component.html',
   styleUrls: ['./paiement.component.scss'],
   standalone: true,
-  imports: [CommonModule, FormsModule]
+  imports: [CommonModule, FormsModule, JustificatifsFinanciersPanelComponent]
 })
 export class PaiementComponent implements OnInit {
+  readonly justificatifOwnerTransaction = JUSTIFICATIF_OWNER_TRANSACTION;
+  readonly justificatifOwnerPaiement = JUSTIFICATIF_OWNER_PAIEMENT;
+
   activeTab: 'transactions' | 'paiements-non-effectues' = 'transactions';
   activeFilter: string = 'tous';
   searchTerm: string = '';

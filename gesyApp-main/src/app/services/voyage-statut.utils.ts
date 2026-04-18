@@ -33,7 +33,7 @@ export const STATUT_VOYAGE_CLASSES: Readonly<Record<string, string>> = {
   CHARGE: 'badge-orange',
   DEPART: 'badge-purple',
   ARRIVER: 'badge-green',
-  DOUANE: 'badge-yellow',
+  DOUANE: 'badge-douane',
   RECEPTIONNER: 'badge-teal',
   LIVRE: 'badge-teal',
   PARTIELLEMENT_DECHARGER: 'badge-gray',

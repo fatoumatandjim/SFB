@@ -7,15 +7,23 @@ import { ComptesBancairesService, CompteBancaire } from '../../services/comptes-
 import { CaissesService, Caisse } from '../../services/caisses.service';
 import { ToastService } from '../../nativeComp/toast/toast.service';
 import { AlertService } from '../../nativeComp/alert/alert.service';
+import { JustificatifsFinanciersPanelComponent } from '../justificatifs-financiers-panel/justificatifs-financiers-panel.component';
+import { JUSTIFICATIF_OWNER_DEPENSE, JUSTIFICATIF_OWNER_PAIEMENT } from '../../services/justificatifs-financiers.service';
 
 @Component({
   selector: 'app-depenses',
   templateUrl: './depenses.component.html',
   styleUrls: ['./depenses.component.scss'],
   standalone: true,
-  imports: [CommonModule, FormsModule]
+  imports: [CommonModule, FormsModule, JustificatifsFinanciersPanelComponent]
 })
 export class DepensesComponent implements OnInit {
+  readonly justificatifOwnerDepense = JUSTIFICATIF_OWNER_DEPENSE;
+  readonly justificatifOwnerPaiement = JUSTIFICATIF_OWNER_PAIEMENT;
+
+  showJustificatifPaiementModal = false;
+  justificatifPaiementId: number | null = null;
+
   // Data
   depenses: Depense[] = [];
   /** Liste unifiée (dépenses + paiements transport/T1/douane) pour affichage et filtre par catégorie. */
@@ -249,6 +257,17 @@ export class DepensesComponent implements OnInit {
     this.depenseForm = {};
   }
 
+  openJustificatifsPaiement(ligne: UnifiedLigneDepense) {
+    if (ligne.type !== 'PAIEMENT') return;
+    this.justificatifPaiementId = ligne.id;
+    this.showJustificatifPaiementModal = true;
+  }
+
+  closeJustificatifPaiementModal() {
+    this.showJustificatifPaiementModal = false;
+    this.justificatifPaiementId = null;
+  }
+
   saveDepense() {
     if (!this.depenseForm.libelle || !this.depenseForm.montant || !this.depenseForm.categorieId) {
       this.toastService.error('Veuillez remplir tous les champs obligatoires');
@@ -284,9 +303,14 @@ export class DepensesComponent implements OnInit {
       });
     } else {
       this.depensesService.createDepense(depenseData).subscribe({
-        next: () => {
+        next: (created) => {
           this.toastService.success('Dépense ajoutée avec succès');
-          this.closeDepenseModal();
+          this.depenseForm = {
+            ...this.depenseForm,
+            ...created,
+            dateDepense: created.dateDepense ? created.dateDepense.split('T')[0] : this.depenseForm.dateDepense
+          };
+          this.isEditingDepense = true;
           this.loadDepenses();
         },
         error: (err) => {

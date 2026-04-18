@@ -39,6 +39,7 @@ public class DepenseMapper {
         if (entity.getCaisse() != null) {
             dto.setCaisseId(entity.getCaisse().getId());
         }
+        dto.setTransactionId(entity.getTransactionId());
 
         return dto;
     }

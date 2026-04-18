@@ -1,7 +1,10 @@
 package com.backend.gesy.comptebancaire.dto;
 
+import com.backend.gesy.compte.Compte;
 import com.backend.gesy.comptebancaire.CompteBancaire;
 import org.springframework.stereotype.Component;
+
+import java.util.stream.Collectors;
 
 @Component
 public class CompteBancaireMapper {
@@ -19,7 +22,12 @@ public class CompteBancaireMapper {
         dto.setNumeroCompteBancaire(compte.getNumeroCompteBancaire());
         dto.setStatut(compte.getStatut() != null ? compte.getStatut().name() : null);
         dto.setDescription(compte.getDescription());
-        
+        if (compte.getResponsables() != null && !compte.getResponsables().isEmpty()) {
+            dto.setResponsableIds(compte.getResponsables().stream()
+                    .map(Compte::getId)
+                    .collect(Collectors.toList()));
+        }
+
         return dto;
     }
 

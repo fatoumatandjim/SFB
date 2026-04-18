@@ -1,0 +1,51 @@
+<section class="jf-panel">
+  @if (effectiveOwnerId == null) {
+    <p class="jf-muted">Enregistrez pour joindre des justificatifs.</p>
+  } @else if (lazy && !expanded) {
+    <button type="button" class="jf-toggle" (click)="toggleExpand()">
+      📎 {{ title }}
+      @if (items.length > 0) {
+        <span class="jf-count">({{ items.length }})</span>
+      }
+    </button>
+  } @else {
+    <h4 class="jf-title">{{ title }}</h4>
+    @if (effectiveOwnerId != null) {
+      <div class="jf-toolbar">
+        <label class="jf-upload">
+          <input
+            type="file"
+            multiple
+            accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.doc,.docx,.xls,.xlsx"
+            [disabled]="uploading"
+            (change)="onFilesSelected($event)"
+          />
+          <span class="jf-upload-label">{{ uploading ? 'Envoi…' : '+ Ajouter des fichiers' }}</span>
+        </label>
+        <button type="button" class="jf-refresh" (click)="load()" [disabled]="loading" title="Actualiser">
+          ↻
+        </button>
+      </div>
+    }
+    @if (loading) {
+      <p class="jf-muted">Chargement…</p>
+    } @else if (items.length === 0) {
+      <p class="jf-muted">Aucun justificatif.</p>
+    } @else {
+      <ul class="jf-list">
+        @for (j of items; track j.id) {
+          <li class="jf-item">
+            <span class="jf-name" [title]="j.originalFilename">{{ j.originalFilename }}</span>
+            <span class="jf-actions">
+              <button type="button" class="jf-btn" (click)="download(j)">Télécharger</button>
+              <button type="button" class="jf-btn jf-danger" (click)="confirmDelete(j)">Supprimer</button>
+            </span>
+          </li>
+        }
+      </ul>
+    }
+    @if (lazy && expanded) {
+      <button type="button" class="jf-collapse" (click)="toggleExpand()">Masquer</button>
+    }
+  }
+</section>

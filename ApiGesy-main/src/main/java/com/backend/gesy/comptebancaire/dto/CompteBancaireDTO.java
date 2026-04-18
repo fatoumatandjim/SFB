@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -18,5 +19,7 @@ public class CompteBancaireDTO {
     private String numeroCompteBancaire;
     private String statut;
     private String description;
+    /** Comptes utilisateurs responsables de ce compte bancaire / mobile money. */
+    private List<Long> responsableIds;
 }
 

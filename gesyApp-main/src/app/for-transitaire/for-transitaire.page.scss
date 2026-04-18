@@ -111,13 +111,12 @@
     }
   }
 
-  .btn-deconnexion {
+  .btn-deconnexion,
+  .btn-back {
     display: flex;
     align-items: center;
     gap: 8px;
     padding: 10px 20px;
-    background: var(--danger-color);
-    color: #fff;
     border: none;
     border-radius: 8px;
     font-size: 14px;
@@ -131,6 +130,23 @@
 
     &:hover {
       filter: brightness(1.1);
+    }
+  }
+
+  .btn-deconnexion {
+    background: var(--danger-color);
+    color: #fff;
+  }
+
+  .btn-back {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+
+    &:hover {
+      filter: none;
+      border-color: var(--accent-primary);
+      color: var(--accent-primary);
     }
   }
 }
@@ -422,6 +438,17 @@
   &.table-voyages-en-cours {
     table-layout: fixed;
 
+    /* Répartition lisible (évite la colonne Client écrasée = gros « rond » seul visible) */
+    col.col-v-ec-numero { width: 8%; }
+    col.col-v-ec-camion { width: 10%; }
+    col.col-v-ec-chauffeur { width: 9%; }
+    col.col-v-ec-client { width: 22%; }
+    col.col-v-ec-statut { width: 10%; }
+    col.col-v-ec-produit { width: 8%; }
+    col.col-v-ec-quantite { width: 7%; }
+    col.col-v-ec-depart { width: 10%; }
+    col.col-v-ec-dest { width: 16%; }
+
     col.col-actions {
       width: 100px;
     }
@@ -442,6 +469,29 @@
       padding-right: 6px;
       font-size: 12px;
     }
+
+    /*
+     * Colonne Statut : sur « Voyages en cours » on affiche des voyages déjà déclarés → pastilles de statut.
+     * Les tons orange/jaune (souvent perçus comme un « cercle jaune ») tranchent avec l’onglet « À déclarer »
+     * (CTA indigo). On aligne typo + forme + palette sur les puces « Déclarer » / douane.
+     */
+    td .status-cell:not(.status-cell--button) .status-badge {
+      border-radius: 8px;
+      text-transform: none;
+      letter-spacing: 0.02em;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 12px;
+    }
+
+    td .status-cell:not(.status-cell--button) .status-badge.badge-orange,
+    td .status-cell:not(.status-cell--button) .status-badge.badge-yellow {
+      background: rgba(99, 102, 241, 0.1);
+      color: #4f46e5;
+      border: 1px solid rgba(99, 102, 241, 0.26);
+    }
+
+    /* Colonne Client : même rendu que l’onglet « À déclarer » (styles globaux .client-info / .client-avatar) ; seul le colgroup ci-dessus évite une colonne trop étroite. */
   }
 
   .action-cell-inner {
@@ -631,6 +681,16 @@
       color: inherit;
       padding: 0;
       box-shadow: none;
+    }
+
+    .status-badge--declare-cta {
+      background: transparent !important;
+      color: inherit !important;
+      padding: 0 !important;
+      text-transform: none;
+      letter-spacing: 0;
+      font-weight: 600;
+      font-size: 13px;
     }
 
     &:hover {
@@ -1048,6 +1108,14 @@
   &.badge-blue { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
   &.badge-orange { background: rgba(249, 115, 22, 0.2); color: #fb923c; }
   &.badge-yellow { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
+  /** Douane : chip indigo (aligné visuellement avec l’action « Déclarer »), plus lisible que le jaune vif */
+  &.badge-douane {
+    background: rgba(99, 102, 241, 0.12);
+    color: #6366f1;
+    border: 1px solid rgba(99, 102, 241, 0.28);
+    text-transform: none;
+    letter-spacing: 0.02em;
+  }
   &.badge-green { background: rgba(16, 185, 129, 0.2); color: #34d399; }
   &.badge-teal { background: rgba(20, 184, 166, 0.2); color: #2dd4bf; }
   &.badge-purple { background: rgba(139, 92, 246, 0.2); color: #a78bfa; }
@@ -1354,7 +1422,8 @@
       align-items: flex-start;
     }
 
-    .btn-deconnexion {
+    .btn-deconnexion,
+    .btn-back {
       width: 100%;
       justify-content: center;
     }

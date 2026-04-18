@@ -7,6 +7,9 @@ import { TransactionsService, Transaction as TransactionAPI, VirementRequest, Tr
 import { CaissesService, Caisse } from '../../services/caisses.service';
 import { AlertService } from '../../nativeComp/alert/alert.service';
 import { ToastService } from '../../nativeComp/toast/toast.service';
+import { UtilisateursService, Utilisateur } from '../../services/utilisateurs.service';
+import { JustificatifsFinanciersPanelComponent } from '../justificatifs-financiers-panel/justificatifs-financiers-panel.component';
+import { JUSTIFICATIF_OWNER_TRANSACTION } from '../../services/justificatifs-financiers.service';
 
 interface CompteBancaireDisplay {
   id?: number;
@@ -19,6 +22,14 @@ interface CompteBancaireDisplay {
   statut: string;
 }
 
+interface NewCaisseForm {
+  nom: string;
+  solde: number;
+  statut: 'ACTIF' | 'FERME' | 'SUSPENDU';
+  description?: string;
+  responsableIds?: number[];
+}
+
 interface NewCompteBancaire {
   numero: string;
   type: 'BANQUE' | 'MOBILE_MONEY';
@@ -27,6 +38,7 @@ interface NewCompteBancaire {
   numeroCompteBancaire?: string;
   statut: 'ACTIF' | 'FERME' | 'SUSPENDU';
   description?: string;
+  responsableIds?: number[];
 }
 
 interface Transaction {
@@ -58,12 +70,15 @@ interface NewTransaction {
   templateUrl: './banque-caisse.component.html',
   styleUrls: ['./banque-caisse.component.scss'],
   standalone: true,
-  imports: [CommonModule, FormsModule]
+  imports: [CommonModule, FormsModule, JustificatifsFinanciersPanelComponent]
 })
 export class BanqueCaisseComponent implements OnInit {
+  readonly justificatifOwnerTransaction = JUSTIFICATIF_OWNER_TRANSACTION;
+
   activeTab: 'banque' | 'caisse' = 'banque';
   searchTerm: string = '';
   showAddBanqueModal: boolean = false;
+  showAddCaisseModal: boolean = false;
   showAddTransactionModal: boolean = false;
   showAllTransactionsModal: boolean = false;
   showDetailModal: boolean = false;
@@ -114,6 +129,17 @@ export class BanqueCaisseComponent implements OnInit {
   caisses: Caisse[] = [];
   caissePrincipaleId: number | undefined;
 
+  /** Comptes utilisateurs (même id que côté API responsables voyage / caisse). */
+  utilisateursPourResponsable: Utilisateur[] = [];
+
+  newCaisse: Partial<NewCaisseForm> = {
+    nom: '',
+    solde: 0,
+    statut: 'ACTIF',
+    description: '',
+    responsableIds: []
+  };
+
   newCompteBancaire: Partial<NewCompteBancaire> = {
     numero: '',
     type: 'BANQUE',
@@ -121,7 +147,8 @@ export class BanqueCaisseComponent implements OnInit {
     banque: '',
     numeroCompteBancaire: '',
     statut: 'ACTIF',
-    description: ''
+    description: '',
+    responsableIds: []
   };
 
   newTransaction: Partial<NewTransaction> = {
@@ -141,6 +168,7 @@ export class BanqueCaisseComponent implements OnInit {
     private comptesBancairesService: ComptesBancairesService,
     private transactionsService: TransactionsService,
     private caissesService: CaissesService,
+    private utilisateursService: UtilisateursService,
     private alertService: AlertService,
     private toastService: ToastService
   ) { }
@@ -154,6 +182,14 @@ export class BanqueCaisseComponent implements OnInit {
     this.loadComptesBancaires();
     this.loadStats();
     this.loadCaisses();
+    this.utilisateursService.getLogisticiensEtResponsables().subscribe({
+      next: (list) => (this.utilisateursPourResponsable = list || []),
+      error: () =>
+        this.utilisateursService.getAllUtilisateurs().subscribe({
+          next: (list) => (this.utilisateursPourResponsable = list || []),
+          error: () => (this.utilisateursPourResponsable = [])
+        })
+    });
   }
 
   loadStats() {
@@ -565,6 +601,63 @@ export class BanqueCaisseComponent implements OnInit {
   editTransaction(transaction: Transaction) {
   }
 
+  nouvelleCaisse() {
+    this.newCaisse = {
+      nom: '',
+      solde: 0,
+      statut: 'ACTIF',
+      description: '',
+      responsableIds: []
+    };
+    this.showAddCaisseModal = true;
+  }
+
+  closeAddCaisseModal() {
+    this.showAddCaisseModal = false;
+    this.newCaisse = {
+      nom: '',
+      solde: 0,
+      statut: 'ACTIF',
+      description: '',
+      responsableIds: []
+    };
+  }
+
+  saveCaisse() {
+    const nom = (this.newCaisse.nom || '').trim();
+    if (!nom) {
+      this.toastService.warning('Veuillez saisir un nom de caisse (ex. Caisse 1)');
+      return;
+    }
+    if (this.newCaisse.solde === undefined || this.newCaisse.solde < 0) {
+      this.toastService.warning('Veuillez saisir un solde initial valide');
+      return;
+    }
+    const resp = (this.newCaisse.responsableIds || []).filter((id: number) => id != null && id > 0);
+    const payload: Caisse = {
+      nom,
+      solde: this.newCaisse.solde!,
+      statut: this.newCaisse.statut!,
+      description: this.newCaisse.description?.trim() || undefined,
+      responsableIds: resp.length > 0 ? resp : undefined
+    };
+    this.isLoading = true;
+    this.caissesService.createCaisse(payload).subscribe({
+      next: () => {
+        this.isLoading = false;
+        this.toastService.success('Caisse créée avec succès');
+        this.closeAddCaisseModal();
+        this.loadCaisses();
+        this.loadStats();
+      },
+      error: (err: unknown) => {
+        console.error(err);
+        this.isLoading = false;
+        this.toastService.error('Erreur lors de la création de la caisse');
+      }
+    });
+  }
+
   nouvelleBanque() {
     this.newCompteBancaire = {
       numero: '',
@@ -573,7 +666,8 @@ export class BanqueCaisseComponent implements OnInit {
       banque: '',
       numeroCompteBancaire: '',
       statut: 'ACTIF',
-      description: ''
+      description: '',
+      responsableIds: []
     };
     this.showAddBanqueModal = true;
   }
@@ -587,7 +681,8 @@ export class BanqueCaisseComponent implements OnInit {
       banque: '',
       numeroCompteBancaire: '',
       statut: 'ACTIF',
-      description: ''
+      description: '',
+      responsableIds: []
     };
   }
 
@@ -597,6 +692,7 @@ export class BanqueCaisseComponent implements OnInit {
     }
 
     this.isLoading = true;
+    const resp = (this.newCompteBancaire.responsableIds || []).filter((id) => id != null && id > 0);
     const compteToSave: CompteBancaire = {
       numero: this.newCompteBancaire.numero!,
       type: this.newCompteBancaire.type!,
@@ -604,7 +700,8 @@ export class BanqueCaisseComponent implements OnInit {
       banque: this.newCompteBancaire.banque!,
       numeroCompteBancaire: this.newCompteBancaire.numeroCompteBancaire,
       statut: this.newCompteBancaire.statut!,
-      description: this.newCompteBancaire.description
+      description: this.newCompteBancaire.description,
+      responsableIds: resp.length > 0 ? resp : undefined
     };
 
     this.comptesBancairesService.createCompte(compteToSave).subscribe({

@@ -1011,6 +1011,7 @@
                 <th>Description</th>
                 <th>Montant</th>
                 <th>Statut</th>
+                <th>Justificatifs</th>
               </tr>
             </thead>
             <tbody>
@@ -1041,13 +1042,22 @@
                     }
                   </span>
                 </td>
+                <td class="jf-table-cell">
+                  @if (transaction.id) {
+                    <app-justificatifs-financiers-panel
+                      [ownerType]="justificatifOwnerTransaction"
+                      [ownerId]="transaction.id"
+                      [lazy]="true"
+                    />
+                  } @else { — }
+                </td>
               </tr>
               }
             </tbody>
             <tfoot>
               <tr class="total-row">
                 <td colspan="3"><strong>Total des frais:</strong></td>
-                <td colspan="2">
+                <td colspan="3">
                   <strong class="total-montant">{{ getTotalFrais() | number }} FCFA</strong>
                 </td>
               </tr>

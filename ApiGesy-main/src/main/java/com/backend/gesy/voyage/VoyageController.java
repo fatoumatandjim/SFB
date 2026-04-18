@@ -79,6 +79,15 @@ public class VoyageController {
         return ResponseEntity.ok(voyageService.findVoyagesNonDeclaresByTransitaireId(transitaireId));
     }
 
+    /** Voyages en cours du transitaire (non déchargés), paginés — par id (admin / cohérence avec non-declares/archives) */
+    @GetMapping("/transitaire/{transitaireId}/en-cours")
+    public ResponseEntity<VoyagePageDto> getVoyagesEnCoursByTransitaireId(
+            @PathVariable Long transitaireId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(voyageService.findVoyagesEnCoursByTransitaireId(transitaireId, page, size));
+    }
+
     @GetMapping("/transitaire/identifiant/{identifiant}/non-declares")
     public ResponseEntity<List<VoyageDTO>> getVoyagesNonDeclaresByTransitaireIdentifiant(
             @PathVariable String identifiant) {

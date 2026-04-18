@@ -8,9 +8,11 @@ import com.backend.gesy.facture.dto.RecouvrementStatsDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/factures")
@@ -81,9 +83,19 @@ public class FactureController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteFacture(@PathVariable Long id) {
-        factureService.deleteById(id);
-        return ResponseEntity.noContent().build();
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> deleteFacture(@PathVariable Long id) {
+        try {
+            factureService.deleteById(id);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalStateException e) {
+            String msg = e.getMessage() != null ? e.getMessage() : "Suppression impossible";
+            return ResponseEntity.badRequest()
+                    .header("X-Error-Message", msg)
+                    .body(Map.of("message", msg));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @GetMapping("/client/{clientId}/export-pdf")

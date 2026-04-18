@@ -1,0 +1,107 @@
+# GesY — stack locale « tout-en-un » pour tests (DB PostgreSQL, API Spring, front Angular/Nginx, MailHog, Adminer).
+#
+# Prérequis : Docker + Docker Compose v2
+# Démarrage (depuis ce dossier sfb/) :
+#   docker compose -f compose.dev.yaml up --build
+# Autres commandes :
+#   - docker compose -f compose.dev.yaml down (stop et remove les containers)
+#   - docker compose -f compose.dev.yaml logs -f --tail=200 (logs des containers)
+#   - docker compose -f compose.dev.yaml build --no-cache (rebuild les images)
+#   - docker compose -f compose.dev.yaml up -d --remove-orphans (démarre les containers)
+#   - docker compose -f compose.dev.yaml down -v --remove-orphans (stop et remove les containers et les volumes)
+#
+# You can combine commands :
+#   - Windows PowerShell (5.1, 7+, …) : docker compose -f compose.dev.yaml build --no-cache; docker compose -f compose.dev.yaml up -d --remove-orphans
+#   - bash, Git Bash, WSL, macOS/Linux : docker compose -f compose.dev.yaml build --no-cache && docker compose -f compose.dev.yaml up -d --remove-orphans
+#
+# URLs :
+#   - Front (Nginx)     http://localhost:8081
+#   - API               http://localhost:8080/api
+#   - MailHog (web UI)  http://localhost:8025
+#   - Adminer           http://localhost:8082  → serveur « db », utilisateur/mot de passe = variables POSTGRES_*
+#
+# Compte admin initial (voir GesyApplication) : identifiant adminSFB / mot de passe adminSFB@_123
+#
+# Le front est compilé avec apiUrl = http://localhost:8080/api (appel depuis votre navigateur, pas le réseau Docker).
+
+name: gesy-dev
+
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-gesy}
+      POSTGRES_USER: ${POSTGRES_USER:-gesy}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gesy_dev_local}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - dev_gesy_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-gesy} -d ${POSTGRES_DB:-gesy}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  # mailhog:
+  #   image: mailhog/mailhog:latest
+  #   ports:
+  #     - "1025:1025"
+  #     - "8025:8025"
+
+  api:
+    build:
+      context: ./ApiGesy-main
+      dockerfile: Dockerfile
+    ports:
+      - "${API_PORT:-8080}:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DATABASE_HOST: db
+      DATABASE_PORT: 5432
+      DATABASE_NAME: ${POSTGRES_DB:-gesy}
+      DATABASE_USER: ${POSTGRES_USER:-gesy}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-gesy_dev_local}
+      FILE_UPLOAD_DIR: /data/uploads
+      # SMTP dev → MailHog (écoute sur 1025)
+      MAIL_HOST: mailhog
+      MAIL_PORT: "1025"
+      MAIL_PROTOCOL: smtp
+      MAIL_USERNAME: ""
+      MAIL_PASSWORD: ""
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH: "false"
+      SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE: "false"
+    volumes:
+      - dev_gesy_uploads:/data/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
+
+  web:
+    build:
+      context: ./gesyApp-main
+      dockerfile: Dockerfile
+      args:
+        # URL vue depuis le navigateur hôte (pas le nom de service Docker)
+        API_URL: http://localhost:${API_PORT:-8080}/api
+    ports:
+      - "${WEB_PORT:-8081}:80"
+    depends_on:
+      - api
+
+  # adminer:
+  #   image: adminer:latest
+  #   ports:
+  #     - "${ADMINER_PORT:-8082}:8080"
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #   environment:
+  #     ADMINER_DEFAULT_SERVER: db
+
+volumes:
+  dev_gesy_pg_data:
+  dev_gesy_uploads:

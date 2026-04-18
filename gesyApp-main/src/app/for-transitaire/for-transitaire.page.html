@@ -185,7 +185,15 @@
     <table class="voyages-table" [class.table-voyages-en-cours]="activeTab === 'voyages-en-cours'">
       @if (activeTab === 'voyages-en-cours') {
         <colgroup>
-          <col span="9">
+          <col class="col-v-ec-numero">
+          <col class="col-v-ec-camion">
+          <col class="col-v-ec-chauffeur">
+          <col class="col-v-ec-client">
+          <col class="col-v-ec-statut">
+          <col class="col-v-ec-produit">
+          <col class="col-v-ec-quantite">
+          <col class="col-v-ec-depart">
+          <col class="col-v-ec-dest">
           <col class="col-actions">
         </colgroup>
       }
@@ -262,9 +270,7 @@
                       class="status-cell status-cell--button"
                       (click)="onStatutClick(voyage)"
                       [title]="'Cliquer pour déclarer le voyage ' + (voyage.numeroVoyage || '')">
-                      <span class="status-badge" [class]="getStatusClass(voyage.statut || '', voyage)">
-                        {{ getStatusLabel(voyage.statut, voyage) }}
-                      </span>
+                      <span class="status-badge status-badge--declare-cta">Déclarer</span>
                     </button>
                   } @else {
                     <div class="status-cell">
@@ -286,10 +292,10 @@
                       </button>
                       @if (voyage.liberer) {
                         <span class="status-badge badge-libere" title="Voyage libéré">Liberé</span>
-                      } @else if (voyage.declarer || voyage.passager === 'passer_non_declarer') {
+                      } @else if (canLibererSortieDouane(voyage)) {
                         <button type="button" class="btn-action-sm btn-liberer" (click)="libererVoyage(voyage)" title="Libérer le voyage">Libérer</button>
                       }
-                      @if (!voyage.declarer && !voyage.passager && voyage.statut === 'DOUANE') {
+                      @if (!isDeclared(voyage) && !voyage.passager && voyage.statut === 'DOUANE') {
                         <button type="button" class="btn-action-sm btn-passer" (click)="passerNonDeclarer(voyage)" title="Passer non déclaré">Passer</button>
                       }
                     </div>
@@ -318,7 +324,7 @@
               <tr>
                 @if (activeTab === 'en-cours') {
                   <td class="checkbox-column">
-                    @if (voyage.statut === 'DOUANE') {
+                    @if (!isDeclared(voyage)) {
                       <input
                         type="checkbox"
                         [checked]="isVoyageSelected(voyage.id)"
@@ -361,9 +367,7 @@
                       class="status-cell status-cell--button"
                       (click)="onStatutClick(voyage)"
                       [title]="'Cliquer pour déclarer le voyage ' + (voyage.numeroVoyage || '')">
-                      <span class="status-badge" [class]="getStatusClass(voyage.statut || '', voyage)">
-                        {{ activeTab === 'en-cours' ? 'Déclarer' : getStatusLabel(voyage.statut, voyage) }}
-                      </span>
+                      <span class="status-badge status-badge--declare-cta">Déclarer</span>
                     </button>
                   } @else {
                     <div class="status-cell">
@@ -394,10 +398,10 @@
                       @if (activeTab === 'en-cours') {
                         @if (voyage.liberer) {
                           <span class="status-badge badge-libere" title="Voyage libéré">Liberé</span>
-                        } @else if (voyage.declarer || voyage.passager === 'passer_non_declarer') {
+                        } @else if (canLibererSortieDouane(voyage)) {
                           <button type="button" class="btn-action-sm btn-liberer" (click)="libererVoyage(voyage)" title="Libérer le voyage">Libérer</button>
                         }
-                        @if (!voyage.declarer && !voyage.passager && voyage.statut === 'DOUANE') {
+                        @if (!isDeclared(voyage) && !voyage.passager && voyage.statut === 'DOUANE') {
                           <button type="button" class="btn-action-sm btn-passer" (click)="passerNonDeclarer(voyage)" title="Passer non déclaré">Passer</button>
                         }
                       }

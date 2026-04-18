@@ -866,6 +866,13 @@
                           <div class="transaction-reference">Réf: {{ transaction.reference }}</div>
                           }
                         </div>
+                        @if (transaction.id) {
+                          <app-justificatifs-financiers-panel
+                            [ownerType]="justificatifOwnerTransaction"
+                            [ownerId]="transaction.id"
+                            [lazy]="true"
+                          />
+                        }
                       </div>
                       }
                     } @else {
@@ -1185,11 +1192,27 @@
                 />
                 Vente de type cession
               </label>
-              <p class="form-hint">En cession : sélection du client (ayant déjà un achat), le coût du voyage n'est pas pris en compte.</p>
+              <p class="form-hint">En cession : le volume sort du stock « cession » du dépôt vers la citerne comme un voyage classique au chargement ; pas de coût de transport entreprise. À la déclaration, les frais douane et T1 comptables suivent le tarif du pays (comme hors cession). Le montant convenu au litre (ex. 225 F/L) sert uniquement à générer la facture client automatique (Facturation) : tarif × litres du voyage. Sortie douane : passage direct en archives (déchargé).</p>
             </div>
           </div>
 
           @if (newVoyage.cession) {
+            <div class="form-row">
+              <div class="form-group">
+                <label for="droit-douane-par-litre">Droit de douane convenu (FCFA / litre)</label>
+                <input
+                  type="number"
+                  id="droit-douane-par-litre"
+                  [(ngModel)]="newVoyage.droitDouaneParLitre"
+                  name="droitDouaneParLitre"
+                  min="0"
+                  step="0.01"
+                  placeholder="Ex : 225 (laisser vide pour utiliser le tarif du pays de l'axe)"
+                  class="form-input"
+                />
+                <p class="form-hint">Montant à la douane ≈ ce tarif × litres du camion (ex. 225 × 45 000 L). Si vide, le tarif officiel du pays s'applique.</p>
+              </div>
+            </div>
             <div class="form-row">
               <div class="form-group">
                 <label for="client-cession-voyage">Client (ayant déjà un achat) *</label>

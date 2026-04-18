@@ -1,14 +1,19 @@
 package com.backend.gesy.depense;
 
+import com.backend.gesy.caisse.Caisse;
 import com.backend.gesy.caisse.CaisseRepository;
 import com.backend.gesy.categoriedepense.CategorieDepense;
 import com.backend.gesy.categoriedepense.CategorieDepenseRepository;
+import com.backend.gesy.comptebancaire.CompteBancaire;
 import com.backend.gesy.comptebancaire.CompteBancaireRepository;
+import com.backend.gesy.transaction.Transaction;
+import com.backend.gesy.transaction.TransactionRepository;
 import com.backend.gesy.depense.dto.DepenseDTO;
 import com.backend.gesy.depense.dto.DepenseMapper;
 import com.backend.gesy.depense.dto.DepensePageDTO;
 import com.backend.gesy.depense.dto.DepenseUnifiedPageDTO;
 import com.backend.gesy.depense.dto.UnifiedLigneDepenseDTO;
+import com.backend.gesy.finance.FinanceEntityAccessService;
 import com.backend.gesy.paiement.PaiementService;
 import com.backend.gesy.paiement.dto.PaiementDTO;
 import com.backend.gesy.transaction.TransactionService;
@@ -41,9 +46,11 @@ public class DepenseServiceImpl implements DepenseService {
     private final CategorieDepenseRepository categorieDepenseRepository;
     private final CompteBancaireRepository compteBancaireRepository;
     private final CaisseRepository caisseRepository;
+    private final TransactionRepository transactionRepository;
     private final DepenseMapper depenseMapper;
     private final TransactionService transactionService;
     private final PaiementService paiementService;
+    private final FinanceEntityAccessService financeEntityAccessService;
 
     @Override
     public DepenseDTO save(DepenseDTO dto) {
@@ -63,6 +70,16 @@ public class DepenseServiceImpl implements DepenseService {
             entity.setDateDepense(LocalDateTime.now());
         }
 
+        if (fromCompte) {
+            financeEntityAccessService.assertCanManageCompteBancaire(
+                    compteBancaireRepository.findById(dto.getCompteId())
+                            .orElseThrow(() -> new RuntimeException("Compte bancaire non trouvé")));
+        } else {
+            financeEntityAccessService.assertCanManageCaisse(
+                    caisseRepository.findById(dto.getCaisseId())
+                            .orElseThrow(() -> new RuntimeException("Caisse non trouvée")));
+        }
+
         Depense saved = depenseRepository.save(entity);
 
         TransactionDTO transactionDTO = new TransactionDTO();
@@ -77,7 +94,11 @@ public class DepenseServiceImpl implements DepenseService {
         } else {
             transactionDTO.setCaisseId(dto.getCaisseId());
         }
-        transactionService.createPaiement(transactionDTO);
+        TransactionDTO createdTx = transactionService.createPaiement(transactionDTO);
+        if (createdTx != null && createdTx.getId() != null) {
+            saved.setTransactionId(createdTx.getId());
+            saved = depenseRepository.save(saved);
+        }
 
         return depenseMapper.toDTO(saved);
     }
@@ -86,10 +107,70 @@ public class DepenseServiceImpl implements DepenseService {
     public DepenseDTO update(Long id, DepenseDTO dto) {
         Depense existing = depenseRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Dépense non trouvée avec l'id: " + id));
-        
+
+        if (dto.getMontant() == null || dto.getMontant().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new RuntimeException("Le montant de la dépense doit être supérieur à zéro");
+        }
+
+        CompteBancaire oldCompte = existing.getCompteBancaire();
+        Caisse oldCaisse = existing.getCaisse();
+        BigDecimal oldMontantDepense = existing.getMontant() != null ? existing.getMontant() : BigDecimal.ZERO;
+        Long txId = existing.getTransactionId();
+
+        if (oldCompte != null) {
+            financeEntityAccessService.assertCanManageCompteBancaire(
+                    compteBancaireRepository.findById(oldCompte.getId())
+                            .orElseThrow(() -> new RuntimeException("Compte bancaire non trouvé")));
+        } else if (oldCaisse != null) {
+            financeEntityAccessService.assertCanManageCaisse(
+                    caisseRepository.findById(oldCaisse.getId())
+                            .orElseThrow(() -> new RuntimeException("Caisse non trouvée")));
+        }
+
+        Long dtoCompteId = dto.getCompteId();
+        Long dtoCaisseId = dto.getCaisseId();
+        if (dtoCompteId != null && dtoCaisseId != null) {
+            throw new RuntimeException(
+                    "Veuillez sélectionner soit un compte bancaire, soit une caisse pour déduire le montant (pas les deux, pas aucun)");
+        }
+        final Long resolvedCompteId;
+        final Long resolvedCaisseId;
+        if (dtoCompteId != null) {
+            resolvedCompteId = dtoCompteId;
+            resolvedCaisseId = null;
+        } else if (dtoCaisseId != null) {
+            resolvedCompteId = null;
+            resolvedCaisseId = dtoCaisseId;
+        } else if (oldCompte != null) {
+            resolvedCompteId = oldCompte.getId();
+            resolvedCaisseId = null;
+        } else if (oldCaisse != null) {
+            resolvedCompteId = null;
+            resolvedCaisseId = oldCaisse.getId();
+        } else {
+            resolvedCompteId = null;
+            resolvedCaisseId = null;
+        }
+        boolean newFromCompte = resolvedCompteId != null;
+        boolean newFromCaisse = resolvedCaisseId != null;
+        if (newFromCompte == newFromCaisse) {
+            throw new RuntimeException(
+                    "Veuillez sélectionner soit un compte bancaire, soit une caisse pour déduire le montant (pas les deux, pas aucun)");
+        }
+
+        if (newFromCompte) {
+            financeEntityAccessService.assertCanManageCompteBancaire(
+                    compteBancaireRepository.findById(resolvedCompteId)
+                            .orElseThrow(() -> new RuntimeException("Compte bancaire non trouvé avec l'id: " + resolvedCompteId)));
+        } else {
+            financeEntityAccessService.assertCanManageCaisse(
+                    caisseRepository.findById(resolvedCaisseId)
+                            .orElseThrow(() -> new RuntimeException("Caisse non trouvée avec l'id: " + resolvedCaisseId)));
+        }
+
         existing.setLibelle(dto.getLibelle());
         existing.setMontant(dto.getMontant());
-        existing.setDateDepense(dto.getDateDepense());
+        existing.setDateDepense(dto.getDateDepense() != null ? dto.getDateDepense() : existing.getDateDepense());
         existing.setDescription(dto.getDescription());
         existing.setReference(dto.getReference());
 
@@ -99,20 +180,158 @@ public class DepenseServiceImpl implements DepenseService {
             existing.setCategorie(categorie);
         }
 
-        if (dto.getCompteId() != null) {
-            existing.setCompteBancaire(compteBancaireRepository.findById(dto.getCompteId())
-                    .orElseThrow(() -> new RuntimeException("Compte bancaire non trouvé avec l'id: " + dto.getCompteId())));
+        if (newFromCompte) {
+            existing.setCompteBancaire(compteBancaireRepository.findById(resolvedCompteId)
+                    .orElseThrow(() -> new RuntimeException("Compte bancaire non trouvé avec l'id: " + resolvedCompteId)));
             existing.setCaisse(null);
-        } else if (dto.getCaisseId() != null) {
-            existing.setCaisse(caisseRepository.findById(dto.getCaisseId())
-                    .orElseThrow(() -> new RuntimeException("Caisse non trouvée avec l'id: " + dto.getCaisseId())));
-            existing.setCompteBancaire(null);
         } else {
+            existing.setCaisse(caisseRepository.findById(resolvedCaisseId)
+                    .orElseThrow(() -> new RuntimeException("Caisse non trouvée avec l'id: " + resolvedCaisseId)));
             existing.setCompteBancaire(null);
-            existing.setCaisse(null);
         }
 
-        return depenseMapper.toDTO(depenseRepository.save(existing));
+        Depense saved = depenseRepository.save(existing);
+
+        if (txId != null) {
+            Optional<Transaction> txOpt = transactionRepository.findById(txId);
+            if (txOpt.isPresent()) {
+                Transaction tx = txOpt.get();
+                if (tx.getStatut() != Transaction.StatutTransaction.VALIDE) {
+                    syncDepenseTransactionMetadata(tx, saved);
+                    transactionRepository.save(tx);
+                } else {
+                    BigDecimal montantDejaDebite = tx.getMontant() != null ? tx.getMontant() : oldMontantDepense;
+
+                    boolean memeCompte = oldCompte != null && resolvedCompteId != null
+                            && oldCompte.getId().equals(resolvedCompteId);
+                    boolean memeCaisse = oldCaisse != null && resolvedCaisseId != null
+                            && oldCaisse.getId().equals(resolvedCaisseId);
+
+                    if (memeCompte) {
+                        CompteBancaire compte = compteBancaireRepository.findById(resolvedCompteId)
+                                .orElseThrow(() -> new RuntimeException("Compte bancaire non trouvé"));
+                        applyDeltaDepenseCompte(compte, dto.getMontant().subtract(montantDejaDebite));
+                        syncDepenseTransactionMetadata(tx, saved);
+                        tx.setCompte(compte);
+                        tx.setCaisse(null);
+                        tx.setType(Transaction.TypeTransaction.VIREMENT_SORTANT);
+                        tx.setMontant(saved.getMontant());
+                        transactionRepository.save(tx);
+                    } else if (memeCaisse) {
+                        Caisse caisse = caisseRepository.findById(resolvedCaisseId)
+                                .orElseThrow(() -> new RuntimeException("Caisse non trouvée"));
+                        applyDeltaDepenseCaisse(caisse, dto.getMontant().subtract(montantDejaDebite));
+                        syncDepenseTransactionMetadata(tx, saved);
+                        tx.setCaisse(caisse);
+                        tx.setCompte(null);
+                        tx.setType(Transaction.TypeTransaction.RETRAIT);
+                        tx.setMontant(saved.getMontant());
+                        transactionRepository.save(tx);
+                    } else {
+                        if (montantDejaDebite.compareTo(BigDecimal.ZERO) > 0) {
+                            if (oldCompte != null) {
+                                CompteBancaire ancien = compteBancaireRepository.findById(oldCompte.getId())
+                                        .orElseThrow(() -> new RuntimeException("Compte bancaire introuvable pour remboursement."));
+                                ancien.setSolde(ancien.getSolde().add(montantDejaDebite));
+                                compteBancaireRepository.save(ancien);
+                            } else if (oldCaisse != null) {
+                                Caisse ancienne = caisseRepository.findById(oldCaisse.getId())
+                                        .orElseThrow(() -> new RuntimeException("Caisse introuvable pour remboursement."));
+                                ancienne.setSolde(ancienne.getSolde().add(montantDejaDebite));
+                                caisseRepository.save(ancienne);
+                            }
+                        }
+                        if (newFromCompte) {
+                            CompteBancaire compte = compteBancaireRepository.findById(resolvedCompteId)
+                                    .orElseThrow(() -> new RuntimeException("Compte bancaire non trouvé"));
+                            debitComptePourDepense(compte, saved.getMontant());
+                            tx.setCompte(compte);
+                            tx.setCaisse(null);
+                            tx.setType(Transaction.TypeTransaction.VIREMENT_SORTANT);
+                        } else {
+                            Caisse caisse = caisseRepository.findById(resolvedCaisseId)
+                                    .orElseThrow(() -> new RuntimeException("Caisse non trouvée"));
+                            debitCaissePourDepense(caisse, saved.getMontant());
+                            tx.setCaisse(caisse);
+                            tx.setCompte(null);
+                            tx.setType(Transaction.TypeTransaction.RETRAIT);
+                        }
+                        syncDepenseTransactionMetadata(tx, saved);
+                        tx.setMontant(saved.getMontant());
+                        transactionRepository.save(tx);
+                    }
+                }
+            }
+        }
+
+        return depenseMapper.toDTO(saved);
+    }
+
+    private void syncDepenseTransactionMetadata(Transaction tx, Depense saved) {
+        tx.setDescription("Dépense: " + (saved.getLibelle() != null ? saved.getLibelle() : ""));
+        tx.setReference(saved.getReference());
+        if (saved.getDateDepense() != null) {
+            tx.setDate(saved.getDateDepense());
+        }
+    }
+
+    /** Delta &gt; 0 : dépense augmentée (débit supplémentaire). Delta &lt; 0 : dépense réduite (recrédit). */
+    private void applyDeltaDepenseCompte(CompteBancaire compte, BigDecimal delta) {
+        if (delta.compareTo(BigDecimal.ZERO) == 0) {
+            return;
+        }
+        if (compte.getStatut() != CompteBancaire.StatutCompte.ACTIF) {
+            throw new RuntimeException("Le compte bancaire n'est pas actif");
+        }
+        if (delta.compareTo(BigDecimal.ZERO) > 0) {
+            if (compte.getSolde().compareTo(delta) < 0) {
+                throw new RuntimeException("Solde insuffisant dans le compte bancaire pour augmenter la dépense");
+            }
+            compte.setSolde(compte.getSolde().subtract(delta));
+        } else {
+            compte.setSolde(compte.getSolde().add(delta.negate()));
+        }
+        compteBancaireRepository.save(compte);
+    }
+
+    private void applyDeltaDepenseCaisse(Caisse caisse, BigDecimal delta) {
+        if (delta.compareTo(BigDecimal.ZERO) == 0) {
+            return;
+        }
+        if (caisse.getStatut() != Caisse.StatutCaisse.ACTIF) {
+            throw new RuntimeException("La caisse n'est pas active");
+        }
+        if (delta.compareTo(BigDecimal.ZERO) > 0) {
+            if (caisse.getSolde().compareTo(delta) < 0) {
+                throw new RuntimeException("Solde insuffisant dans la caisse pour augmenter la dépense");
+            }
+            caisse.setSolde(caisse.getSolde().subtract(delta));
+        } else {
+            caisse.setSolde(caisse.getSolde().add(delta.negate()));
+        }
+        caisseRepository.save(caisse);
+    }
+
+    private void debitComptePourDepense(CompteBancaire compte, BigDecimal montant) {
+        if (compte.getStatut() != CompteBancaire.StatutCompte.ACTIF) {
+            throw new RuntimeException("Le compte bancaire n'est pas actif");
+        }
+        if (compte.getSolde().compareTo(montant) < 0) {
+            throw new RuntimeException("Solde insuffisant dans le compte bancaire");
+        }
+        compte.setSolde(compte.getSolde().subtract(montant));
+        compteBancaireRepository.save(compte);
+    }
+
+    private void debitCaissePourDepense(Caisse caisse, BigDecimal montant) {
+        if (caisse.getStatut() != Caisse.StatutCaisse.ACTIF) {
+            throw new RuntimeException("La caisse n'est pas active");
+        }
+        if (caisse.getSolde().compareTo(montant) < 0) {
+            throw new RuntimeException("Solde insuffisant dans la caisse");
+        }
+        caisse.setSolde(caisse.getSolde().subtract(montant));
+        caisseRepository.save(caisse);
     }
 
     @Override
@@ -122,8 +341,25 @@ public class DepenseServiceImpl implements DepenseService {
 
     @Override
     public void deleteById(Long id) {
-        if (!depenseRepository.existsById(id)) {
-            throw new RuntimeException("Dépense non trouvée avec l'id: " + id);
+        Depense depense = depenseRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Dépense non trouvée avec l'id: " + id));
+        if (depense.getTransactionId() != null) {
+            transactionRepository.findById(depense.getTransactionId()).ifPresent(t -> {
+                if (t.getStatut() == Transaction.StatutTransaction.VALIDE && t.getMontant() != null) {
+                    if (t.getCompte() != null) {
+                        CompteBancaire compte = compteBancaireRepository.findById(t.getCompte().getId())
+                                .orElseThrow(() -> new RuntimeException("Compte bancaire introuvable pour remboursement."));
+                        compte.setSolde(compte.getSolde().add(t.getMontant()));
+                        compteBancaireRepository.save(compte);
+                    } else if (t.getCaisse() != null) {
+                        Caisse caisse = caisseRepository.findById(t.getCaisse().getId())
+                                .orElseThrow(() -> new RuntimeException("Caisse introuvable pour remboursement."));
+                        caisse.setSolde(caisse.getSolde().add(t.getMontant()));
+                        caisseRepository.save(caisse);
+                    }
+                }
+                transactionRepository.delete(t);
+            });
         }
         depenseRepository.deleteById(id);
     }

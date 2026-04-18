@@ -11,15 +11,19 @@ import { ClientsService, Client } from '../../services/clients.service';
 import { ToastService } from '../../nativeComp/toast/toast.service';
 import { AlertService } from '../../nativeComp/alert/alert.service';
 import { AuthService } from 'src/app/services/auth.service';
+import { JustificatifsFinanciersPanelComponent } from '../justificatifs-financiers-panel/justificatifs-financiers-panel.component';
+import { JUSTIFICATIF_OWNER_TRANSACTION } from '../../services/justificatifs-financiers.service';
 
 @Component({
   selector: 'app-gestion-achat',
   templateUrl: './gestion-achat.component.html',
   styleUrls: ['./gestion-achat.component.scss'],
   standalone: true,
-  imports: [CommonModule, FormsModule]
+  imports: [CommonModule, FormsModule, JustificatifsFinanciersPanelComponent]
 })
 export class GestionAchatComponent implements OnInit {
+  readonly justificatifOwnerTransaction = JUSTIFICATIF_OWNER_TRANSACTION;
+
   isLoading: boolean = false;
   achats: Achat[] = [];
   searchTerm: string = '';

@@ -2,9 +2,12 @@ package com.backend.gesy.comptebancaire;
 
 import com.backend.gesy.caisse.Caisse;
 import com.backend.gesy.caisse.CaisseRepository;
+import com.backend.gesy.compte.Compte;
+import com.backend.gesy.compte.CompteRepository;
 import com.backend.gesy.comptebancaire.dto.BanqueCaisseStatsDTO;
 import com.backend.gesy.comptebancaire.dto.CompteBancaireDTO;
 import com.backend.gesy.comptebancaire.dto.CompteBancaireMapper;
+import com.backend.gesy.finance.FinanceEntityAccessService;
 import com.backend.gesy.transaction.Transaction;
 import com.backend.gesy.transaction.TransactionRepository;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -25,18 +29,53 @@ public class CompteBancaireServiceImpl implements CompteBancaireService {
     private final CompteBancaireMapper compteBancaireMapper;
     private final CaisseRepository caisseRepository;
     private final TransactionRepository transactionRepository;
+    private final CompteRepository compteRepository;
+    private final FinanceEntityAccessService financeEntityAccessService;
+
+    private void applyResponsables(CompteBancaire compte, List<Long> responsableIds) {
+        if (compte.getResponsables() == null) {
+            compte.setResponsables(new HashSet<>());
+        }
+        compte.getResponsables().clear();
+        if (responsableIds == null) {
+            return;
+        }
+        for (Long cid : responsableIds) {
+            if (cid == null) {
+                continue;
+            }
+            Compte c = compteRepository.findById(cid)
+                    .orElseThrow(() -> new RuntimeException("Compte responsable non trouvé avec l'id: " + cid));
+            compte.getResponsables().add(c);
+        }
+    }
 
     @Override
     public List<CompteBancaireDTO> findAll() {
-        return compteBancaireRepository.findAll().stream()
+        List<CompteBancaire> list = compteBancaireRepository.findAll();
+        if (!financeEntityAccessService.isCurrentUserAdmin()) {
+            Optional<Long> uid = financeEntityAccessService.getCurrentCompteId();
+            if (uid.isPresent()) {
+                Long u = uid.get();
+                list = list.stream()
+                        .filter(c -> c.getResponsables() == null || c.getResponsables().isEmpty()
+                                || c.getResponsables().stream().anyMatch(r -> r.getId() != null && r.getId().equals(u)))
+                        .collect(Collectors.toList());
+            }
+        }
+        return list.stream()
             .map(compteBancaireMapper::toDTO)
             .collect(Collectors.toList());
     }
 
     @Override
     public Optional<CompteBancaireDTO> findById(Long id) {
-        return compteBancaireRepository.findById(id)
-            .map(compteBancaireMapper::toDTO);
+        Optional<CompteBancaire> opt = compteBancaireRepository.findById(id);
+        if (opt.isEmpty()) {
+            return Optional.empty();
+        }
+        financeEntityAccessService.assertCanManageCompteBancaire(opt.get());
+        return Optional.of(compteBancaireMapper.toDTO(opt.get()));
     }
 
     @Override
@@ -48,6 +87,7 @@ public class CompteBancaireServiceImpl implements CompteBancaireService {
     @Override
     public CompteBancaireDTO save(CompteBancaireDTO compteDTO) {
         CompteBancaire compte = compteBancaireMapper.toEntity(compteDTO);
+        applyResponsables(compte, compteDTO.getResponsableIds());
         CompteBancaire savedCompte = compteBancaireRepository.save(compte);
         return compteBancaireMapper.toDTO(savedCompte);
     }
@@ -56,14 +96,23 @@ public class CompteBancaireServiceImpl implements CompteBancaireService {
     public CompteBancaireDTO update(Long id, CompteBancaireDTO compteDTO) {
         CompteBancaire existingCompte = compteBancaireRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Compte bancaire non trouvé avec l'id: " + id));
+        financeEntityAccessService.assertCanManageCompteBancaire(existingCompte);
         CompteBancaire compte = compteBancaireMapper.toEntity(compteDTO);
         compte.setId(existingCompte.getId());
+        if (compteDTO.getResponsableIds() != null) {
+            applyResponsables(compte, compteDTO.getResponsableIds());
+        } else {
+            compte.setResponsables(new HashSet<>(existingCompte.getResponsables()));
+        }
         CompteBancaire updatedCompte = compteBancaireRepository.save(compte);
         return compteBancaireMapper.toDTO(updatedCompte);
     }
 
     @Override
     public void deleteById(Long id) {
+        CompteBancaire existing = compteBancaireRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Compte bancaire non trouvé avec l'id: " + id));
+        financeEntityAccessService.assertCanManageCompteBancaire(existing);
         compteBancaireRepository.deleteById(id);
     }
 

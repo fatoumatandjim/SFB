@@ -13,6 +13,7 @@ import com.backend.gesy.comptebancaire.CompteBancaire;
 import com.backend.gesy.comptebancaire.CompteBancaireRepository;
 import com.backend.gesy.caisse.Caisse;
 import com.backend.gesy.caisse.CaisseRepository;
+import com.backend.gesy.finance.FinanceEntityAccessService;
 import com.backend.gesy.voyage.Voyage;
 import com.backend.gesy.voyage.VoyagePaiementMenuRules;
 import com.backend.gesy.voyage.VoyageRepository;
@@ -55,6 +56,7 @@ public class PaiementServiceImpl implements PaiementService {
     private final AlerteService alerteService;
     private final CategorieDepenseRepository categorieDepenseRepository;
     private final VoyageRepository voyageRepository;
+    private final FinanceEntityAccessService financeEntityAccessService;
 
     /**
      * Au démarrage :
@@ -252,12 +254,14 @@ public class PaiementServiceImpl implements PaiementService {
         if (compteId != null) {
             CompteBancaire compte = compteBancaireRepository.findById(compteId)
                 .orElseThrow(() -> new RuntimeException("Compte bancaire non trouvé avec l'id: " + compteId));
+            financeEntityAccessService.assertCanManageCompteBancaire(compte);
             paiement.setCompte(compte);
         }
         
         if (caisseId != null) {
             Caisse caisse = caisseRepository.findById(caisseId)
                 .orElseThrow(() -> new RuntimeException("Caisse non trouvée avec l'id: " + caisseId));
+            financeEntityAccessService.assertCanManageCaisse(caisse);
             paiement.setCaisse(caisse);
         }
         
