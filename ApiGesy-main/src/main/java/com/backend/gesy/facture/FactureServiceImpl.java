@@ -587,6 +587,33 @@ public class FactureServiceImpl implements FactureService {
         ligne.setPrixUnitaire(tarifParLitre != null ? tarifParLitre : BigDecimal.ZERO);
         ligne.setTotal(montantTTC);
         ligneFactureRepository.save(ligne);
+
+        // Encaissement client : même mécanisme que douane/T1 — paiement EN_ATTENTE + transaction,
+        // pour que la validation dans « Paiements » crédite la caisse/compte et mette à jour la facture.
+        Transaction txClient = new Transaction();
+        txClient.setMontant(montantTTC);
+        txClient.setDate(LocalDateTime.now());
+        txClient.setStatut(Transaction.StatutTransaction.EN_ATTENTE);
+        txClient.setType(Transaction.TypeTransaction.VIREMENT_ENTRANT);
+        txClient.setDescription("Encaissement facture cession (client) " + saved.getNumero()
+                + " — voyage " + voyage.getNumeroVoyage());
+        txClient.setReference(saved.getNumero());
+        txClient.setBeneficiaire(client.getNom());
+        txClient.setFacture(saved);
+        txClient.setVoyage(voyage);
+        txClient = transactionRepository.save(txClient);
+
+        Paiement paiementFactureClient = new Paiement();
+        paiementFactureClient.setMontant(montantTTC);
+        paiementFactureClient.setDate(LocalDate.now());
+        paiementFactureClient.setMethode(Paiement.MethodePaiement.VIREMENT);
+        paiementFactureClient.setStatut(Paiement.StatutPaiement.EN_ATTENTE);
+        paiementFactureClient.setReference("PAY-FACT-CESSION-" + voyage.getNumeroVoyage());
+        paiementFactureClient.setNotes("Facture client cession (droit convenu au litre) — " + saved.getNumero());
+        paiementFactureClient.setFacture(saved);
+        paiementFactureClient.setVoyage(voyage);
+        paiementFactureClient.getTransactions().add(txClient);
+        paiementRepository.save(paiementFactureClient);
     }
 }
 

@@ -24,10 +24,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -320,7 +322,46 @@ public class PaiementServiceImpl implements PaiementService {
                 "Paiement", savedPaiement.getId(),
                 savedPaiement.getFacture() != null ? "/factures/" + savedPaiement.getFacture().getId() : null);
 
+        if (savedPaiement.getFacture() != null) {
+            synchronizeFactureMontantPayeEtStatut(savedPaiement.getFacture().getId());
+        }
+
         return paiementMapper.toDTO(savedPaiement);
+    }
+
+    /**
+     * Aligne {@link Facture#getMontantPaye()} et le statut (EMISE / PARTIELLEMENT_PAYEE / PAYEE) sur la somme des
+     * paiements validés pour cette facture — utilisé pour la facture auto cession (Facturation) et tout paiement lié.
+     */
+    private void synchronizeFactureMontantPayeEtStatut(Long factureId) {
+        if (factureId == null) {
+            return;
+        }
+        Facture f = factureRepository.findById(factureId).orElse(null);
+        if (f == null || f.getStatut() == Facture.StatutFacture.ANNULEE) {
+            return;
+        }
+        BigDecimal totalValide = paiementRepository.findByFacture(f).stream()
+                .filter(p -> p.getStatut() == Paiement.StatutPaiement.VALIDE)
+                .map(Paiement::getMontant)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        f.setMontantPaye(totalValide);
+        BigDecimal du = f.getMontantTTC() != null ? f.getMontantTTC() : f.getMontant();
+        if (du == null) {
+            du = BigDecimal.ZERO;
+        }
+        if (totalValide.compareTo(BigDecimal.ZERO) <= 0) {
+            if (f.getStatut() != Facture.StatutFacture.BROUILLON) {
+                f.setStatut(Facture.StatutFacture.EMISE);
+            }
+        } else if (totalValide.compareTo(du) >= 0) {
+            f.setStatut(Facture.StatutFacture.PAYEE);
+        } else {
+            f.setStatut(Facture.StatutFacture.PARTIELLEMENT_PAYEE);
+        }
+        factureRepository.save(f);
     }
 
     @Override

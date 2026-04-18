@@ -6,7 +6,6 @@ import { ComptesBancairesService, CompteBancaire } from '../../services/comptes-
 import { CaissesService, Caisse } from '../../services/caisses.service';
 import { TransactionsService, Transaction, TransactionPage, TransactionStats, TransactionFilterResult } from '../../services/transactions.service';
 import { PaiementService, Paiement as PaiementBackend } from '../../services/paiement.service';
-import { FacturesService } from '../../services/factures.service';
 import { jsPDF } from 'jspdf';
 import { AlertService } from '../../nativeComp/alert/alert.service';
 import { ToastService } from '../../nativeComp/toast/toast.service';
@@ -244,7 +243,6 @@ export class PaiementComponent implements OnInit {
     private caissesService: CaissesService,
     private transactionsService: TransactionsService,
     private paiementService: PaiementService,
-    private facturesService: FacturesService,
     private alertService: AlertService,
     private toastService: ToastService,
     private pdfService: PdfService
@@ -389,14 +387,7 @@ export class PaiementComponent implements OnInit {
         ).subscribe({
           next: () => {
             this.toastService.success('Paiement validé avec succès');
-            // Mettre le statut de la facture à Validé (PAYEE) automatiquement quand le paiement est OK
-            const factureId = this.selectedPaiementToPay?.factureId;
-            if (factureId) {
-              this.facturesService.updateStatut(factureId, 'PAYEE').subscribe({
-                next: () => { /* facture mise à jour */ },
-                error: (err) => console.warn('Mise à jour statut facture:', err)
-              });
-            }
+            // Statut / montant payé de la facture : recalcul côté API (PAYEE, PARTIELLEMENT_PAYEE, EMISE)
             this.closePaiementModal();
             this.loadPaiementsNonEffectues();
             this.loadStats();
