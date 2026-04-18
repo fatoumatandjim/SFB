@@ -59,7 +59,7 @@ services:
       context: ./ApiGesy-main
       dockerfile: Dockerfile
     ports:
-      - "${API_PORT:-8080}:8080"
+      - "${API_PORT:-8082}:8080"
     environment:
       SPRING_PROFILES_ACTIVE: prod
       DATABASE_HOST: db
@@ -89,8 +89,9 @@ services:
       context: ./gesyApp-main
       dockerfile: Dockerfile
       args:
-        # URL vue depuis le navigateur hôte (pas le nom de service Docker)
-        API_URL: http://localhost:${API_PORT:-8080}/api
+        # URL API telle que le navigateur l’atteint (hôte public + port mappé de l’API)
+        # For local use : API_URL: http://localhost:${API_PORT:-8080}/api
+        API_URL: http://${PUBLIC_HOST:-76.13.57.94}:${API_PORT:-8082}/api
     ports:
       - "${WEB_PORT:-8081}:80"
     depends_on:
