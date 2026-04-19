@@ -1,6 +1,7 @@
 package com.backend.gesy.comptebancaire.dto;
 
 import com.backend.gesy.compte.Compte;
+import com.backend.gesy.compte.ResponsableRefs;
 import com.backend.gesy.comptebancaire.CompteBancaire;
 import org.springframework.stereotype.Component;
 
@@ -26,6 +27,7 @@ public class CompteBancaireMapper {
             dto.setResponsableIds(compte.getResponsables().stream()
                     .map(Compte::getId)
                     .collect(Collectors.toList()));
+            dto.setResponsables(ResponsableRefs.toList(compte.getResponsables()));
         }
 
         return dto;

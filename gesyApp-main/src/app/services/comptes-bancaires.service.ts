@@ -2,6 +2,9 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
+import type { ResponsableRef } from '../shared/finance/responsables';
+
+export type { ResponsableRef } from '../shared/finance/responsables';
 
 export interface CompteBancaire {
   id?: number;
@@ -14,6 +17,7 @@ export interface CompteBancaire {
   statut: 'ACTIF' | 'FERME' | 'SUSPENDU';
   description?: string;
   responsableIds?: number[];
+  responsables?: ResponsableRef[];
 }
 
 @Injectable({

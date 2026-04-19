@@ -2,6 +2,7 @@ package com.backend.gesy.caisse.dto;
 
 import com.backend.gesy.caisse.Caisse;
 import com.backend.gesy.compte.Compte;
+import com.backend.gesy.compte.ResponsableRefs;
 import org.springframework.stereotype.Component;
 
 import java.util.stream.Collectors;
@@ -23,6 +24,7 @@ public class CaisseMapper {
             dto.setResponsableIds(caisse.getResponsables().stream()
                     .map(Compte::getId)
                     .collect(Collectors.toList()));
+            dto.setResponsables(ResponsableRefs.toList(caisse.getResponsables()));
         }
 
         return dto;

@@ -159,13 +159,11 @@
           <span class="solde-label">Solde</span>
           <span class="solde-value">{{ compte.solde | number }} {{ compte.devise || 'FCFA' }}</span>
         </div>
-        @if (isAdmin()) {
-        <div class="compte-card-actions">
-          <button type="button" class="btn-edit-responsables" (click)="openEditResponsablesBanque(compte.id)">
-            Responsables
-          </button>
-        </div>
-        }
+        <app-finance-responsables-footer
+          [displayLine]="compte.responsablesLabel"
+          [showEdit]="isAdmin()"
+          (editRequested)="openEditResponsables('banque', compte.id)"
+        />
       </div>
       }
       </div>
@@ -230,13 +228,11 @@
             <span class="solde-label">Solde</span>
             <span class="solde-value">{{ caisse.solde | number }} FCFA</span>
           </div>
-          @if (isAdmin()) {
-          <div class="compte-card-actions">
-            <button type="button" class="btn-edit-responsables" (click)="openEditResponsablesCaisse(caisse.id)">
-              Responsables
-            </button>
-          </div>
-          }
+          <app-finance-responsables-footer
+            [displayLine]="caisse.responsablesLabel"
+            [showEdit]="isAdmin()"
+            (editRequested)="openEditResponsables('caisse', caisse.id)"
+          />
         </div>
         }
       </div>
@@ -482,7 +478,7 @@
               hint="Sélectionnez au moins un compte actif avec le rôle « Comptable ». Maintenez Ctrl (Windows) ou Cmd (Mac) pour en choisir plusieurs."
               inputId="edit-finance-responsables"
               controlName="editFinanceResponsableIds"
-              [size]="6"
+              [size]="4"
               [comptables]="comptablesPourResponsable"
               [selectedIds]="editResponsableIds"
               (selectedIdsChange)="editResponsableIds = $event"
@@ -873,6 +869,36 @@
               placeholder="Description de la transaction..."
               class="form-textarea"
             ></textarea>
+          </div>
+
+          <div class="form-group tx-justificatifs-group">
+            <label for="transaction-justificatifs">Pièces jointes (optionnel)</label>
+            <input
+              type="file"
+              id="transaction-justificatifs"
+              name="transactionJustificatifs"
+              multiple
+              class="form-input tx-justificatifs-input"
+              (change)="onTransactionJustificatifsSelected($event)"
+            />
+            <p class="form-hint">Relevés, bordereaux, captures… Consultables depuis le détail de la transaction.</p>
+            @if (transactionJustificatifFiles.length > 0) {
+              <ul class="tx-justificatifs-list">
+                @for (f of transactionJustificatifFiles; track $index) {
+                  <li class="tx-justificatifs-item">
+                    <span class="tx-justificatifs-name">{{ f.name }}</span>
+                    <button
+                      type="button"
+                      class="tx-justificatifs-remove"
+                      (click)="removeTransactionJustificatif($index)"
+                      [attr.aria-label]="'Retirer ' + f.name"
+                    >
+                      ×
+                    </button>
+                  </li>
+                }
+              </ul>
+            }
           </div>
 
           <div class="modal-actions">

@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
+import type { ResponsableRef } from '../shared/finance/responsables';
 
 export interface Caisse {
   id?: number;
@@ -11,6 +12,7 @@ export interface Caisse {
   description?: string;
   /** Comptes utilisateurs autorisés à gérer cette caisse (hors admin). */
   responsableIds?: number[];
+  responsables?: ResponsableRef[];
 }
 
 @Injectable({

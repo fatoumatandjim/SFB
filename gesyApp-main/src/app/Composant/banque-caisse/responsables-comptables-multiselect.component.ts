@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Utilisateur } from '../../services/utilisateurs.service';
+import { FINANCE_SELECT_COPY } from '../../shared/finance/responsables';
 
 /**
  * Liste multi-sélection des comptables éligibles comme responsables banque/caisse.
@@ -15,7 +16,7 @@ import { Utilisateur } from '../../services/utilisateurs.service';
     <div class="rcm-root">
       <label class="rcm-label" [attr.for]="inputId">{{ label }}</label>
       @if (comptables.length === 0) {
-        <p class="rcm-empty">Aucun comptable disponible. Créez ou activez des utilisateurs avec le rôle Comptable.</p>
+        <p class="rcm-empty">{{ selectCopy.comptablesMultiselectEmpty }}</p>
       }
       <select
         [id]="inputId"
@@ -40,11 +41,14 @@ import { Utilisateur } from '../../services/utilisateurs.service';
   `
 })
 export class ResponsablesComptablesMultiselectComponent {
+  readonly selectCopy = FINANCE_SELECT_COPY;
+
   @Input() label = '';
   @Input() hint = '';
   @Input() inputId = 'responsables-ms';
   @Input() controlName = 'responsableIds';
-  @Input() size = 5;
+  /** Nombre de lignes visibles ; la liste est limitée en hauteur et défilable (voir SCSS). */
+  @Input() size = 3;
   @Input() comptables: Utilisateur[] = [];
   @Input() selectedIds: number[] = [];
   @Output() readonly selectedIdsChange = new EventEmitter<number[]>();

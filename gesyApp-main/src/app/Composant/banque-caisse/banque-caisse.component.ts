@@ -3,14 +3,22 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Observable } from 'rxjs';
 import { ComptesBancairesService, CompteBancaire, BanqueCaisseStats } from '../../services/comptes-bancaires.service';
+import { formatResponsablesLine, FINANCE_RESPONSABLES_COPY } from '../../shared/finance/responsables';
+import { FinanceResponsablesFooterComponent } from '../../shared/finance/finance-responsables-footer.component';
 import { TransactionsService, Transaction as TransactionAPI, VirementRequest, TransactionPage } from '../../services/transactions.service';
 import { CaissesService, Caisse } from '../../services/caisses.service';
+
+/** Ligne caisse enrichie pour l’affichage (même pattern que CompteBancaireDisplay). */
+type CaisseCardView = Caisse & { responsablesLabel: string };
 import { AlertService } from '../../nativeComp/alert/alert.service';
 import { ToastService } from '../../nativeComp/toast/toast.service';
 import { UtilisateursService, Utilisateur } from '../../services/utilisateurs.service';
 import { AuthService } from '../../services/auth.service';
 import { JustificatifsFinanciersPanelComponent } from '../justificatifs-financiers-panel/justificatifs-financiers-panel.component';
-import { JUSTIFICATIF_OWNER_TRANSACTION } from '../../services/justificatifs-financiers.service';
+import {
+  JUSTIFICATIF_OWNER_TRANSACTION,
+  JustificatifsFinanciersService
+} from '../../services/justificatifs-financiers.service';
 import { ResponsablesComptablesMultiselectComponent } from './responsables-comptables-multiselect.component';
 
 interface CompteBancaireDisplay {
@@ -22,6 +30,8 @@ interface CompteBancaireDisplay {
   devise?: string;
   type: string;
   statut: string;
+  /** Libellé pour affichage (noms des responsables). */
+  responsablesLabel: string;
 }
 
 interface NewCaisseForm {
@@ -76,7 +86,8 @@ interface NewTransaction {
     CommonModule,
     FormsModule,
     JustificatifsFinanciersPanelComponent,
-    ResponsablesComptablesMultiselectComponent
+    ResponsablesComptablesMultiselectComponent,
+    FinanceResponsablesFooterComponent
   ]
 })
 export class BanqueCaisseComponent implements OnInit {
@@ -142,7 +153,7 @@ export class BanqueCaisseComponent implements OnInit {
   };
 
   comptesBancaires: CompteBancaireDisplay[] = [];
-  caisses: Caisse[] = [];
+  caisses: CaisseCardView[] = [];
   caissePrincipaleId: number | undefined;
 
   /** Comptables éligibles comme responsables banque/caisse (chargé si admin). */
@@ -180,6 +191,9 @@ export class BanqueCaisseComponent implements OnInit {
 
   transactions: Transaction[] = [];
 
+  /** Fichiers optionnels à rattacher aux écritures créées (justificatifs). */
+  transactionJustificatifFiles: File[] = [];
+
   constructor(
     private comptesBancairesService: ComptesBancairesService,
     private transactionsService: TransactionsService,
@@ -187,16 +201,35 @@ export class BanqueCaisseComponent implements OnInit {
     private utilisateursService: UtilisateursService,
     private authService: AuthService,
     private alertService: AlertService,
-    private toastService: ToastService
+    private toastService: ToastService,
+    private justificatifsFinanciersService: JustificatifsFinanciersService
   ) { }
 
   isAdmin(): boolean {
     return this.authService.isAdmin();
   }
 
+  onTransactionJustificatifsSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const list = input.files ? Array.from(input.files) : [];
+    this.transactionJustificatifFiles = list;
+    input.value = '';
+  }
+
+  removeTransactionJustificatif(index: number): void {
+    this.transactionJustificatifFiles = this.transactionJustificatifFiles.filter((_, i) => i !== index);
+  }
+
   /** Comparaison insensible à la casse (ex. ACTIF / actif). */
   private isStatutActif(statut: string | undefined | null): boolean {
     return (statut ?? '').trim().toLowerCase() === 'actif';
+  }
+
+  private enrichCaisseRow(c: Caisse): CaisseCardView {
+    return {
+      ...c,
+      responsablesLabel: formatResponsablesLine(c.responsables)
+    };
   }
 
   ngOnInit() {
@@ -229,7 +262,7 @@ export class BanqueCaisseComponent implements OnInit {
     this.isLoadingCaisses = true;
     this.caissesService.getAllCaisses().subscribe({
       next: (caisses: Caisse[]) => {
-        this.caisses = caisses;
+        this.caisses = (caisses ?? []).map((c) => this.enrichCaisseRow(c));
         const principale = caisses.find((c) => c.nom === 'Caisse Principale');
         const active = caisses.find((c) => this.isStatutActif(c.statut));
         this.caissePrincipaleId = principale?.id ?? active?.id;
@@ -242,7 +275,7 @@ export class BanqueCaisseComponent implements OnInit {
         this.caissesService.getCaisseByNom('Caisse Principale').subscribe({
           next: (caisse) => {
             this.caissePrincipaleId = caisse.id;
-            this.caisses = [caisse];
+            this.caisses = [this.enrichCaisseRow(caisse)];
           },
           error: () => {
             /* ignore */
@@ -257,7 +290,7 @@ export class BanqueCaisseComponent implements OnInit {
     this.isLoading = true;
     this.comptesBancairesService.getAllComptes().subscribe({
       next: (data) => {
-        this.comptesBancaires = data.map(compte => ({
+        this.comptesBancaires = data.map((compte) => ({
           id: compte.id,
           banque: compte.banque,
           numero: compte.numero,
@@ -265,7 +298,8 @@ export class BanqueCaisseComponent implements OnInit {
           type: this.getTypeLabel(compte.type),
           statut: compte.statut,
           nom: compte.banque + ' - ' + compte.numero,
-          devise: 'FCFA'
+          devise: 'FCFA',
+          responsablesLabel: formatResponsablesLine(compte.responsables)
         }));
         this.isLoading = false;
       },
@@ -319,6 +353,7 @@ export class BanqueCaisseComponent implements OnInit {
   }
 
   nouvelleTransaction() {
+    this.transactionJustificatifFiles = [];
     this.newTransaction = {
       type: 'VIREMENT_SORTANT',
       montant: 0,
@@ -335,6 +370,7 @@ export class BanqueCaisseComponent implements OnInit {
 
   closeAddTransactionModal() {
     this.showAddTransactionModal = false;
+    this.transactionJustificatifFiles = [];
     this.newTransaction = {
       type: 'VIREMENT_SORTANT',
       montant: 0,
@@ -440,12 +476,41 @@ export class BanqueCaisseComponent implements OnInit {
     this.transactionsService.createVirement(virementRequest).subscribe({
       next: (transactions) => {
         this.isLoading = false;
-        this.toastService.success('Transaction créée avec succès! Les soldes ont été mis à jour.');
-        this.closeAddTransactionModal();
-        // Recharger les comptes bancaires et les stats pour afficher les nouveaux soldes
-        this.loadComptesBancaires();
-        this.loadStats();
-        this.loadCaisses();
+        const files = [...this.transactionJustificatifFiles];
+        const ids = (transactions ?? [])
+          .map((t) => t.id)
+          .filter((id): id is number => id != null && id > 0);
+
+        const afterSave = () => {
+          this.transactionJustificatifFiles = [];
+          this.closeAddTransactionModal();
+          this.loadComptesBancaires();
+          this.loadStats();
+          this.loadCaisses();
+          this.loadTransactionsRecentes();
+        };
+
+        if (files.length > 0 && ids.length > 0) {
+          this.justificatifsFinanciersService
+            .uploadForOwnerIds(JUSTIFICATIF_OWNER_TRANSACTION, ids, files)
+            .subscribe({
+              next: () => {
+                this.toastService.success(
+                  'Transaction créée. Soldes mis à jour. Pièces jointes enregistrées sur chaque écriture générée.'
+                );
+                afterSave();
+              },
+              error: () => {
+                this.toastService.warning(
+                  'Transaction enregistrée, mais le téléversement des pièces jointes a échoué. Réessayez depuis le détail de la transaction.'
+                );
+                afterSave();
+              }
+            });
+        } else {
+          this.toastService.success('Transaction créée avec succès. Les soldes ont été mis à jour.');
+          afterSave();
+        }
       },
       error: (error) => {
         console.error('Erreur lors de la création de la transaction:', error);
@@ -630,68 +695,52 @@ export class BanqueCaisseComponent implements OnInit {
     this.editResponsableIds = [];
   }
 
-  openEditResponsablesBanque(compteId: number | undefined): void {
-    if (!compteId) {
+  openEditResponsables(kind: 'banque' | 'caisse', entityId: number | undefined): void {
+    if (!entityId) {
       return;
     }
     if (!this.isAdmin()) {
-      this.toastService.warning('Seuls les administrateurs peuvent modifier les responsables.');
+      this.toastService.warning(FINANCE_RESPONSABLES_COPY.adminOnlyEdit);
       return;
     }
-    this.editResponsablesMode = 'banque';
-    this.editFinanceEntitySnapshot = null;
-    this.editResponsablesReady = false;
-    this.editResponsablesTitle = '';
-    this.editResponsableIds = [];
+    this.resetEditResponsablesForm(kind);
     this.showEditResponsablesModal = true;
     this.editResponsablesLoading = true;
-    this.comptesBancairesService.getCompteById(compteId).subscribe({
-      next: (c) => {
-        this.editFinanceEntitySnapshot = { ...c };
-        this.editResponsablesTitle = `${c.banque} — ${c.numero}`;
-        this.editResponsableIds = [...(c.responsableIds ?? [])];
-        this.editResponsablesReady = true;
-        this.editResponsablesLoading = false;
-      },
-      error: (err: any) => {
-        this.editResponsablesLoading = false;
-        this.closeEditResponsablesModal();
-        this.toastService.error(
-          err?.error?.message || err?.message || 'Impossible de charger le compte bancaire.'
-        );
-      }
-    });
+    if (kind === 'banque') {
+      this.comptesBancairesService.getCompteById(entityId).subscribe({
+        next: (c) =>
+          this.applyEditResponsablesSnapshot({ ...c }, `${c.banque} — ${c.numero}`),
+        error: (err: any) =>
+          this.failEditResponsablesLoad(err, FINANCE_RESPONSABLES_COPY.loadBanqueError)
+      });
+    } else {
+      this.caissesService.getCaisseById(entityId).subscribe({
+        next: (c) => this.applyEditResponsablesSnapshot({ ...c }, c.nom),
+        error: (err: any) => this.failEditResponsablesLoad(err, FINANCE_RESPONSABLES_COPY.loadCaisseError)
+      });
+    }
   }
 
-  openEditResponsablesCaisse(caisseId: number | undefined): void {
-    if (!caisseId) {
-      return;
-    }
-    if (!this.isAdmin()) {
-      this.toastService.warning('Seuls les administrateurs peuvent modifier les responsables.');
-      return;
-    }
-    this.editResponsablesMode = 'caisse';
+  private resetEditResponsablesForm(kind: 'banque' | 'caisse'): void {
+    this.editResponsablesMode = kind;
     this.editFinanceEntitySnapshot = null;
     this.editResponsablesReady = false;
     this.editResponsablesTitle = '';
     this.editResponsableIds = [];
-    this.showEditResponsablesModal = true;
-    this.editResponsablesLoading = true;
-    this.caissesService.getCaisseById(caisseId).subscribe({
-      next: (c) => {
-        this.editFinanceEntitySnapshot = { ...c };
-        this.editResponsablesTitle = c.nom;
-        this.editResponsableIds = [...(c.responsableIds ?? [])];
-        this.editResponsablesReady = true;
-        this.editResponsablesLoading = false;
-      },
-      error: (err: any) => {
-        this.editResponsablesLoading = false;
-        this.closeEditResponsablesModal();
-        this.toastService.error(err?.error?.message || err?.message || 'Impossible de charger la caisse.');
-      }
-    });
+  }
+
+  private applyEditResponsablesSnapshot(snapshot: CompteBancaire | Caisse, title: string): void {
+    this.editFinanceEntitySnapshot = snapshot;
+    this.editResponsablesTitle = title;
+    this.editResponsableIds = [...(snapshot.responsableIds ?? [])];
+    this.editResponsablesReady = true;
+    this.editResponsablesLoading = false;
+  }
+
+  private failEditResponsablesLoad(err: any, fallbackMessage: string): void {
+    this.editResponsablesLoading = false;
+    this.closeEditResponsablesModal();
+    this.toastService.error(err?.error?.message || err?.message || fallbackMessage);
   }
 
   saveEditResponsables(): void {
