@@ -43,6 +43,7 @@ public class CaisseController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize(SecurityExpressions.HAS_ROLE_ADMIN)
     public ResponseEntity<CaisseDTO> updateCaisse(@PathVariable Long id, @RequestBody CaisseDTO caisseDTO) {
         return ResponseEntity.ok(caisseService.update(id, caisseDTO));
     }

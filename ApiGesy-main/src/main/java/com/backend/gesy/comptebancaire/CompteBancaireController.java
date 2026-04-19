@@ -44,6 +44,7 @@ public class CompteBancaireController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize(SecurityExpressions.HAS_ROLE_ADMIN)
     public ResponseEntity<CompteBancaireDTO> updateCompte(@PathVariable Long id, @RequestBody CompteBancaireDTO compteDTO) {
         return ResponseEntity.ok(compteBancaireService.update(id, compteDTO));
     }
