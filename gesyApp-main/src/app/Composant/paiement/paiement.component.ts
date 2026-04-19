@@ -11,7 +11,11 @@ import { AlertService } from '../../nativeComp/alert/alert.service';
 import { ToastService } from '../../nativeComp/toast/toast.service';
 import { PdfService } from '../../services/pdf.service';
 import { JustificatifsFinanciersPanelComponent } from '../justificatifs-financiers-panel/justificatifs-financiers-panel.component';
-import { JUSTIFICATIF_OWNER_PAIEMENT, JUSTIFICATIF_OWNER_TRANSACTION } from '../../services/justificatifs-financiers.service';
+import {
+  JUSTIFICATIF_OWNER_PAIEMENT,
+  JUSTIFICATIF_OWNER_TRANSACTION,
+  JustificatifsFinanciersService
+} from '../../services/justificatifs-financiers.service';
 
 interface Paiement {
   id: string;
@@ -63,6 +67,9 @@ export class PaiementComponent implements OnInit {
   selectedCompteId?: number;
   selectedCaisseId?: number;
   compteTypePaiement: 'banque' | 'caisse' = 'banque';
+
+  /** Justificatifs optionnels lors de la validation d’un paiement en attente. */
+  paiementJustificatifFiles: File[] = [];
 
   /** Masquer les boutons de paiement (Nouveau Paiement, Faire le paiement) pour tous les utilisateurs. */
   showPaiementButtons: boolean = false;
@@ -245,7 +252,8 @@ export class PaiementComponent implements OnInit {
     private paiementService: PaiementService,
     private alertService: AlertService,
     private toastService: ToastService,
-    private pdfService: PdfService
+    private pdfService: PdfService,
+    private justificatifsFinanciersService: JustificatifsFinanciersService
   ) { }
 
   ngOnInit() {
@@ -301,6 +309,7 @@ export class PaiementComponent implements OnInit {
     this.selectedCompteId = undefined;
     this.selectedCaisseId = undefined;
     this.compteTypePaiement = 'banque';
+    this.paiementJustificatifFiles = [];
     this.showPaiementModal = true;
   }
 
@@ -309,6 +318,17 @@ export class PaiementComponent implements OnInit {
     this.selectedPaiementToPay = null;
     this.selectedCompteId = undefined;
     this.selectedCaisseId = undefined;
+    this.paiementJustificatifFiles = [];
+  }
+
+  onPaiementJustificatifsSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.paiementJustificatifFiles = input.files ? Array.from(input.files) : [];
+    input.value = '';
+  }
+
+  removePaiementJustificatif(index: number): void {
+    this.paiementJustificatifFiles = this.paiementJustificatifFiles.filter((_, i) => i !== index);
   }
 
   deletePaiementNonEffectue(paiement: PaiementBackend) {
@@ -380,18 +400,36 @@ export class PaiementComponent implements OnInit {
     ).subscribe((confirmed: boolean) => {
       if (confirmed) {
         this.isLoading = true;
-        this.paiementService.validerPaiement(
-          Number(this.selectedPaiementToPay!.id),
-          this.selectedCompteId,
-          this.selectedCaisseId
-        ).subscribe({
+        const paiementId = Number(this.selectedPaiementToPay!.id);
+        const files = [...this.paiementJustificatifFiles];
+        this.paiementService.validerPaiement(paiementId, this.selectedCompteId, this.selectedCaisseId).subscribe({
           next: () => {
-            this.toastService.success('Paiement validé avec succès');
-            // Statut / montant payé de la facture : recalcul côté API (PAYEE, PARTIELLEMENT_PAYEE, EMISE)
-            this.closePaiementModal();
-            this.loadPaiementsNonEffectues();
-            this.loadStats();
             this.isLoading = false;
+            const afterValidate = () => {
+              this.paiementJustificatifFiles = [];
+              this.closePaiementModal();
+              this.loadPaiementsNonEffectues();
+              this.loadStats();
+            };
+            if (files.length > 0) {
+              this.justificatifsFinanciersService
+                .upload(JUSTIFICATIF_OWNER_PAIEMENT, paiementId, files)
+                .subscribe({
+                  next: () => {
+                    this.toastService.success('Paiement validé. Justificatifs enregistrés.');
+                    afterValidate();
+                  },
+                  error: () => {
+                    this.toastService.warning(
+                      'Paiement validé. Le téléversement des justificatifs a échoué — vous pouvez les ajouter depuis le détail du paiement.'
+                    );
+                    afterValidate();
+                  }
+                });
+            } else {
+              this.toastService.success('Paiement validé avec succès');
+              afterValidate();
+            }
           },
           error: (error: any) => {
             console.error('Erreur lors de la validation du paiement:', error);
