@@ -3019,80 +3019,32 @@ public class VoyageServiceImpl implements VoyageService {
     public TransitaireStatsDTO getTransitaireStats(Long transitaireId) {
         Transitaire transitaire = transitaireRepository.findById(transitaireId)
                 .orElseThrow(() -> new RuntimeException("Transitaire non trouvé avec l'id: " + transitaireId));
-
-        // Obtenir le début et la fin du mois actuel
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime debutMois = now.withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
-        LocalDateTime finMois = now.withDayOfMonth(now.toLocalDate().lengthOfMonth())
-                .withHour(23).withMinute(59).withSecond(59).withNano(999999999);
-
-        // Compter les voyages déclarés (statut RECEPTIONNER) ce mois pour ce
-        // transitaire
-        List<Voyage> voyagesDeclares = voyageRepository.findByTransitaire(transitaire).stream()
-                .filter(v -> v.getStatut() == Voyage.StatutVoyage.RECEPTIONNER)
-                .filter(v -> {
-                    // Trouver l'état "Réceptionné" pour obtenir la date de validation
-                    List<EtatVoyage> etats = etatVoyageRepository.findByVoyageId(v.getId());
-                    return etats.stream()
-                            .filter(e -> e.getEtat().equals("Réceptionné") && e.getValider())
-                            .anyMatch(e -> {
-                                LocalDateTime dateValidation = e.getDateHeure();
-                                return dateValidation != null &&
-                                        dateValidation.isAfter(debutMois) &&
-                                        dateValidation.isBefore(finMois);
-                            });
-                })
-                .toList();
-
-        long nombreCamionsDeclares = voyagesDeclares.size();
-
-        BigDecimal totalFraisDouane = BigDecimal.ZERO;
-        BigDecimal totalMontantT1 = BigDecimal.ZERO;
-
-        for (Voyage voyage : voyagesDeclares) {
-            List<Transaction> transactions = transactionRepository.findAll().stream()
-                    .filter(t -> t.getVoyage() != null && t.getVoyage().getId().equals(voyage.getId()))
-                    .filter(t -> t.getType() == Transaction.TypeTransaction.FRAIS_DOUANE ||
-                            t.getType() == Transaction.TypeTransaction.FRAIS_T1)
-                    .filter(t -> {
-                        LocalDateTime dateTransaction = t.getDate();
-                        return dateTransaction != null &&
-                                dateTransaction.isAfter(debutMois) &&
-                                dateTransaction.isBefore(finMois);
-                    })
-                    .toList();
-
-            for (Transaction transaction : transactions) {
-                if (transaction.getType() == Transaction.TypeTransaction.FRAIS_DOUANE) {
-                    totalFraisDouane = totalFraisDouane.add(transaction.getMontant());
-                } else if (transaction.getType() == Transaction.TypeTransaction.FRAIS_T1) {
-                    totalMontantT1 = totalMontantT1.add(transaction.getMontant());
-                }
-            }
-        }
-
-        BigDecimal totalFrais = totalFraisDouane.add(totalMontantT1);
-        return new TransitaireStatsDTO(nombreCamionsDeclares, totalFraisDouane, totalMontantT1, totalFrais);
+        return buildTransitaireStatsDuMois(transitaire);
     }
 
     @Override
     public TransitaireStatsDTO getTransitaireStatsByIdentifiant(String identifiant) {
         Transitaire transitaire = transitaireRepository.findByIdentifiant(identifiant)
                 .orElseThrow(() -> new RuntimeException("Transitaire non trouvé avec l'identifiant: " + identifiant));
+        return buildTransitaireStatsDuMois(transitaire);
+    }
 
-        // Obtenir le début et la fin du mois actuel
+    /**
+     * Stats transitaire (mois courant) : voyages déclarés à la douane avec au moins une transaction
+     * {@code FRAIS_DOUANE} dans le mois, puis cumul douane + T1 sur la même période.
+     * <p>
+     * Même règle pour les cessions et les voyages classiques : après libération douane, une cession peut être en
+     * {@code DECHARGER} (et non plus {@code RECEPTIONNER}) — l’ancien filtre sur le statut excluait à tort ces voyages.
+     */
+    private TransitaireStatsDTO buildTransitaireStatsDuMois(Transitaire transitaire) {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime debutMois = now.withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
         LocalDateTime finMois = now.withDayOfMonth(now.toLocalDate().lengthOfMonth())
                 .withHour(23).withMinute(59).withSecond(59).withNano(999999999);
 
-        // Compter les voyages déclarés ce mois pour ce transitaire
-        // Un voyage est considéré comme déclaré ce mois s'il a declarer = true
-        // et qu'il a une transaction FRAIS_DOUANE datée de ce mois
         List<Voyage> voyagesDeclares = voyageRepository.findByTransitaire(transitaire).stream()
-                .filter(Voyage::getDeclarer)
+                .filter(v -> Boolean.TRUE.equals(v.getDeclarer()))
                 .filter(v -> {
-                    // Vérifier qu'il y a une transaction FRAIS_DOUANE ce mois pour ce voyage
                     List<Transaction> transactions = transactionRepository
                             .findFraisDouaniersByVoyageIdAndDateRange(v.getId(), debutMois, finMois);
                     return transactions.stream()
