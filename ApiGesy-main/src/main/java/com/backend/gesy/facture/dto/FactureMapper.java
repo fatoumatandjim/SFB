@@ -55,8 +55,11 @@ public class FactureMapper {
         facture.setMontantHT(dto.getMontantHT());
         facture.setMontantTTC(dto.getMontantTTC());
         facture.setTauxTVA(dto.getTauxTVA());
-        if (dto.getStatut() != null) {
+        if (dto.getStatut() != null && !dto.getStatut().isBlank()) {
             facture.setStatut(Facture.StatutFacture.valueOf(dto.getStatut()));
+        } else if (dto.getId() == null) {
+            // Création sans statut : EMISE par défaut ; PAYEE / PARTIELLEMENT_PAYEE suivent les transactions (sync).
+            facture.setStatut(Facture.StatutFacture.EMISE);
         }
         facture.setDateEcheance(dto.getDateEcheance());
         facture.setMontantPaye(dto.getMontantPaye());

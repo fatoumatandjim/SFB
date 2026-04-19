@@ -78,7 +78,6 @@ export class FacturationComponent implements OnInit {
     montantHT: 0,
     montantPaye: 0,
     tauxTVA: 18,
-    statut: 'BROUILLON',
     description: '',
     notes: '',
     lignes: []
@@ -527,7 +526,6 @@ export class FacturationComponent implements OnInit {
       montantHT: 0,
       montantPaye: 0,
       tauxTVA: 18,
-      statut: 'BROUILLON',
       description: '',
       notes: '',
       lignes: []
@@ -694,16 +692,16 @@ export class FacturationComponent implements OnInit {
     this.isLoading = true;
 
     // Préparer la facture pour l'envoi
-    const factureToSave: Facture = {
-      numero: '', // Sera généré par le backend
+    // Pas de statut : le backend applique EMISE à la création ; paiements / sync transactions ajustent PAYEE etc.
+    const factureToSave = {
+      numero: '',
       clientId: this.newFacture.clientId!,
       date: this.newFacture.date!,
       dateEcheance: this.newFacture.dateEcheance!,
-      montant: this.getTotalTTC(), // Montant TTC
+      montant: this.getTotalTTC(),
       montantHT: this.getTotalHT(),
       tauxTVA: this.newFacture.tauxTVA || 18,
       montantPaye: this.newFacture.montantPaye || 0,
-      statut: this.newFacture.statut || 'BROUILLON',
       description: this.newFacture.description || '',
       notes: this.newFacture.notes || '',
       lignes: this.newFacture.lignes!.filter(l => l.produitId).map(l => ({
@@ -712,7 +710,7 @@ export class FacturationComponent implements OnInit {
         prixUnitaire: l.prixUnitaire,
         total: l.total
       }))
-    };
+    } as Facture;
 
         this.facturesService.createFacture(factureToSave).subscribe({
           next: () => {

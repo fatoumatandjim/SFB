@@ -217,6 +217,9 @@ public class FactureServiceImpl implements FactureService {
             .orElseThrow(() -> new RuntimeException("Facture non trouvée avec l'id: " + id));
         Facture facture = factureMapper.toEntity(factureDTO);
         facture.setId(existingFacture.getId());
+        if (factureDTO.getStatut() == null || factureDTO.getStatut().isBlank()) {
+            facture.setStatut(existingFacture.getStatut());
+        }
         if (existingFacture.getVoyage() != null) {
             facture.setVoyage(existingFacture.getVoyage());
         }
