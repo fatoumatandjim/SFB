@@ -111,7 +111,7 @@
             <input type="checkbox" id="select-all" aria-label="Sélectionner tout" />
           </th>
           <th>N° Facture</th>
-          <th>Client</th>
+          <th class="col-client">Client</th>
           <th>Date</th>
           <th>Échéance</th>
           <th>Montant</th>
@@ -145,14 +145,16 @@
             <td>
               <div class="facture-numero">{{ facture.numero }}</div>
             </td>
-            <td>
+            <td class="col-client">
               <div class="client-info">
                 <div class="client-avatar" [class]="'avatar-' + getClientColor(facture.clientNom)">
                   {{ getClientInitiales(facture.clientNom) }}
                 </div>
                 <div class="client-details">
                   <div class="client-nom">{{ facture.clientNom || 'N/A' }}</div>
-                  <div class="client-email">{{ facture.clientEmail || '' }}</div>
+                  @if (facture.clientEmail) {
+                    <div class="client-email">{{ facture.clientEmail }}</div>
+                  }
                 </div>
               </div>
             </td>

@@ -194,6 +194,14 @@
   width: 100%;
   border-collapse: collapse;
 
+  th.col-client,
+  td.col-client {
+    min-width: 12rem;
+    max-width: min(22rem, 40vw);
+    width: 22%;
+    vertical-align: top;
+  }
+
   thead {
     background: var(--bg-tertiary);
     border-bottom: 1px solid var(--border-color);
@@ -239,9 +247,15 @@
 
 .facture-numero { font-size: 14px; font-weight: 600; color: var(--text-primary); }
 
-.client-info { display: flex; align-items: center; gap: 12px; }
+.client-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
 
 .client-avatar {
+  flex-shrink: 0;
   width: 40px;
   height: 40px;
   border-radius: 50%;
@@ -257,11 +271,32 @@
   &.avatar-red { background: linear-gradient(135deg, #ef4444, #f87171); }
   &.avatar-green { background: linear-gradient(135deg, #10b981, #34d399); }
   &.avatar-orange { background: linear-gradient(135deg, #f59e0b, #fbbf24); }
+  &.avatar-teal { background: linear-gradient(135deg, #0d9488, #2dd4bf); }
+  &.avatar-pink { background: linear-gradient(135deg, #db2777, #f472b6); }
+  &.avatar-indigo { background: linear-gradient(135deg, #4338ca, #818cf8); }
 }
 
 .client-details {
-  .client-nom { font-size: 14px; font-weight: 500; color: var(--text-primary); margin-bottom: 4px; }
-  .client-email { font-size: 12px; color: var(--text-muted); }
+  min-width: 0;
+  flex: 1;
+
+  .client-nom {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .client-email {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
 }
 
 .date-value { font-size: 14px; color: var(--text-secondary); }
@@ -1186,7 +1221,16 @@
     .filter-btn { white-space: nowrap; }
   }
   .search-container { width: 100%; min-width: 100%; }
-  .factures-table { min-width: 800px; th, td { padding: 12px 10px; font-size: 13px; } }
+  .factures-table {
+    min-width: 800px;
+    th, td { padding: 12px 10px; font-size: 13px; }
+    th.col-client,
+    td.col-client {
+      min-width: 10.5rem;
+      max-width: min(18rem, 55vw);
+      width: 26%;
+    }
+  }
   .modal-overlay { padding: 10px; }
   .modal-content { max-width: 100%; max-height: 95vh; border-radius: var(--radius-lg); }
   .modal-header { padding: 16px; h2 { font-size: 18px; } }
