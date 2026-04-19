@@ -67,10 +67,10 @@ services:
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-gesy_dev_local}
       FILE_UPLOAD_DIR: /data/uploads
       # SMTP / IMAP — mappés sur spring.mail.* via application.properties (valeurs vides = inchangé côté Spring)
-      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_HOST: ${MAIL_HOST:-mail.sfb-petroleum.com}
       MAIL_PORT: ${MAIL_PORT:-465}
-      MAIL_USERNAME: ${MAIL_USERNAME:-}
-      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_USERNAME: ${MAIL_USERNAME:-oumar.sanogo@sfb-petroleum.com}
+      MAIL_PASSWORD: "${MAIL_PASSWORD:-oumar@123}"
       MAIL_PROTOCOL: ${MAIL_PROTOCOL:-smtps}
       MAIL_DEBUG: ${MAIL_DEBUG:-false}
       MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-true}
@@ -81,7 +81,7 @@ services:
       MAIL_SMTPS_AUTH: ${MAIL_SMTPS_AUTH:-true}
       MAIL_SMTPS_SSL_ENABLE: ${MAIL_SMTPS_SSL_ENABLE:-true}
       MAIL_SMTPS_SSL_TRUST: ${MAIL_SMTPS_SSL_TRUST:-}
-      MAIL_IMAP_HOST: ${MAIL_IMAP_HOST:-}
+      MAIL_IMAP_HOST: ${MAIL_IMAP_HOST:-mail.sfb-petroleum.com}
       MAIL_IMAP_PORT: ${MAIL_IMAP_PORT:-993}
     volumes:
       - dev_gesy_uploads:/data/uploads

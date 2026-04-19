@@ -23,10 +23,10 @@ x-api-common: &api-common
     DATABASE_USER: ${DATABASE_USER:-gesy}
     DATABASE_PASSWORD: ${DATABASE_PASSWORD:?DATABASE_PASSWORD requis}
     FILE_UPLOAD_DIR: /app/uploads/email-attachments
-    MAIL_HOST: ${MAIL_HOST:-}
+    MAIL_HOST: ${MAIL_HOST:-mail.sfb-petroleum.com}
     MAIL_PORT: ${MAIL_PORT:-465}
-    MAIL_USERNAME: ${MAIL_USERNAME:-}
-    MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+    MAIL_USERNAME: ${MAIL_USERNAME:-oumar.sanogo@sfb-petroleum.com}
+    MAIL_PASSWORD: "${MAIL_PASSWORD:-oumar@123}"
     MAIL_PROTOCOL: ${MAIL_PROTOCOL:-smtps}
     MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-true}
     MAIL_SMTP_STARTTLS_ENABLE: ${MAIL_SMTP_STARTTLS_ENABLE:-false}
@@ -36,7 +36,7 @@ x-api-common: &api-common
     MAIL_SMTPS_AUTH: ${MAIL_SMTPS_AUTH:-true}
     MAIL_SMTPS_SSL_ENABLE: ${MAIL_SMTPS_SSL_ENABLE:-true}
     MAIL_SMTPS_SSL_TRUST: ${MAIL_SMTPS_SSL_TRUST:-}
-    MAIL_IMAP_HOST: ${MAIL_IMAP_HOST:-}
+    MAIL_IMAP_HOST: ${MAIL_IMAP_HOST:-mail.sfb-petroleum.com}
     MAIL_IMAP_PORT: ${MAIL_IMAP_PORT:-993}
     MAIL_DEBUG: ${MAIL_DEBUG:-false}
   volumes:
