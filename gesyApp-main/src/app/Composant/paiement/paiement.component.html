@@ -275,7 +275,16 @@
             <div class="description-value">{{ getTransactionDescription(paiement.id) }}</div>
           </td>
           <td>
+            @if (paiement.factureId) {
+            <a
+              href="#"
+              class="link-facture"
+              (click)="openFactureDepuisListe($event, paiement.factureId)"
+              title="Ouvrir la facture dans Facturation"
+            >{{ paiement.facture }}</a>
+            } @else {
             <div class="cell-facture">{{ paiement.facture }}</div>
+            }
           </td>
           <td>
             <div class="description-value cell-client">{{ paiement.beneficiaire.nom }}</div>
@@ -376,7 +385,16 @@
             <div class="paiement-numero">{{ paiement.reference || 'N/A' }}</div>
           </td>
           <td>
+            @if (paiement.factureId) {
+            <a
+              href="#"
+              class="link-facture"
+              (click)="openFactureDepuisListe($event, paiement.factureId)"
+              title="Ouvrir la facture dans Facturation"
+            >{{ paiementFactureLabel(paiement) }}</a>
+            } @else {
             <div class="cell-facture">{{ paiementFactureLabel(paiement) }}</div>
+            }
           </td>
           <td>
             <div class="description-value cell-client">{{ paiementClientLabel(paiement) }}</div>

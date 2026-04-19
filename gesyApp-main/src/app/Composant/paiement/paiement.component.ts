@@ -6,6 +6,7 @@ import { ComptesBancairesService, CompteBancaire } from '../../services/comptes-
 import { CaissesService, Caisse } from '../../services/caisses.service';
 import { TransactionsService, Transaction, TransactionPage, TransactionStats, TransactionFilterResult } from '../../services/transactions.service';
 import { PaiementService, Paiement as PaiementBackend } from '../../services/paiement.service';
+import { NavigationService } from '../../services/navigation.service';
 import { jsPDF } from 'jspdf';
 import { AlertService } from '../../nativeComp/alert/alert.service';
 import { ToastService } from '../../nativeComp/toast/toast.service';
@@ -28,6 +29,7 @@ interface Paiement {
   id: string;
   numero: string;
   facture: string;
+  factureId?: number;
   beneficiaire: {
     nom: string;
     email: string;
@@ -265,8 +267,18 @@ export class PaiementComponent implements OnInit {
     private alertService: AlertService,
     private toastService: ToastService,
     private pdfService: PdfService,
-    private justificatifsFinanciersService: JustificatifsFinanciersService
+    private justificatifsFinanciersService: JustificatifsFinanciersService,
+    private navigationService: NavigationService
   ) { }
+
+  openFactureDepuisListe(event: Event, factureId?: number | null): void {
+    event.preventDefault();
+    event.stopPropagation();
+    if (factureId == null || factureId <= 0) {
+      return;
+    }
+    this.navigationService.openFacturationWithFacture(factureId);
+  }
 
   ngOnInit() {
     this.loadComptesBancaires();
@@ -700,6 +712,7 @@ export class PaiementComponent implements OnInit {
       id: transaction.id?.toString() || '',
       numero: transaction.reference || `TXN-${transaction.id}`,
       facture: transactionFactureLabel(transaction),
+      factureId: transaction.factureId,
       beneficiaire: {
         nom: clientLine,
         email: '',

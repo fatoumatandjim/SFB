@@ -12,6 +12,7 @@ import autoTable from 'jspdf-autotable';
 import { AlertService } from '../../nativeComp/alert/alert.service';
 import { ToastService } from '../../nativeComp/toast/toast.service';
 import { AuthService } from '../../services/auth.service';
+import { NavigationService } from '../../services/navigation.service';
 import { getHttpErrorMessage } from '../../utils/http-error.util';
 import { JustificatifsFinanciersPanelComponent } from '../justificatifs-financiers-panel/justificatifs-financiers-panel.component';
 import { JUSTIFICATIF_OWNER_TRANSACTION } from '../../services/justificatifs-financiers.service';
@@ -125,7 +126,8 @@ export class FacturationComponent implements OnInit {
     private caissesService: CaissesService,
     private alertService: AlertService,
     private toastService: ToastService,
-    private authService: AuthService
+    private authService: AuthService,
+    private navigationService: NavigationService
   ) { }
 
   isAdmin(): boolean {
@@ -139,6 +141,7 @@ export class FacturationComponent implements OnInit {
     this.loadStats();
     this.loadComptesBancaires();
     this.loadCaisses();
+    this.tryOpenPendingFactureFromNavigation();
   }
 
   loadCaisses() {
@@ -159,6 +162,23 @@ export class FacturationComponent implements OnInit {
       },
       error: (error) => {
         console.error('Erreur lors du chargement des comptes bancaires:', error);
+      }
+    });
+  }
+
+  /**
+   * Redirection depuis Paiements : ouvre le détail via l’API (toute page de la liste paginée).
+   */
+  private tryOpenPendingFactureFromNavigation(): void {
+    const id = this.navigationService.consumePendingOpenFactureId();
+    if (id == null) {
+      return;
+    }
+    this.facturesService.getFactureById(id).subscribe({
+      next: (f) => this.viewFacture(f),
+      error: (err) => {
+        console.error('Facture introuvable (navigation):', err);
+        this.toastService.error(getHttpErrorMessage(err, 'Facture introuvable'));
       }
     });
   }
