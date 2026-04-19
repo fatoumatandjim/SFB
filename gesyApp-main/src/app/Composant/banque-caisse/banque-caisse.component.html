@@ -92,7 +92,7 @@
           type="button"
           class="btn-rapport-pdf"
           (click)="openRapportPdfModal()"
-          title="Exporter un rapport PDF (même présentation que le menu Paiements)">
+          title="Exporter un rapport PDF des transactions">
           <span>📄</span>
           Rapport PDF
         </button>
@@ -938,7 +938,7 @@
       </div>
       <div class="modal-body">
         <p class="rapport-intro">
-          Export PDF identique au menu <strong>Paiements</strong> (liste des transactions). Filtrez par banque, caisse ou les deux, et par période.
+          Générez un PDF listant les transactions selon le périmètre (banque, caisse ou les deux) et la période choisie.
         </p>
 
         <div class="rapport-form">

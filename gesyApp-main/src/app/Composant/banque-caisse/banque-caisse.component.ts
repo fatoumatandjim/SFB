@@ -113,7 +113,7 @@ export class BanqueCaisseComponent implements OnInit {
   private editFinanceEntitySnapshot: CompteBancaire | Caisse | null = null;
   showAddTransactionModal: boolean = false;
   showAllTransactionsModal: boolean = false;
-  /** Rapport PDF transactions (même template que le menu Paiements). */
+  /** Rapport PDF des transactions (export tableau). */
   showRapportPdfModal: boolean = false;
   rapportScope: 'banque' | 'caisse' | 'les-deux' = 'les-deux';
   rapportCompteId: number | null = null;
