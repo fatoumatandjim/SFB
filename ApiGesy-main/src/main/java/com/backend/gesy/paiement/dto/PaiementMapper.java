@@ -1,5 +1,6 @@
 package com.backend.gesy.paiement.dto;
 
+import com.backend.gesy.facture.Facture;
 import com.backend.gesy.paiement.Paiement;
 import org.springframework.stereotype.Component;
 
@@ -15,6 +16,13 @@ public class PaiementMapper {
         dto.setMontant(paiement.getMontant());
         dto.setDate(paiement.getDate());
         dto.setFactureId(paiement.getFacture() != null ? paiement.getFacture().getId() : null);
+        Facture facture = paiement.getFacture();
+        if (facture != null) {
+            dto.setFactureNumero(facture.getNumero());
+            if (facture.getClient() != null) {
+                dto.setFactureClientNom(facture.getClient().getNom());
+            }
+        }
         dto.setMethode(paiement.getMethode() != null ? paiement.getMethode().name() : null);
         dto.setStatut(paiement.getStatut() != null ? paiement.getStatut().name() : null);
         dto.setNumeroCheque(paiement.getNumeroCheque());

@@ -1,5 +1,6 @@
 package com.backend.gesy.transaction.dto;
 
+import com.backend.gesy.facture.Facture;
 import com.backend.gesy.transaction.Transaction;
 import org.springframework.stereotype.Component;
 
@@ -18,6 +19,13 @@ public class TransactionMapper {
         dto.setCompteId(transaction.getCompte() != null ? transaction.getCompte().getId() : null);
         dto.setCamionId(transaction.getCamion() != null ? transaction.getCamion().getId() : null);
         dto.setFactureId(transaction.getFacture() != null ? transaction.getFacture().getId() : null);
+        Facture facture = transaction.getFacture();
+        if (facture != null) {
+            dto.setFactureNumero(facture.getNumero());
+            if (facture.getClient() != null) {
+                dto.setFactureClientNom(facture.getClient().getNom());
+            }
+        }
         dto.setVoyageId(transaction.getVoyage() != null ? transaction.getVoyage().getId() : null);
         dto.setCaisseId(transaction.getCaisse() != null ? transaction.getCaisse().getId() : null);
         dto.setTransactionLieeId(transaction.getTransactionLiee() != null ? transaction.getTransactionLiee().getId() : null);

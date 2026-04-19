@@ -3,14 +3,52 @@ import { Transaction } from '../../services/transactions.service';
 
 /** Colonnes identiques au menu Paiements → export PDF des transactions. */
 export const TRANSACTIONS_PDF_LIST_COLUMNS: PdfTableColumn[] = [
-  { header: 'N°', dataKey: 'numero', width: 30 },
-  { header: 'Référence', dataKey: 'reference', width: 50 },
-  { header: 'Description', dataKey: 'description', width: 80 },
-  { header: 'Date', dataKey: 'date', width: 50 },
-  { header: 'Montant', dataKey: 'montant', width: 40 },
-  { header: 'Type', dataKey: 'type', width: 50 },
-  { header: 'Statut', dataKey: 'statut', width: 40 }
+  { header: 'N°', dataKey: 'numero', width: 26 },
+  { header: 'Référence', dataKey: 'reference', width: 42 },
+  { header: 'Description', dataKey: 'description', width: 56 },
+  { header: 'Facture', dataKey: 'facture', width: 34 },
+  { header: 'Client', dataKey: 'client', width: 38 },
+  { header: 'Date', dataKey: 'date', width: 46 },
+  { header: 'Montant', dataKey: 'montant', width: 36 },
+  { header: 'Type', dataKey: 'type', width: 44 },
+  { header: 'Statut', dataKey: 'statut', width: 36 }
 ];
+
+/** Libellés partagés : liste Paiements, détails, export PDF, Banque & Caisse. */
+export function transactionFactureLabel(t: Transaction): string {
+  const n = t.factureNumero?.trim();
+  if (n) return n;
+  if (t.factureId != null && t.factureId > 0) return `Facture #${t.factureId}`;
+  return '—';
+}
+
+export function transactionClientLabel(t: Transaction): string {
+  const c = t.factureClientNom?.trim();
+  if (c) return c;
+  const b = t.beneficiaire?.trim();
+  if (b) return b;
+  const d = t.description?.trim();
+  if (d) return d;
+  return '—';
+}
+
+export interface PaiementFactureClientFields {
+  factureNumero?: string | null;
+  factureId?: number | null;
+  factureClientNom?: string | null;
+}
+
+export function paiementFactureLabel(p: PaiementFactureClientFields): string {
+  const n = p.factureNumero?.trim();
+  if (n) return n;
+  if (p.factureId != null && p.factureId > 0) return `Facture #${p.factureId}`;
+  return '—';
+}
+
+export function paiementClientLabel(p: PaiementFactureClientFields): string {
+  const c = p.factureClientNom?.trim();
+  return c || '—';
+}
 
 export function formatTransactionDateForPdfList(dateString: string | undefined): string {
   if (!dateString) return 'N/A';
@@ -73,6 +111,8 @@ export function buildTransactionsPdfTableRows(transactions: Transaction[]): Reco
     numero: t.id?.toString() || 'N/A',
     reference: t.reference || '-',
     description: t.description || '-',
+    facture: transactionFactureLabel(t),
+    client: transactionClientLabel(t),
     date: formatTransactionDateForPdfList(t.date),
     montant: formatMontantSpacedForPdf(t.montant),
     type: transactionTypeLabelForPdf(t.type || ''),

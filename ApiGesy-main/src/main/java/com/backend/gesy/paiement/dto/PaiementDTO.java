@@ -15,6 +15,8 @@ public class PaiementDTO {
     private BigDecimal montant;
     private LocalDate date;
     private Long factureId;
+    private String factureNumero;
+    private String factureClientNom;
     private String methode;
     private String statut;
     private String numeroCheque;

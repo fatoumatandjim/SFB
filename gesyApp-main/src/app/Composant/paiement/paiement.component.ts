@@ -16,7 +16,13 @@ import {
   JUSTIFICATIF_OWNER_TRANSACTION,
   JustificatifsFinanciersService
 } from '../../services/justificatifs-financiers.service';
-import { exportTransactionsPdfReport } from '../../shared/finance/transactions-pdf.util';
+import {
+  exportTransactionsPdfReport,
+  transactionFactureLabel,
+  transactionClientLabel,
+  paiementFactureLabel,
+  paiementClientLabel
+} from '../../shared/finance/transactions-pdf.util';
 
 interface Paiement {
   id: string;
@@ -45,6 +51,11 @@ interface Paiement {
 export class PaiementComponent implements OnInit {
   readonly justificatifOwnerTransaction = JUSTIFICATIF_OWNER_TRANSACTION;
   readonly justificatifOwnerPaiement = JUSTIFICATIF_OWNER_PAIEMENT;
+  /** Exposés au template (libellés DRY avec l’export PDF). */
+  readonly transactionFactureLabel = transactionFactureLabel;
+  readonly transactionClientLabel = transactionClientLabel;
+  readonly paiementFactureLabel = paiementFactureLabel;
+  readonly paiementClientLabel = paiementClientLabel;
 
   activeTab: 'transactions' | 'paiements-non-effectues' = 'transactions';
   activeFilter: string = 'tous';
@@ -295,7 +306,10 @@ export class PaiementComponent implements OnInit {
       filtered = filtered.filter(p =>
         p.reference?.toLowerCase().includes(term) ||
         p.notes?.toLowerCase().includes(term) ||
-        p.numeroVoyage?.toLowerCase().includes(term)
+        p.numeroVoyage?.toLowerCase().includes(term) ||
+        p.factureNumero?.toLowerCase().includes(term) ||
+        p.factureClientNom?.toLowerCase().includes(term) ||
+        (p.factureId != null && p.factureId.toString().includes(term))
       );
     }
     this.filteredPaiementsNonEffectues = filtered;
@@ -654,6 +668,10 @@ export class PaiementComponent implements OnInit {
         transactions = transactions.filter(t =>
           (t.reference && t.reference.toLowerCase().includes(term)) ||
           (t.description && t.description.toLowerCase().includes(term)) ||
+          (t.beneficiaire && t.beneficiaire.toLowerCase().includes(term)) ||
+          (t.factureNumero && t.factureNumero.toLowerCase().includes(term)) ||
+          (t.factureClientNom && t.factureClientNom.toLowerCase().includes(term)) ||
+          (t.factureId != null && t.factureId.toString().includes(term)) ||
           (t.id && t.id.toString().includes(term))
         );
       }
@@ -664,19 +682,26 @@ export class PaiementComponent implements OnInit {
   }
 
   mapTransactionToPaiement(transaction: Transaction): Paiement {
-    // Extraire les initiales du bénéficiaire ou de la description
-    const beneficiaireNom = transaction.beneficiaire || transaction.description || 'N/A';
-    const initiales = beneficiaireNom.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) || '??';
+    const clientLine = transactionClientLabel(transaction);
+    const initialesSource =
+      clientLine !== '—' ? clientLine : transaction.beneficiaire || transaction.description || 'N/A';
+    const initiales =
+      initialesSource
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .toUpperCase()
+        .substring(0, 2) || '??';
     const couleurs = ['blue', 'purple', 'red', 'green', 'orange', 'teal', 'pink'];
-    const hash = beneficiaireNom.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const hash = initialesSource.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
     const couleur = couleurs[hash % couleurs.length];
 
     return {
       id: transaction.id?.toString() || '',
       numero: transaction.reference || `TXN-${transaction.id}`,
-      facture: transaction.factureId ? `INV-${transaction.factureId}` : 'N/A',
+      facture: transactionFactureLabel(transaction),
       beneficiaire: {
-        nom: beneficiaireNom,
+        nom: clientLine,
         email: '',
         initiales: initiales,
         couleur: couleur
@@ -1021,6 +1046,10 @@ export class PaiementComponent implements OnInit {
           filteredTransactions = transactions.filter(t =>
             (t.reference && t.reference.toLowerCase().includes(term)) ||
             (t.description && t.description.toLowerCase().includes(term)) ||
+            (t.beneficiaire && t.beneficiaire.toLowerCase().includes(term)) ||
+            (t.factureNumero && t.factureNumero.toLowerCase().includes(term)) ||
+            (t.factureClientNom && t.factureClientNom.toLowerCase().includes(term)) ||
+            (t.factureId != null && t.factureId.toString().includes(term)) ||
             (t.id && t.id.toString().includes(term))
           );
         }

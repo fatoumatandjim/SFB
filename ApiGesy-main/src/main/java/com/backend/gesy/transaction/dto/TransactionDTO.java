@@ -18,6 +18,10 @@ public class TransactionDTO {
     private Long compteId;
     private Long camionId;
     private Long factureId;
+    /** Numéro métier de la facture (si liée), pour affichage liste. */
+    private String factureNumero;
+    /** Nom du client sur la facture (si liée), pour affichage liste. */
+    private String factureClientNom;
     private Long voyageId;
     private Long caisseId;
     private Long transactionLieeId;

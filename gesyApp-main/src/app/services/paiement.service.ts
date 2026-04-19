@@ -8,6 +8,8 @@ export interface Paiement {
   montant: number;
   date: string;
   factureId?: number;
+  factureNumero?: string | null;
+  factureClientNom?: string | null;
   methode: string;
   statut: 'EN_ATTENTE' | 'VALIDE' | 'REJETE' | 'ANNULE';
   numeroCheque?: string;

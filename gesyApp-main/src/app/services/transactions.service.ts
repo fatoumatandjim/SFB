@@ -11,6 +11,10 @@ export interface Transaction {
   compteId?: number;
   camionId?: number;
   factureId?: number;
+  /** Numéro affichable (API) si facture liée. */
+  factureNumero?: string | null;
+  /** Client facture (API) si facture liée. */
+  factureClientNom?: string | null;
   voyageId?: number;
   caisseId?: number;
   transactionLieeId?: number;
