@@ -16,6 +16,7 @@ import {
   JUSTIFICATIF_OWNER_TRANSACTION,
   JustificatifsFinanciersService
 } from '../../services/justificatifs-financiers.service';
+import { exportTransactionsPdfReport } from '../../shared/finance/transactions-pdf.util';
 
 interface Paiement {
   id: string;
@@ -1029,19 +1030,7 @@ export class PaiementComponent implements OnInit {
           return;
         }
 
-        // Préparer les données pour le PDF
-        const pdfData = filteredTransactions.map(t => ({
-          numero: t.id?.toString() || 'N/A',
-          reference: t.reference || '-',
-          description: t.description || '-',
-          date: this.formatDate(t.date),
-          montant: this.formatMontant(t.montant),
-          type: this.getTransactionTypeLabel(t.type || ''),
-          statut: this.getStatutLabel(t.statut || '')
-        }));
-
-        // Préparer les options de date
-        const dateRange: any = {};
+        const dateRange: { date?: string; startDate?: string; endDate?: string } = {};
         if (this.filterType === 'date' && this.filterDate) {
           dateRange.date = this.filterDate;
         } else if (this.filterType === 'range' && this.filterStartDate && this.filterEndDate) {
@@ -1049,22 +1038,12 @@ export class PaiementComponent implements OnInit {
           dateRange.endDate = this.filterEndDate;
         }
 
-        // Exporter en PDF
-        this.pdfService.exportTable({
-          title: 'Liste des Transactions',
+        exportTransactionsPdfReport({
+          pdfService: this.pdfService,
+          transactions: filteredTransactions,
           subtitle: `Total: ${filteredTransactions.length} transaction(s)`,
           filename: `transactions_${new Date().toISOString().split('T')[0]}.pdf`,
-          dateRange: dateRange,
-          columns: [
-            { header: 'N°', dataKey: 'numero', width: 30 },
-            { header: 'Référence', dataKey: 'reference', width: 50 },
-            { header: 'Description', dataKey: 'description', width: 80 },
-            { header: 'Date', dataKey: 'date', width: 50 },
-            { header: 'Montant', dataKey: 'montant', width: 40 },
-            { header: 'Type', dataKey: 'type', width: 50 },
-            { header: 'Statut', dataKey: 'statut', width: 40 }
-          ],
-          data: pdfData
+          dateRange
         });
 
         this.toastService.success('Export PDF réussi!');

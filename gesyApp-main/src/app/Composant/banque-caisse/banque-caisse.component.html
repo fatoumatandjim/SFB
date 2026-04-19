@@ -83,10 +83,20 @@
     </div>
 
     <div class="actions-bar">
-      <button class="btn-new-transaction" (click)="nouvelleTransaction()">
-        <span>+</span>
-        Nouvelle Transaction
-      </button>
+      <div class="actions-bar-primary">
+        <button type="button" class="btn-new-transaction" (click)="nouvelleTransaction()">
+          <span>+</span>
+          Nouvelle Transaction
+        </button>
+        <button
+          type="button"
+          class="btn-rapport-pdf"
+          (click)="openRapportPdfModal()"
+          title="Exporter un rapport PDF (même présentation que le menu Paiements)">
+          <span>📄</span>
+          Rapport PDF
+        </button>
+      </div>
 
       <div class="search-container">
         <label for="search-transactions" class="sr-only">Rechercher des transactions</label>
@@ -914,6 +924,92 @@
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  </div>
+}
+
+@if (showRapportPdfModal) {
+  <div class="modal-overlay" (click)="closeRapportPdfModal()">
+    <div class="modal-content rapport-pdf-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Rapport des transactions</h2>
+        <button type="button" class="modal-close" (click)="closeRapportPdfModal()" aria-label="Fermer">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="rapport-intro">
+          Export PDF identique au menu <strong>Paiements</strong> (liste des transactions). Filtrez par banque, caisse ou les deux, et par période.
+        </p>
+
+        <div class="rapport-form">
+          <div class="form-group">
+            <span class="form-label">Périmètre</span>
+            <div class="rapport-scope-options">
+              <label class="radio-line">
+                <input type="radio" name="rapportScope" value="banque" [(ngModel)]="rapportScope" />
+                Comptes bancaires uniquement
+              </label>
+              <label class="radio-line">
+                <input type="radio" name="rapportScope" value="caisse" [(ngModel)]="rapportScope" />
+                Caisses uniquement
+              </label>
+              <label class="radio-line">
+                <input type="radio" name="rapportScope" value="les-deux" [(ngModel)]="rapportScope" />
+                Banques et caisses
+              </label>
+            </div>
+          </div>
+
+          @if (rapportScope === 'banque' || rapportScope === 'les-deux') {
+            <div class="form-group">
+              <label for="rapport-compte">Compte bancaire</label>
+              <select id="rapport-compte" [(ngModel)]="rapportCompteId" class="form-select">
+                <option [ngValue]="null">Tous les comptes</option>
+                @for (c of comptesBancaires; track c.id) {
+                  <option [ngValue]="c.id">{{ c.nom || (c.banque + ' - ' + c.numero) }}</option>
+                }
+              </select>
+            </div>
+          }
+
+          @if (rapportScope === 'caisse' || rapportScope === 'les-deux') {
+            <div class="form-group">
+              <label for="rapport-caisse">Caisse</label>
+              <select id="rapport-caisse" [(ngModel)]="rapportCaisseId" class="form-select">
+                <option [ngValue]="null">Toutes les caisses</option>
+                @for (ca of caisses; track ca.id) {
+                  <option [ngValue]="ca.id">{{ ca.nom }}</option>
+                }
+              </select>
+            </div>
+          }
+
+          <div class="form-row-dates">
+            <div class="form-group">
+              <label for="rapport-start">Date de début *</label>
+              <input type="date" id="rapport-start" [(ngModel)]="rapportStartDate" class="form-input" required />
+            </div>
+            <div class="form-group">
+              <label for="rapport-end">Date de fin *</label>
+              <input type="date" id="rapport-end" [(ngModel)]="rapportEndDate" class="form-input" required />
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" (click)="closeRapportPdfModal()">Annuler</button>
+          <button
+            type="button"
+            class="btn-submit"
+            [disabled]="isExportingRapport"
+            (click)="exportRapportTransactionsPdf()">
+            @if (isExportingRapport) {
+              Génération…
+            } @else {
+              Générer le PDF
+            }
+          </button>
+        </div>
       </div>
     </div>
   </div>

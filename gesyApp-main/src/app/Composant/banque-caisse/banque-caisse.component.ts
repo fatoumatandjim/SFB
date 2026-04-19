@@ -20,6 +20,11 @@ import {
   JustificatifsFinanciersService
 } from '../../services/justificatifs-financiers.service';
 import { ResponsablesComptablesMultiselectComponent } from './responsables-comptables-multiselect.component';
+import { PdfService } from '../../services/pdf.service';
+import {
+  exportTransactionsPdfReport,
+  filterTransactionsBanqueCaisse
+} from '../../shared/finance/transactions-pdf.util';
 
 interface CompteBancaireDisplay {
   id?: number;
@@ -108,6 +113,14 @@ export class BanqueCaisseComponent implements OnInit {
   private editFinanceEntitySnapshot: CompteBancaire | Caisse | null = null;
   showAddTransactionModal: boolean = false;
   showAllTransactionsModal: boolean = false;
+  /** Rapport PDF transactions (même template que le menu Paiements). */
+  showRapportPdfModal: boolean = false;
+  rapportScope: 'banque' | 'caisse' | 'les-deux' = 'les-deux';
+  rapportCompteId: number | null = null;
+  rapportCaisseId: number | null = null;
+  rapportStartDate: string = '';
+  rapportEndDate: string = '';
+  isExportingRapport: boolean = false;
   showDetailModal: boolean = false;
   selectedTransaction: TransactionAPI | null = null;
   isLoading: boolean = false;
@@ -202,7 +215,8 @@ export class BanqueCaisseComponent implements OnInit {
     private authService: AuthService,
     private alertService: AlertService,
     private toastService: ToastService,
-    private justificatifsFinanciersService: JustificatifsFinanciersService
+    private justificatifsFinanciersService: JustificatifsFinanciersService,
+    private pdfService: PdfService
   ) { }
 
   isAdmin(): boolean {
@@ -988,6 +1002,90 @@ export class BanqueCaisseComponent implements OnInit {
     this.currentPage = 0;
     this.filterType = 'all';
     this.loadTransactionsPaginated();
+  }
+
+  openRapportPdfModal() {
+    const today = new Date();
+    const first = new Date(today.getFullYear(), today.getMonth(), 1);
+    const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    const toYmd = (d: Date) => d.toISOString().split('T')[0];
+    this.rapportStartDate = toYmd(first);
+    this.rapportEndDate = toYmd(end);
+    this.rapportScope = 'les-deux';
+    this.rapportCompteId = null;
+    this.rapportCaisseId = null;
+    this.showRapportPdfModal = true;
+  }
+
+  closeRapportPdfModal() {
+    this.showRapportPdfModal = false;
+    this.isExportingRapport = false;
+  }
+
+  private buildRapportPdfSubtitle(transactionCount: number): string {
+    const parts = [`Total: ${transactionCount} transaction(s)`];
+    if (this.rapportScope === 'banque') {
+      parts.push('Périmètre: comptes bancaires');
+    } else if (this.rapportScope === 'caisse') {
+      parts.push('Périmètre: caisses');
+    } else {
+      parts.push('Périmètre: banques et caisses');
+    }
+    if (this.rapportCompteId != null) {
+      parts.push(`Compte: ${this.getCompteNom(this.rapportCompteId) || '#' + this.rapportCompteId}`);
+    }
+    if (this.rapportCaisseId != null) {
+      const c = this.caisses.find((x) => x.id === this.rapportCaisseId);
+      parts.push(`Caisse: ${c?.nom || '#' + this.rapportCaisseId}`);
+    }
+    return parts.join(' • ');
+  }
+
+  exportRapportTransactionsPdf() {
+    if (!this.rapportStartDate || !this.rapportEndDate) {
+      this.toastService.warning('Veuillez renseigner la date de début et la date de fin.');
+      return;
+    }
+    if (new Date(this.rapportStartDate) > new Date(this.rapportEndDate)) {
+      this.toastService.warning('La date de début doit précéder la date de fin.');
+      return;
+    }
+
+    this.isExportingRapport = true;
+    this.transactionsService
+      .getTransactionsByDateRangeAll(this.rapportStartDate, this.rapportEndDate, false)
+      .subscribe({
+        next: (transactions) => {
+          this.isExportingRapport = false;
+          const filtered = filterTransactionsBanqueCaisse(
+            transactions,
+            this.rapportScope,
+            this.rapportCompteId,
+            this.rapportCaisseId
+          );
+          if (filtered.length === 0) {
+            this.toastService.warning('Aucune transaction à exporter pour ces critères.');
+            return;
+          }
+          exportTransactionsPdfReport({
+            pdfService: this.pdfService,
+            transactions: filtered,
+            subtitle: this.buildRapportPdfSubtitle(filtered.length),
+            filename: `rapport_transactions_banque_caisse_${this.rapportStartDate}_${this.rapportEndDate}.pdf`,
+            dateRange: {
+              startDate: this.rapportStartDate,
+              endDate: this.rapportEndDate
+            }
+          });
+          this.toastService.success('Export PDF généré.');
+          this.closeRapportPdfModal();
+        },
+        error: (err: unknown) => {
+          console.error('Erreur export rapport transactions:', err);
+          this.isExportingRapport = false;
+          this.toastService.error('Erreur lors de la génération du rapport PDF.');
+        }
+      });
   }
 
   closeAllTransactionsModal() {
