@@ -63,5 +63,11 @@ public interface TransactionService {
      * À utiliser une fois pour corriger les soldes des transactions créées avant la mise à jour automatique.
      */
     void recalculerSoldesDepuisTransactions();
+
+    /**
+     * Met à jour {@code montantPaye} et le statut de la facture (EMISE / PARTIELLEMENT_PAYEE / PAYEE) à partir
+     * de la somme des transactions au statut VALIDE liées à cette facture.
+     */
+    void syncFactureMontantPayeFromTransactions(Long factureId);
 }
 

@@ -14,6 +14,7 @@ import com.backend.gesy.comptebancaire.CompteBancaireRepository;
 import com.backend.gesy.caisse.Caisse;
 import com.backend.gesy.caisse.CaisseRepository;
 import com.backend.gesy.finance.FinanceEntityAccessService;
+import com.backend.gesy.transaction.TransactionService;
 import com.backend.gesy.voyage.Voyage;
 import com.backend.gesy.voyage.VoyagePaiementMenuRules;
 import com.backend.gesy.voyage.VoyageRepository;
@@ -24,12 +25,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -59,6 +58,7 @@ public class PaiementServiceImpl implements PaiementService {
     private final CategorieDepenseRepository categorieDepenseRepository;
     private final VoyageRepository voyageRepository;
     private final FinanceEntityAccessService financeEntityAccessService;
+    private final TransactionService transactionService;
 
     /**
      * Au démarrage :
@@ -270,6 +270,9 @@ public class PaiementServiceImpl implements PaiementService {
         // Valider toutes les transactions associées et les débiter
         for (Transaction transaction : paiement.getTransactions()) {
             if (transaction.getStatut() == com.backend.gesy.transaction.Transaction.StatutTransaction.EN_ATTENTE) {
+                if (paiement.getFacture() != null && transaction.getFacture() == null) {
+                    transaction.setFacture(paiement.getFacture());
+                }
                 // Assigner le compte ou la caisse à la transaction
                 CompteBancaire compte = null;
                 Caisse caisse = null;
@@ -323,45 +326,10 @@ public class PaiementServiceImpl implements PaiementService {
                 savedPaiement.getFacture() != null ? "/factures/" + savedPaiement.getFacture().getId() : null);
 
         if (savedPaiement.getFacture() != null) {
-            synchronizeFactureMontantPayeEtStatut(savedPaiement.getFacture().getId());
+            transactionService.syncFactureMontantPayeFromTransactions(savedPaiement.getFacture().getId());
         }
 
         return paiementMapper.toDTO(savedPaiement);
-    }
-
-    /**
-     * Aligne {@link Facture#getMontantPaye()} et le statut (EMISE / PARTIELLEMENT_PAYEE / PAYEE) sur la somme des
-     * paiements validés pour cette facture — utilisé pour la facture auto cession (Facturation) et tout paiement lié.
-     */
-    private void synchronizeFactureMontantPayeEtStatut(Long factureId) {
-        if (factureId == null) {
-            return;
-        }
-        Facture f = factureRepository.findById(factureId).orElse(null);
-        if (f == null || f.getStatut() == Facture.StatutFacture.ANNULEE) {
-            return;
-        }
-        BigDecimal totalValide = paiementRepository.findByFacture(f).stream()
-                .filter(p -> p.getStatut() == Paiement.StatutPaiement.VALIDE)
-                .map(Paiement::getMontant)
-                .filter(Objects::nonNull)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        f.setMontantPaye(totalValide);
-        BigDecimal du = f.getMontantTTC() != null ? f.getMontantTTC() : f.getMontant();
-        if (du == null) {
-            du = BigDecimal.ZERO;
-        }
-        if (totalValide.compareTo(BigDecimal.ZERO) <= 0) {
-            if (f.getStatut() != Facture.StatutFacture.BROUILLON) {
-                f.setStatut(Facture.StatutFacture.EMISE);
-            }
-        } else if (totalValide.compareTo(du) >= 0) {
-            f.setStatut(Facture.StatutFacture.PAYEE);
-        } else {
-            f.setStatut(Facture.StatutFacture.PARTIELLEMENT_PAYEE);
-        }
-        factureRepository.save(f);
     }
 
     @Override

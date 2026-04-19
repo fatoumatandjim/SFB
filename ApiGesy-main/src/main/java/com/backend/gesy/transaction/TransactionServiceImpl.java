@@ -33,6 +33,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -146,7 +147,6 @@ public class TransactionServiceImpl implements TransactionService {
             Facture facture = factureRepository.findById(transactionDTO.getFactureId())
                 .orElseThrow(() -> new RuntimeException("Facture non trouvée avec l'id: " + transactionDTO.getFactureId()));
             transaction.setFacture(facture);
-            facture.setMontantPaye(facture.getMontantPaye().add(transaction.getMontant()));
         }
         if (transactionDTO.getVoyageId() != null) {
             Voyage voyage = voyageRepository.findById(transactionDTO.getVoyageId())
@@ -181,6 +181,9 @@ public class TransactionServiceImpl implements TransactionService {
         }
         transaction.setDate(LocalDateTime.now());
         Transaction savedTransaction = transactionRepository.save(transaction);
+        if (savedTransaction.getFacture() != null && savedTransaction.getFacture().getId() != null) {
+            syncFactureMontantPayeFromTransactions(savedTransaction.getFacture().getId());
+        }
         return transactionMapper.toDTO(savedTransaction);
     }
 
@@ -188,6 +191,7 @@ public class TransactionServiceImpl implements TransactionService {
     public TransactionDTO update(Long id, TransactionDTO transactionDTO) {
         Transaction existingTransaction = transactionRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Transaction non trouvée avec l'id: " + id));
+        Long oldFactureId = existingTransaction.getFacture() != null ? existingTransaction.getFacture().getId() : null;
         Transaction transaction = transactionMapper.toEntity(transactionDTO);
         transaction.setId(existingTransaction.getId());
         if (transactionDTO.getCamionId() != null) {
@@ -234,12 +238,27 @@ public class TransactionServiceImpl implements TransactionService {
         }
         transaction.setDate(LocalDateTime.now());
         Transaction updatedTransaction = transactionRepository.save(transaction);
+        Long newFactureId = updatedTransaction.getFacture() != null ? updatedTransaction.getFacture().getId() : null;
+        if (oldFactureId != null && !oldFactureId.equals(newFactureId)) {
+            syncFactureMontantPayeFromTransactions(oldFactureId);
+        }
+        if (newFactureId != null) {
+            syncFactureMontantPayeFromTransactions(newFactureId);
+        }
         return transactionMapper.toDTO(updatedTransaction);
     }
 
     @Override
     public void deleteById(Long id) {
+        Long factureId = transactionRepository.findById(id)
+            .map(Transaction::getFacture)
+            .filter(Objects::nonNull)
+            .map(Facture::getId)
+            .orElse(null);
         transactionRepository.deleteById(id);
+        if (factureId != null) {
+            syncFactureMontantPayeFromTransactions(factureId);
+        }
     }
 
     @Override
@@ -733,8 +752,17 @@ public class TransactionServiceImpl implements TransactionService {
             }
         }
 
+        if (transactionDTO.getFactureId() != null) {
+            Facture facture = factureRepository.findById(transactionDTO.getFactureId())
+                .orElseThrow(() -> new RuntimeException("Facture non trouvée avec l'id: " + transactionDTO.getFactureId()));
+            transaction.setFacture(facture);
+        }
+
         // Sauvegarder la transaction
         Transaction savedTransaction = transactionRepository.save(transaction);
+        if (savedTransaction.getFacture() != null && savedTransaction.getFacture().getId() != null) {
+            syncFactureMontantPayeFromTransactions(savedTransaction.getFacture().getId());
+        }
         return transactionMapper.toDTO(savedTransaction);
     }
 
@@ -969,6 +997,38 @@ public class TransactionServiceImpl implements TransactionService {
             caisse.setSolde(solde);
             caisseRepository.save(caisse);
         }
+    }
+
+    @Override
+    public void syncFactureMontantPayeFromTransactions(Long factureId) {
+        if (factureId == null) {
+            return;
+        }
+        Facture f = factureRepository.findById(factureId).orElse(null);
+        if (f == null || f.getStatut() == Facture.StatutFacture.ANNULEE) {
+            return;
+        }
+        BigDecimal totalValide = transactionRepository.findByFacture(f).stream()
+                .filter(t -> t.getStatut() == Transaction.StatutTransaction.VALIDE)
+                .map(Transaction::getMontant)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        f.setMontantPaye(totalValide);
+        BigDecimal du = f.getMontantTTC() != null ? f.getMontantTTC() : f.getMontant();
+        if (du == null) {
+            du = BigDecimal.ZERO;
+        }
+        if (totalValide.compareTo(BigDecimal.ZERO) <= 0) {
+            if (f.getStatut() != Facture.StatutFacture.BROUILLON) {
+                f.setStatut(Facture.StatutFacture.EMISE);
+            }
+        } else if (totalValide.compareTo(du) >= 0) {
+            f.setStatut(Facture.StatutFacture.PAYEE);
+        } else {
+            f.setStatut(Facture.StatutFacture.PARTIELLEMENT_PAYEE);
+        }
+        factureRepository.save(f);
     }
 }
 

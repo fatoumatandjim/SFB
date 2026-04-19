@@ -170,18 +170,9 @@ public class FactureServiceImpl implements FactureService {
             transactionDTO.setFactureId(savedFacture.getId());
             
             transactionService.save(transactionDTO);
-            
-            // Mettre à jour le montant payé de la facture
-            savedFacture.setMontantPaye(factureDTO.getMontantPaye());
-            
-            // Mettre à jour le statut de la facture
-            if (factureDTO.getMontantPaye().compareTo(montantTTC) >= 0) {
-                savedFacture.setStatut(Facture.StatutFacture.PAYEE);
-            } else {
-                savedFacture.setStatut(Facture.StatutFacture.PARTIELLEMENT_PAYEE);
-            }
-            
-            savedFacture = factureRepository.save(savedFacture);
+            // montantPaye / statut : recalculés depuis les transactions VALIDE (sync dans TransactionService)
+            savedFacture = factureRepository.findById(savedFacture.getId())
+                    .orElseThrow(() -> new RuntimeException("Facture introuvable après enregistrement"));
         }
         
         return factureMapper.toDTO(savedFacture);
@@ -587,33 +578,6 @@ public class FactureServiceImpl implements FactureService {
         ligne.setPrixUnitaire(tarifParLitre != null ? tarifParLitre : BigDecimal.ZERO);
         ligne.setTotal(montantTTC);
         ligneFactureRepository.save(ligne);
-
-        // Encaissement client : même mécanisme que douane/T1 — paiement EN_ATTENTE + transaction,
-        // pour que la validation dans « Paiements » crédite la caisse/compte et mette à jour la facture.
-        Transaction txClient = new Transaction();
-        txClient.setMontant(montantTTC);
-        txClient.setDate(LocalDateTime.now());
-        txClient.setStatut(Transaction.StatutTransaction.EN_ATTENTE);
-        txClient.setType(Transaction.TypeTransaction.VIREMENT_ENTRANT);
-        txClient.setDescription("Encaissement facture cession (client) " + saved.getNumero()
-                + " — voyage " + voyage.getNumeroVoyage());
-        txClient.setReference(saved.getNumero());
-        txClient.setBeneficiaire(client.getNom());
-        txClient.setFacture(saved);
-        txClient.setVoyage(voyage);
-        txClient = transactionRepository.save(txClient);
-
-        Paiement paiementFactureClient = new Paiement();
-        paiementFactureClient.setMontant(montantTTC);
-        paiementFactureClient.setDate(LocalDate.now());
-        paiementFactureClient.setMethode(Paiement.MethodePaiement.VIREMENT);
-        paiementFactureClient.setStatut(Paiement.StatutPaiement.EN_ATTENTE);
-        paiementFactureClient.setReference("PAY-FACT-CESSION-" + voyage.getNumeroVoyage());
-        paiementFactureClient.setNotes("Facture client cession (droit convenu au litre) — " + saved.getNumero());
-        paiementFactureClient.setFacture(saved);
-        paiementFactureClient.setVoyage(voyage);
-        paiementFactureClient.getTransactions().add(txClient);
-        paiementRepository.save(paiementFactureClient);
     }
 }
 
