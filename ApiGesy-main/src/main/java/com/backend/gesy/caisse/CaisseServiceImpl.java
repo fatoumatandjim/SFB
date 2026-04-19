@@ -12,7 +12,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -40,6 +42,22 @@ public class CaisseServiceImpl implements CaisseService {
                     .orElseThrow(() -> new RuntimeException("Compte responsable non trouvé avec l'id: " + cid));
             caisse.getResponsables().add(compte);
         }
+    }
+
+    private boolean sameResponsableIds(Caisse existing, List<Long> incoming) {
+        if (incoming == null) {
+            return true;
+        }
+        Set<Long> cur = new HashSet<>();
+        if (existing.getResponsables() != null) {
+            for (Compte r : existing.getResponsables()) {
+                if (r.getId() != null) {
+                    cur.add(r.getId());
+                }
+            }
+        }
+        Set<Long> inc = incoming.stream().filter(Objects::nonNull).collect(Collectors.toSet());
+        return cur.equals(inc);
     }
 
     @Override
@@ -78,6 +96,7 @@ public class CaisseServiceImpl implements CaisseService {
 
     @Override
     public CaisseDTO save(CaisseDTO caisseDTO) {
+        financeEntityAccessService.validateResponsablesComptablesActifs(caisseDTO.getResponsableIds());
         Caisse caisse = caisseMapper.toEntity(caisseDTO);
         applyResponsables(caisse, caisseDTO.getResponsableIds());
         Caisse savedCaisse = caisseRepository.save(caisse);
@@ -88,7 +107,15 @@ public class CaisseServiceImpl implements CaisseService {
     public CaisseDTO update(Long id, CaisseDTO caisseDTO) {
         Caisse existingCaisse = caisseRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Caisse non trouvée avec l'id: " + id));
-        financeEntityAccessService.assertCanManageCaisse(existingCaisse);
+        boolean admin = financeEntityAccessService.isCurrentUserAdmin();
+        if (!admin) {
+            financeEntityAccessService.assertCanManageCaisse(existingCaisse);
+            if (caisseDTO.getResponsableIds() != null && !sameResponsableIds(existingCaisse, caisseDTO.getResponsableIds())) {
+                throw new RuntimeException("Seul un administrateur peut modifier les responsables de cette caisse.");
+            }
+        } else if (caisseDTO.getResponsableIds() != null) {
+            financeEntityAccessService.validateResponsablesComptablesActifs(caisseDTO.getResponsableIds());
+        }
         Caisse caisse = caisseMapper.toEntity(caisseDTO);
         caisse.setId(existingCaisse.getId());
         if (caisseDTO.getResponsableIds() != null) {

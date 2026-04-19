@@ -18,7 +18,9 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -48,6 +50,22 @@ public class CompteBancaireServiceImpl implements CompteBancaireService {
                     .orElseThrow(() -> new RuntimeException("Compte responsable non trouvé avec l'id: " + cid));
             compte.getResponsables().add(c);
         }
+    }
+
+    private boolean sameResponsableIds(CompteBancaire existing, List<Long> incoming) {
+        if (incoming == null) {
+            return true;
+        }
+        Set<Long> cur = new HashSet<>();
+        if (existing.getResponsables() != null) {
+            for (Compte r : existing.getResponsables()) {
+                if (r.getId() != null) {
+                    cur.add(r.getId());
+                }
+            }
+        }
+        Set<Long> inc = incoming.stream().filter(Objects::nonNull).collect(Collectors.toSet());
+        return cur.equals(inc);
     }
 
     @Override
@@ -86,6 +104,7 @@ public class CompteBancaireServiceImpl implements CompteBancaireService {
 
     @Override
     public CompteBancaireDTO save(CompteBancaireDTO compteDTO) {
+        financeEntityAccessService.validateResponsablesComptablesActifs(compteDTO.getResponsableIds());
         CompteBancaire compte = compteBancaireMapper.toEntity(compteDTO);
         applyResponsables(compte, compteDTO.getResponsableIds());
         CompteBancaire savedCompte = compteBancaireRepository.save(compte);
@@ -96,7 +115,15 @@ public class CompteBancaireServiceImpl implements CompteBancaireService {
     public CompteBancaireDTO update(Long id, CompteBancaireDTO compteDTO) {
         CompteBancaire existingCompte = compteBancaireRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Compte bancaire non trouvé avec l'id: " + id));
-        financeEntityAccessService.assertCanManageCompteBancaire(existingCompte);
+        boolean admin = financeEntityAccessService.isCurrentUserAdmin();
+        if (!admin) {
+            financeEntityAccessService.assertCanManageCompteBancaire(existingCompte);
+            if (compteDTO.getResponsableIds() != null && !sameResponsableIds(existingCompte, compteDTO.getResponsableIds())) {
+                throw new RuntimeException("Seul un administrateur peut modifier les responsables de ce compte bancaire.");
+            }
+        } else if (compteDTO.getResponsableIds() != null) {
+            financeEntityAccessService.validateResponsablesComptablesActifs(compteDTO.getResponsableIds());
+        }
         CompteBancaire compte = compteBancaireMapper.toEntity(compteDTO);
         compte.setId(existingCompte.getId());
         if (compteDTO.getResponsableIds() != null) {

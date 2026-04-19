@@ -1,9 +1,11 @@
 package com.backend.gesy.caisse;
 
 import com.backend.gesy.caisse.dto.CaisseDTO;
+import com.backend.gesy.security.SecurityExpressions;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -35,6 +37,7 @@ public class CaisseController {
     }
 
     @PostMapping
+    @PreAuthorize(SecurityExpressions.HAS_ROLE_ADMIN)
     public ResponseEntity<CaisseDTO> createCaisse(@RequestBody CaisseDTO caisseDTO) {
         return ResponseEntity.status(HttpStatus.CREATED).body(caisseService.save(caisseDTO));
     }

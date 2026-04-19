@@ -2,9 +2,11 @@ package com.backend.gesy.comptebancaire;
 
 import com.backend.gesy.comptebancaire.dto.BanqueCaisseStatsDTO;
 import com.backend.gesy.comptebancaire.dto.CompteBancaireDTO;
+import com.backend.gesy.security.SecurityExpressions;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -36,6 +38,7 @@ public class CompteBancaireController {
     }
 
     @PostMapping
+    @PreAuthorize(SecurityExpressions.HAS_ROLE_ADMIN)
     public ResponseEntity<CompteBancaireDTO> createCompte(@RequestBody CompteBancaireDTO compteDTO) {
         return ResponseEntity.status(HttpStatus.CREATED).body(compteBancaireService.save(compteDTO));
     }

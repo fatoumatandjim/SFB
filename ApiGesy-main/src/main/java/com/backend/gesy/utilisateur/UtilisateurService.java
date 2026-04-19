@@ -10,6 +10,8 @@ public interface UtilisateurService {
      * ou "Logisticien" (y compris l'alias "Simple Logisticien"), et actifs.
      */
     List<Utilisateur> findLogisticiensEtResponsables();
+    /** Comptes actifs ayant le rôle « Comptable » (attribution responsables banque/caisse, admin uniquement). */
+    List<Utilisateur> findComptablesActifs();
     Optional<Utilisateur> findById(Long id);
     Optional<Utilisateur> findByIdentifiant(String identifiant);
     Optional<Utilisateur> findByEmail(String email);

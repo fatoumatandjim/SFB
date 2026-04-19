@@ -107,10 +107,12 @@
   <div class="comptes-section">
     <div class="section-header">
       <h2>Comptes Bancaires</h2>
+      @if (isAdmin()) {
       <button class="btn-add-banque" (click)="nouvelleBanque()">
         <span>+</span>
         Nouvelle Banque
       </button>
+      }
     </div>
     @if (isLoading) {
       <div class="loading-state">
@@ -121,10 +123,12 @@
       <div class="empty-state">
         <div class="empty-icon">🏦</div>
         <p class="empty-message">Aucun compte bancaire trouvé.</p>
+        @if (isAdmin()) {
         <button class="btn-add-banque-empty" (click)="nouvelleBanque()">
           <span>+</span>
           Ajouter votre premier compte
         </button>
+        }
       </div>
     } @else {
       <div class="comptes-grid">
@@ -155,6 +159,13 @@
           <span class="solde-label">Solde</span>
           <span class="solde-value">{{ compte.solde | number }} {{ compte.devise || 'FCFA' }}</span>
         </div>
+        @if (isAdmin()) {
+        <div class="compte-card-actions">
+          <button type="button" class="btn-edit-responsables" (click)="openEditResponsablesBanque(compte.id)">
+            Responsables
+          </button>
+        </div>
+        }
       </div>
       }
       </div>
@@ -170,10 +181,12 @@
           <h2>Caisses</h2>
           <p class="section-subtitle">Soldes issus de l’entité Caisse (distincte des comptes bancaires). Plusieurs caisses possibles (Caisse 1, Caisse 2, …).</p>
         </div>
+        @if (isAdmin()) {
         <button type="button" class="btn-add-banque" (click)="nouvelleCaisse()">
           <span>+</span>
           Nouvelle caisse
         </button>
+        }
       </div>
     </div>
     @if (isLoadingCaisses) {
@@ -185,6 +198,12 @@
       <div class="empty-state">
         <div class="empty-icon">💵</div>
         <p class="empty-message">Aucune caisse enregistrée.</p>
+        @if (isAdmin()) {
+        <button type="button" class="btn-add-banque-empty" (click)="nouvelleCaisse()">
+          <span>+</span>
+          Ajouter une caisse
+        </button>
+        }
       </div>
     } @else {
       <div class="comptes-grid">
@@ -211,6 +230,13 @@
             <span class="solde-label">Solde</span>
             <span class="solde-value">{{ caisse.solde | number }} FCFA</span>
           </div>
+          @if (isAdmin()) {
+          <div class="compte-card-actions">
+            <button type="button" class="btn-edit-responsables" (click)="openEditResponsablesCaisse(caisse.id)">
+              Responsables
+            </button>
+          </div>
+          }
         </div>
         }
       </div>
@@ -377,22 +403,15 @@
               placeholder="Optionnel"
             ></textarea>
           </div>
-          <div class="form-group">
-            <label for="caisse-responsables">Responsables (gestion de cette caisse)</label>
-            <select
-              id="caisse-responsables"
-              multiple
-              [(ngModel)]="newCaisse.responsableIds"
-              name="caisseResponsableIds"
-              class="form-select"
-              size="5"
-            >
-              @for (u of utilisateursPourResponsable; track u.id) {
-                <option [ngValue]="u.id">{{ u.nom }} @if (u.identifiant) { ({{ u.identifiant }}) }</option>
-              }
-            </select>
-            <p class="form-hint">Ctrl/Cmd pour plusieurs. Vide = pas de restriction (admin toujours autorisé).</p>
-          </div>
+          <app-responsables-comptables-multiselect
+            label="Responsables comptables *"
+            hint="Au moins un comptable actif (rôle « Comptable »). Ctrl/Cmd pour en choisir plusieurs. Les administrateurs ont toujours accès."
+            inputId="caisse-responsables"
+            controlName="caisseResponsableIds"
+            [comptables]="comptablesPourResponsable"
+            [selectedIds]="newCaisse.responsableIds || []"
+            (selectedIdsChange)="newCaisse.responsableIds = $event"
+          />
           <div class="modal-actions">
             <button type="button" class="btn-cancel" (click)="closeAddCaisseModal()">Annuler</button>
             <button type="submit" class="btn-submit" [disabled]="isLoading">
@@ -400,6 +419,47 @@
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  </div>
+}
+
+@if (showEditResponsablesModal) {
+  <div class="modal-overlay" (click)="closeEditResponsablesModal()">
+    <div class="modal-content add-banque-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>Modifier les responsables</h2>
+        <button class="modal-close" type="button" (click)="closeEditResponsablesModal()" aria-label="Fermer">×</button>
+      </div>
+      <div class="modal-body">
+        @if (editResponsablesLoading && !editResponsablesReady) {
+          <div class="loading-state loading-state--compact">
+            <div class="loading-spinner"></div>
+            <p>Chargement…</p>
+          </div>
+        } @else {
+          <p class="edit-responsables-subtitle">{{ editResponsablesTitle }}</p>
+          <app-responsables-comptables-multiselect
+            label="Responsables comptables *"
+            hint="Au moins un comptable actif. Ctrl/Cmd pour plusieurs."
+            inputId="edit-finance-responsables"
+            controlName="editFinanceResponsableIds"
+            [comptables]="comptablesPourResponsable"
+            [selectedIds]="editResponsableIds"
+            (selectedIdsChange)="editResponsableIds = $event"
+          />
+          <div class="modal-actions">
+            <button type="button" class="btn-cancel" (click)="closeEditResponsablesModal()">Annuler</button>
+            <button
+              type="button"
+              class="btn-submit"
+              [disabled]="editResponsablesLoading"
+              (click)="saveEditResponsables()"
+            >
+              @if (editResponsablesLoading) { Enregistrement… } @else { Enregistrer }
+            </button>
+          </div>
+        }
       </div>
     </div>
   </div>
@@ -517,22 +577,15 @@
             ></textarea>
           </div>
 
-          <div class="form-group">
-            <label for="banque-responsables">Responsables (gestion du compte)</label>
-            <select
-              id="banque-responsables"
-              multiple
-              [(ngModel)]="newCompteBancaire.responsableIds"
-              name="responsableIdsBanque"
-              class="form-select"
-              size="5"
-            >
-              @for (u of utilisateursPourResponsable; track u.id) {
-                <option [ngValue]="u.id">{{ u.nom }} @if (u.identifiant) { ({{ u.identifiant }}) }</option>
-              }
-            </select>
-            <p class="form-hint">Maintenir Ctrl (ou Cmd) pour sélectionner plusieurs utilisateurs. Vide = pas de restriction (comportement existant). Les administrateurs ont toujours accès.</p>
-          </div>
+          <app-responsables-comptables-multiselect
+            label="Responsables comptables *"
+            hint="Au moins un comptable actif. Ctrl/Cmd pour plusieurs. Les administrateurs ont toujours accès."
+            inputId="banque-responsables"
+            controlName="responsableIdsBanque"
+            [comptables]="comptablesPourResponsable"
+            [selectedIds]="newCompteBancaire.responsableIds || []"
+            (selectedIdsChange)="newCompteBancaire.responsableIds = $event"
+          />
 
           <div class="modal-actions">
             <button type="button" class="btn-cancel" (click)="closeAddBanqueModal()">

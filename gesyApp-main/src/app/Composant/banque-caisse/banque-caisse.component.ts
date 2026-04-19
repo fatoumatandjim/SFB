@@ -8,8 +8,10 @@ import { CaissesService, Caisse } from '../../services/caisses.service';
 import { AlertService } from '../../nativeComp/alert/alert.service';
 import { ToastService } from '../../nativeComp/toast/toast.service';
 import { UtilisateursService, Utilisateur } from '../../services/utilisateurs.service';
+import { AuthService } from '../../services/auth.service';
 import { JustificatifsFinanciersPanelComponent } from '../justificatifs-financiers-panel/justificatifs-financiers-panel.component';
 import { JUSTIFICATIF_OWNER_TRANSACTION } from '../../services/justificatifs-financiers.service';
+import { ResponsablesComptablesMultiselectComponent } from './responsables-comptables-multiselect.component';
 
 interface CompteBancaireDisplay {
   id?: number;
@@ -70,7 +72,12 @@ interface NewTransaction {
   templateUrl: './banque-caisse.component.html',
   styleUrls: ['./banque-caisse.component.scss'],
   standalone: true,
-  imports: [CommonModule, FormsModule, JustificatifsFinanciersPanelComponent]
+  imports: [
+    CommonModule,
+    FormsModule,
+    JustificatifsFinanciersPanelComponent,
+    ResponsablesComptablesMultiselectComponent
+  ]
 })
 export class BanqueCaisseComponent implements OnInit {
   readonly justificatifOwnerTransaction = JUSTIFICATIF_OWNER_TRANSACTION;
@@ -79,6 +86,15 @@ export class BanqueCaisseComponent implements OnInit {
   searchTerm: string = '';
   showAddBanqueModal: boolean = false;
   showAddCaisseModal: boolean = false;
+  /** Admin : modifier uniquement les responsables (corps PUT complet depuis l’API). */
+  showEditResponsablesModal: boolean = false;
+  editResponsablesLoading: boolean = false;
+  editResponsablesMode: 'banque' | 'caisse' | null = null;
+  editResponsablesTitle: string = '';
+  editResponsableIds: number[] = [];
+  /** True une fois le GET terminé (le template ne peut pas lire le snapshot privé). */
+  editResponsablesReady: boolean = false;
+  private editFinanceEntitySnapshot: CompteBancaire | Caisse | null = null;
   showAddTransactionModal: boolean = false;
   showAllTransactionsModal: boolean = false;
   showDetailModal: boolean = false;
@@ -129,8 +145,8 @@ export class BanqueCaisseComponent implements OnInit {
   caisses: Caisse[] = [];
   caissePrincipaleId: number | undefined;
 
-  /** Comptes utilisateurs (même id que côté API responsables voyage / caisse). */
-  utilisateursPourResponsable: Utilisateur[] = [];
+  /** Comptables éligibles comme responsables banque/caisse (chargé si admin). */
+  comptablesPourResponsable: Utilisateur[] = [];
 
   newCaisse: Partial<NewCaisseForm> = {
     nom: '',
@@ -169,9 +185,14 @@ export class BanqueCaisseComponent implements OnInit {
     private transactionsService: TransactionsService,
     private caissesService: CaissesService,
     private utilisateursService: UtilisateursService,
+    private authService: AuthService,
     private alertService: AlertService,
     private toastService: ToastService
   ) { }
+
+  isAdmin(): boolean {
+    return this.authService.isAdmin();
+  }
 
   /** Comparaison insensible à la casse (ex. ACTIF / actif). */
   private isStatutActif(statut: string | undefined | null): boolean {
@@ -182,14 +203,12 @@ export class BanqueCaisseComponent implements OnInit {
     this.loadComptesBancaires();
     this.loadStats();
     this.loadCaisses();
-    this.utilisateursService.getLogisticiensEtResponsables().subscribe({
-      next: (list) => (this.utilisateursPourResponsable = list || []),
-      error: () =>
-        this.utilisateursService.getAllUtilisateurs().subscribe({
-          next: (list) => (this.utilisateursPourResponsable = list || []),
-          error: () => (this.utilisateursPourResponsable = [])
-        })
-    });
+    if (this.isAdmin()) {
+      this.utilisateursService.getComptablesActifs().subscribe({
+        next: (list) => (this.comptablesPourResponsable = list || []),
+        error: () => (this.comptablesPourResponsable = [])
+      });
+    }
   }
 
   loadStats() {
@@ -601,7 +620,132 @@ export class BanqueCaisseComponent implements OnInit {
   editTransaction(transaction: Transaction) {
   }
 
+  closeEditResponsablesModal(): void {
+    this.showEditResponsablesModal = false;
+    this.editResponsablesLoading = false;
+    this.editResponsablesReady = false;
+    this.editResponsablesMode = null;
+    this.editFinanceEntitySnapshot = null;
+    this.editResponsablesTitle = '';
+    this.editResponsableIds = [];
+  }
+
+  openEditResponsablesBanque(compteId: number | undefined): void {
+    if (!compteId) {
+      return;
+    }
+    if (!this.isAdmin()) {
+      this.toastService.warning('Seuls les administrateurs peuvent modifier les responsables.');
+      return;
+    }
+    this.editResponsablesMode = 'banque';
+    this.editFinanceEntitySnapshot = null;
+    this.editResponsablesReady = false;
+    this.editResponsablesTitle = '';
+    this.editResponsableIds = [];
+    this.showEditResponsablesModal = true;
+    this.editResponsablesLoading = true;
+    this.comptesBancairesService.getCompteById(compteId).subscribe({
+      next: (c) => {
+        this.editFinanceEntitySnapshot = { ...c };
+        this.editResponsablesTitle = `${c.banque} — ${c.numero}`;
+        this.editResponsableIds = [...(c.responsableIds ?? [])];
+        this.editResponsablesReady = true;
+        this.editResponsablesLoading = false;
+      },
+      error: (err: any) => {
+        this.editResponsablesLoading = false;
+        this.closeEditResponsablesModal();
+        this.toastService.error(
+          err?.error?.message || err?.message || 'Impossible de charger le compte bancaire.'
+        );
+      }
+    });
+  }
+
+  openEditResponsablesCaisse(caisseId: number | undefined): void {
+    if (!caisseId) {
+      return;
+    }
+    if (!this.isAdmin()) {
+      this.toastService.warning('Seuls les administrateurs peuvent modifier les responsables.');
+      return;
+    }
+    this.editResponsablesMode = 'caisse';
+    this.editFinanceEntitySnapshot = null;
+    this.editResponsablesReady = false;
+    this.editResponsablesTitle = '';
+    this.editResponsableIds = [];
+    this.showEditResponsablesModal = true;
+    this.editResponsablesLoading = true;
+    this.caissesService.getCaisseById(caisseId).subscribe({
+      next: (c) => {
+        this.editFinanceEntitySnapshot = { ...c };
+        this.editResponsablesTitle = c.nom;
+        this.editResponsableIds = [...(c.responsableIds ?? [])];
+        this.editResponsablesReady = true;
+        this.editResponsablesLoading = false;
+      },
+      error: (err: any) => {
+        this.editResponsablesLoading = false;
+        this.closeEditResponsablesModal();
+        this.toastService.error(err?.error?.message || err?.message || 'Impossible de charger la caisse.');
+      }
+    });
+  }
+
+  saveEditResponsables(): void {
+    if (!this.editFinanceEntitySnapshot || !this.editResponsablesMode) {
+      return;
+    }
+    const ids = this.editResponsableIds.filter((id) => id != null && id > 0);
+    if (ids.length === 0) {
+      this.toastService.warning('Sélectionnez au moins un responsable comptable.');
+      return;
+    }
+    this.editResponsablesLoading = true;
+    if (this.editResponsablesMode === 'banque') {
+      const b = this.editFinanceEntitySnapshot as CompteBancaire;
+      const payload: CompteBancaire = { ...b, responsableIds: ids };
+      this.comptesBancairesService.updateCompte(b.id!, payload).subscribe({
+        next: () => {
+          this.editResponsablesLoading = false;
+          this.toastService.success('Responsables du compte mis à jour.');
+          this.closeEditResponsablesModal();
+          this.loadComptesBancaires();
+        },
+        error: (err: any) => {
+          this.editResponsablesLoading = false;
+          this.toastService.error(
+            err?.error?.message || err?.message || 'Erreur lors de la mise à jour des responsables.'
+          );
+        }
+      });
+      return;
+    }
+    const c = this.editFinanceEntitySnapshot as Caisse;
+    const payload: Caisse = { ...c, responsableIds: ids };
+    this.caissesService.updateCaisse(c.id!, payload).subscribe({
+      next: () => {
+        this.editResponsablesLoading = false;
+        this.toastService.success('Responsables de la caisse mis à jour.');
+        this.closeEditResponsablesModal();
+        this.loadCaisses();
+      },
+      error: (err: any) => {
+        this.editResponsablesLoading = false;
+        this.toastService.error(
+          err?.error?.message || err?.message || 'Erreur lors de la mise à jour des responsables.'
+        );
+      }
+    });
+  }
+
   nouvelleCaisse() {
+    if (!this.isAdmin()) {
+      this.toastService.warning('Seuls les administrateurs peuvent créer une caisse.');
+      return;
+    }
     this.newCaisse = {
       nom: '',
       solde: 0,
@@ -634,12 +778,16 @@ export class BanqueCaisseComponent implements OnInit {
       return;
     }
     const resp = (this.newCaisse.responsableIds || []).filter((id: number) => id != null && id > 0);
+    if (resp.length === 0) {
+      this.toastService.warning('Sélectionnez au moins un responsable comptable.');
+      return;
+    }
     const payload: Caisse = {
       nom,
       solde: this.newCaisse.solde!,
       statut: this.newCaisse.statut!,
       description: this.newCaisse.description?.trim() || undefined,
-      responsableIds: resp.length > 0 ? resp : undefined
+      responsableIds: resp
     };
     this.isLoading = true;
     this.caissesService.createCaisse(payload).subscribe({
@@ -650,15 +798,19 @@ export class BanqueCaisseComponent implements OnInit {
         this.loadCaisses();
         this.loadStats();
       },
-      error: (err: unknown) => {
+      error: (err: any) => {
         console.error(err);
         this.isLoading = false;
-        this.toastService.error('Erreur lors de la création de la caisse');
+        this.toastService.error(err?.error?.message || err?.message || 'Erreur lors de la création de la caisse');
       }
     });
   }
 
   nouvelleBanque() {
+    if (!this.isAdmin()) {
+      this.toastService.warning('Seuls les administrateurs peuvent créer un compte bancaire.');
+      return;
+    }
     this.newCompteBancaire = {
       numero: '',
       type: 'BANQUE',
@@ -691,8 +843,12 @@ export class BanqueCaisseComponent implements OnInit {
       return;
     }
 
-    this.isLoading = true;
     const resp = (this.newCompteBancaire.responsableIds || []).filter((id) => id != null && id > 0);
+    if (resp.length === 0) {
+      this.toastService.warning('Sélectionnez au moins un responsable comptable.');
+      return;
+    }
+    this.isLoading = true;
     const compteToSave: CompteBancaire = {
       numero: this.newCompteBancaire.numero!,
       type: this.newCompteBancaire.type!,
@@ -701,7 +857,7 @@ export class BanqueCaisseComponent implements OnInit {
       numeroCompteBancaire: this.newCompteBancaire.numeroCompteBancaire,
       statut: this.newCompteBancaire.statut!,
       description: this.newCompteBancaire.description,
-      responsableIds: resp.length > 0 ? resp : undefined
+      responsableIds: resp
     };
 
     this.comptesBancairesService.createCompte(compteToSave).subscribe({
@@ -712,10 +868,12 @@ export class BanqueCaisseComponent implements OnInit {
         this.loadComptesBancaires();
         this.loadStats();
       },
-      error: (error) => {
+      error: (error: any) => {
         console.error('Erreur lors de la création du compte bancaire:', error);
         this.isLoading = false;
-        this.toastService.error('Erreur lors de la création du compte bancaire. Veuillez réessayer.');
+        this.toastService.error(
+          error?.error?.message || error?.message || 'Erreur lors de la création du compte bancaire. Veuillez réessayer.'
+        );
       }
     });
   }

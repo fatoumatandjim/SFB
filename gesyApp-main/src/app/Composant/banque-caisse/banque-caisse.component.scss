@@ -342,6 +342,44 @@
 .solde-label { font-size: 12px; color: var(--text-muted); }
 .solde-value { font-size: 18px; font-weight: 700; color: var(--text-primary); }
 
+.compte-card-actions {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-color);
+}
+
+.btn-edit-responsables {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--bg-secondary, rgba(0, 0, 0, 0.04));
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+
+  &:hover {
+    color: var(--text-primary);
+    border-color: var(--border-light);
+    background: var(--bg-tertiary);
+  }
+}
+
+.edit-responsables-subtitle {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.loading-state--compact {
+  padding: 24px;
+  .loading-spinner { margin-bottom: 8px; }
+  p { margin: 0; font-size: 14px; color: var(--text-muted); }
+}
+
 .transactions-section {
   background: var(--bg-card);
   border: 1px solid var(--border-color);

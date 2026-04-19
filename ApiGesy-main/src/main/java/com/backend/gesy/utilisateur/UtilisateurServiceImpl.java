@@ -58,6 +58,17 @@ public class UtilisateurServiceImpl implements UtilisateurService {
     }
 
     @Override
+    public List<Utilisateur> findComptablesActifs() {
+        return utilisateurRepository.findAll().stream()
+                .filter(u -> Boolean.TRUE.equals(u.getActif()))
+                .filter(u -> u.getRoles() != null && u.getRoles().stream()
+                        .anyMatch(r ->
+                                r.getStatut() == Roles.StatutRole.ACTIF
+                                        && "Comptable".equalsIgnoreCase(r.getNom())))
+                .toList();
+    }
+
+    @Override
     public Optional<Utilisateur> findById(Long id) {
         return utilisateurRepository.findById(id);
     }

@@ -1,10 +1,12 @@
 package com.backend.gesy.utilisateur;
 
+import com.backend.gesy.security.SecurityExpressions;
 import com.backend.gesy.utilisateur.dto.UtilisateurDTO;
 import com.backend.gesy.utilisateur.dto.UtilisateurMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -36,6 +38,18 @@ public class UtilisateurController {
         List<UtilisateurDTO> dtos = utilisateurService.findLogisticiensEtResponsables().stream()
             .map(utilisateurMapper::toDTO)
             .collect(Collectors.toList());
+        return ResponseEntity.ok(dtos);
+    }
+
+    /**
+     * Liste des utilisateurs pouvant être désignés responsables d’un compte bancaire ou d’une caisse (rôle Comptable uniquement).
+     */
+    @GetMapping("/comptables")
+    @PreAuthorize(SecurityExpressions.HAS_ROLE_ADMIN)
+    public ResponseEntity<List<UtilisateurDTO>> getComptablesActifs() {
+        List<UtilisateurDTO> dtos = utilisateurService.findComptablesActifs().stream()
+                .map(utilisateurMapper::toDTO)
+                .collect(Collectors.toList());
         return ResponseEntity.ok(dtos);
     }
 

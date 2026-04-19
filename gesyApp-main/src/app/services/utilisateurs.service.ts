@@ -42,6 +42,11 @@ export class UtilisateursService {
     return this.http.get<Utilisateur[]>(`${this.apiUrl}/logisticiens`);
   }
 
+  /** Comptables actifs — responsables banque/caisse (API réservée admin). */
+  getComptablesActifs(): Observable<Utilisateur[]> {
+    return this.http.get<Utilisateur[]>(`${this.apiUrl}/comptables`);
+  }
+
   getUtilisateurById(id: number): Observable<Utilisateur> {
     return this.http.get<Utilisateur>(`${this.apiUrl}/${id}`);
   }
