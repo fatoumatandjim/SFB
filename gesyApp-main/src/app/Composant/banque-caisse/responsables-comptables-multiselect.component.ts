@@ -10,15 +10,20 @@ import { Utilisateur } from '../../services/utilisateurs.service';
   selector: 'app-responsables-comptables-multiselect',
   standalone: true,
   imports: [CommonModule, FormsModule],
+  styleUrls: ['./responsables-comptables-multiselect.component.scss'],
   template: `
-    <div class="form-group">
-      <label [attr.for]="inputId">{{ label }}</label>
+    <div class="rcm-root">
+      <label class="rcm-label" [attr.for]="inputId">{{ label }}</label>
+      @if (comptables.length === 0) {
+        <p class="rcm-empty">Aucun comptable disponible. Créez ou activez des utilisateurs avec le rôle Comptable.</p>
+      }
       <select
         [id]="inputId"
         [name]="controlName"
         multiple
-        class="form-select"
+        class="rcm-select"
         [attr.size]="size"
+        [disabled]="comptables.length === 0"
         [ngModel]="selectedIds"
         (ngModelChange)="selectedIdsChange.emit($event)"
       >
@@ -29,7 +34,7 @@ import { Utilisateur } from '../../services/utilisateurs.service';
         }
       </select>
       @if (hint) {
-        <p class="form-hint">{{ hint }}</p>
+        <p class="rcm-hint">{{ hint }}</p>
       }
     </div>
   `

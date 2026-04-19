@@ -425,38 +425,85 @@
 }
 
 @if (showEditResponsablesModal) {
-  <div class="modal-overlay" (click)="closeEditResponsablesModal()">
-    <div class="modal-content add-banque-modal" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <h2>Modifier les responsables</h2>
-        <button class="modal-close" type="button" (click)="closeEditResponsablesModal()" aria-label="Fermer">×</button>
+  <div class="modal-overlay modal-overlay--refined" (click)="closeEditResponsablesModal()">
+    <div
+      class="modal-content modal-responsables"
+      (click)="$event.stopPropagation()"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-responsables-title"
+    >
+      <div class="modal-header modal-header--stacked">
+        <div class="modal-header-copy">
+          <span class="modal-eyebrow">Administration</span>
+          <h2 id="modal-responsables-title">Responsables comptables</h2>
+          <p class="modal-lead">
+            Seuls les comptables sélectionnés pourront gérer ce compte (les administrateurs restent toujours habilités).
+          </p>
+        </div>
+        <button
+          type="button"
+          class="modal-close modal-close--refined"
+          (click)="closeEditResponsablesModal()"
+          aria-label="Fermer la fenêtre"
+        >
+          <span class="modal-close-icon" aria-hidden="true"></span>
+        </button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body modal-body--responsables">
         @if (editResponsablesLoading && !editResponsablesReady) {
-          <div class="loading-state loading-state--compact">
+          <div class="modal-loading">
             <div class="loading-spinner"></div>
-            <p>Chargement…</p>
+            <p>Chargement des données…</p>
           </div>
         } @else {
-          <p class="edit-responsables-subtitle">{{ editResponsablesTitle }}</p>
-          <app-responsables-comptables-multiselect
-            label="Responsables comptables *"
-            hint="Au moins un comptable actif. Ctrl/Cmd pour plusieurs."
-            inputId="edit-finance-responsables"
-            controlName="editFinanceResponsableIds"
-            [comptables]="comptablesPourResponsable"
-            [selectedIds]="editResponsableIds"
-            (selectedIdsChange)="editResponsableIds = $event"
-          />
-          <div class="modal-actions">
-            <button type="button" class="btn-cancel" (click)="closeEditResponsablesModal()">Annuler</button>
+          <div class="modal-context-card">
+            <div class="modal-context-icon" aria-hidden="true">
+              @if (editResponsablesMode === 'banque') {
+                <span>🏦</span>
+              } @else {
+                <span>💵</span>
+              }
+            </div>
+            <div class="modal-context-body">
+              <span class="modal-context-label">
+                @if (editResponsablesMode === 'banque') {
+                  Compte bancaire
+                } @else {
+                  Caisse
+                }
+              </span>
+              <p class="modal-context-value">{{ editResponsablesTitle }}</p>
+            </div>
+          </div>
+          <div class="modal-field-panel">
+            <app-responsables-comptables-multiselect
+              label="Comptables responsables"
+              hint="Sélectionnez au moins un compte actif avec le rôle « Comptable ». Maintenez Ctrl (Windows) ou Cmd (Mac) pour en choisir plusieurs."
+              inputId="edit-finance-responsables"
+              controlName="editFinanceResponsableIds"
+              [size]="6"
+              [comptables]="comptablesPourResponsable"
+              [selectedIds]="editResponsableIds"
+              (selectedIdsChange)="editResponsableIds = $event"
+            />
+          </div>
+          <div class="modal-footer-bar">
+            <button type="button" class="btn-cancel btn-cancel--ghost" (click)="closeEditResponsablesModal()">
+              Annuler
+            </button>
             <button
               type="button"
-              class="btn-submit"
+              class="btn-submit btn-submit--primary"
               [disabled]="editResponsablesLoading"
               (click)="saveEditResponsables()"
             >
-              @if (editResponsablesLoading) { Enregistrement… } @else { Enregistrer }
+              @if (editResponsablesLoading) {
+                <span class="btn-submit-spinner"></span>
+                Enregistrement…
+              } @else {
+                Enregistrer les responsables
+              }
             </button>
           </div>
         }

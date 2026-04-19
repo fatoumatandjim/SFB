@@ -1,0 +1,64 @@
+.rcm-root {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rcm-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.01em;
+}
+
+.rcm-empty {
+  margin: 0;
+  padding: 12px 14px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-muted);
+  background: var(--bg-tertiary);
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.rcm-select {
+  width: 100%;
+  margin: 0;
+  padding: 10px 12px;
+  min-height: 168px;
+  font-size: 14px;
+  line-height: 1.45;
+  font-family: inherit;
+  color: var(--text-primary);
+  background: var(--bg-primary, var(--bg-tertiary));
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  outline: none;
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+
+  &:focus {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px rgba(59, 91, 219, 0.18);
+  }
+
+  &:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+  }
+
+  option {
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+  }
+}
+
+.rcm-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
